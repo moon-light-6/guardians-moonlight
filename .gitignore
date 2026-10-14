@@ -1,0 +1,87 @@
+# Python 캐시
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# C 확장
+*.c
+*.so
+
+# 배포 / 패키징
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# 환경
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE 설정
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Pygame 관련
+*.log
+logs/
+
+# 게임 파일
+saves/
+screenshots/
+replays/
+
+# 임시 데이터
+data/generated/
+data/cache/
+*.tmp
+
+# OS 파일
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 테스트 커버리지
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+
+# 로컬 설정
+config.local.py
+settings.local.json
+
+.DS_Store
+

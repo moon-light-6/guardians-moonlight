@@ -1,0 +1,6 @@
+{
+  "BASIC": {"name": "갓귀", "speed_ratio": 1.0, "life_damage": 1},
+  "FAST": {"name": "질풍귀", "speed_ratio": 1.5, "life_damage": 1},
+  "TANK": {"name": "철갑귀", "speed_ratio": 0.7, "life_damage": 2},
+  "BOSS_5": {"name": "먹그림자", "hp": 500, "life_damage": 3}
+}
