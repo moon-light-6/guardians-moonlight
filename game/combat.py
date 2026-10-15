@@ -11,8 +11,9 @@ class Combat:
         "claw": 0.40,       # 백호: 공격 주기 0.5초보다 짧게
         "fire": 0.65,
         "water": 0.60,
-        "lightning": 0.60,
+        "lightning": 1.00,  # 청룡 12프레임을 끝까지 보여주는 화면 연출 전용 시간
     }
+    LIGHTNING_HIT_STAGGER = 0.12  # 연쇄 타겟 사이 화면 연출만 지연합니다.
 
     def get_target(self, tower_pos: tuple, tower_range: float, enemies: List[Enemy]) -> Optional[Enemy]:
         targets = [
@@ -63,8 +64,11 @@ class Combat:
         elif tower_type == TowerType.LIGHTNING:
             chain = self.apply_chain_damage(target, stats["damage"], stats["chain_count"], enemies)
             points = [enemy.get_current_position() for enemy in chain]
+            hit_ttl = self.EFFECT_TTL["lightning"]
             effects.append({"kind": "lightning", "from": tower_pos, "points": points,
-                            "age": 0.0, "ttl": self.EFFECT_TTL["lightning"]})
+                            "age": 0.0, "hit_ttl": hit_ttl,
+                            "hit_stagger": self.LIGHTNING_HIT_STAGGER,
+                            "ttl": hit_ttl + self.LIGHTNING_HIT_STAGGER * max(0, len(points) - 1)})
 
         tower.reset_attack_cooldown()
         tower_data["cooldown"] = tower.time_since_last_attack

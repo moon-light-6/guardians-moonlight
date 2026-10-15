@@ -241,20 +241,20 @@ class TestPygameUI(unittest.TestCase):
             self.assertIn(value, values)
         self.assertEqual(state.gold, 430)
 
-    def test_ice_field_plays_eight_frames_with_loop_then_disappears(self):
+    def test_ice_field_plays_twelve_frames_with_loop_then_disappears(self):
         animator = self.renderer.effect_animator
         frames = animator.frames["water"]
-        self.assertEqual(len(frames), 8)
+        self.assertEqual(len(frames), 12)
         field = {"kind": "slow_field", "cell": (10, 5), "factor": 0.7,
                  "age": 0, "slow_ttl": 2, "ttl": 2}
         center = self.game.map.grid_to_pixel(field["cell"])
-        # 각 프레임 0.1초, 0.4~1.6초는 3·4번 왕복, 2초부터 완전히 제거.
+        # 생성 0~3, 유지 4~7 반복, 소멸 8~11. 각 프레임 0.1초, 총 2초.
         timeline = ((0, 0), (0.099, 0), (0.1, 1), (0.2, 2), (0.3, 3),
-                    (0.4, 3), (0.499, 3), (0.5, 4), (0.599, 4),
-                    (0.6, 3), (0.7, 4), (0.8, 3), (0.9, 4),
-                    (1, 3), (1.1, 4), (1.2, 3), (1.3, 4),
-                    (1.4, 3), (1.5, 4), (1.599, 4), (1.6, 4), (1.7, 5),
-                    (1.8, 6), (1.9, 7), (1.999, 7),
+                    (0.4, 4), (0.499, 4), (0.5, 5), (0.599, 5),
+                    (0.6, 6), (0.7, 7), (0.8, 4), (0.9, 5),
+                    (1, 6), (1.1, 7), (1.2, 4), (1.3, 5),
+                    (1.4, 6), (1.5, 7), (1.599, 7), (1.6, 8), (1.7, 9),
+                    (1.8, 10), (1.9, 11), (1.999, 11),
                     (2 - 1e-14, None), (2, None), (3, None))
         for age, index in timeline:
             with self.subTest(age=age, frame=index):
@@ -263,8 +263,8 @@ class TestPygameUI(unittest.TestCase):
                 if index is not None:
                     image = frames[index].copy()
                     image.set_alpha(170)
-                    expected.blit(image, (center[0] - animator.field_anchor[0],
-                                          center[1] - animator.field_anchor[1]))
+                    expected.blit(image, (center[0] - animator.anchors["water"][0],
+                                          center[1] - animator.anchors["water"][1]))
                 field["age"] = age
                 animator.draw(self.screen, field, self.game.map)
                 self.assertTrue(pygame.image.tobytes(self.screen, "RGB") ==
@@ -304,29 +304,26 @@ class TestPygameUI(unittest.TestCase):
             self.renderer.render(self.game.state)
         self.assertTrue(pygame.image.tobytes(self.screen, "RGB") == background)
 
-    def test_ice_ring_alignment_ignores_padding_and_plume_size(self):
+    def test_effect_alignment_ignores_padding_and_plume_size(self):
         animator = self.renderer.effect_animator
         # 실제 원본의 모든 프레임도 같은 캔버스 크기로 정렬됩니다.
         self.assertEqual(len({frame.get_size() for frame in animator.frames["water"]}), 1)
-        frames, bounds = [], []
-        for index in range(8):
-            frame = pygame.Surface((100 + index, 120 + index), pygame.SRCALPHA)
-            ring = pygame.Rect(15 + index, 60 + index * 2, 25 + index * 2, 12 + index)
+        frames, points = [], []
+        for index in range(12):
+            frame = pygame.Surface((100, 120), pygame.SRCALPHA)
+            ring = pygame.Rect(15 + index, 60 + index * 2, 25, 12)
             pygame.draw.line(frame, (255, 0, 0), (ring.centerx, 5 + index), ring.midtop, 3)
             pygame.draw.ellipse(frame, (255, 255, 255), ring)
             frames.append(frame)
-            bounds.append(tuple(ring))
-        with patch.object(animator, "FIELD_RING_RECTS", bounds):
-            aligned = animator._align_field_frames(frames)
+            points.append(ring.center)
+        aligned, anchor = animator._align_frames(frames, points, (100, 120))
         self.assertEqual(len({frame.get_size() for frame in aligned}), 1)
         for frame in aligned:
             ring_pixels = pygame.mask.from_threshold(frame, (255, 255, 255, 255),
                                                     (30, 30, 30, 255))
             ring = ring_pixels.get_bounding_rects()[0]
-            self.assertAlmostEqual(ring.centerx, animator.field_anchor[0], delta=1)
-            self.assertAlmostEqual(ring.centery, animator.field_anchor[1], delta=1)
-            self.assertAlmostEqual(ring.width, 50, delta=2)
-            self.assertAlmostEqual(ring.height, 16, delta=2)
+            self.assertEqual(ring.center, anchor)
+            self.assertEqual(ring.size, (25, 12))
 
 
 if __name__ == "__main__":
