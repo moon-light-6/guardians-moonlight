@@ -281,7 +281,7 @@ class Game:
             boss_name=boss_name,
         )
         self.state.phase = GamePhase.SETTLEMENT
-        self.state.message = f"{stage}번째 웨이브 방어 성공"
+        self.state.message = f"{stage}번째 소동 해결 성공"
 
     def _continue_after_settlement(self) -> None:
         if self.state.phase != GamePhase.SETTLEMENT:

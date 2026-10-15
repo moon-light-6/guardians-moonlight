@@ -107,8 +107,8 @@ class Renderer:
         lines = [
             "01 빈 슬롯 선택: 100G로 사신 1종을 랜덤 소환합니다.",
             "02 사신 관리: 준비 단계에서 강화, 이동, 판매합니다.",
-            "03 웨이브 시작: 악귀는 고정 경로, 사신은 자동 공격합니다.",
-            "04 결계 수호: 30웨이브까지 방어하면 승리합니다.",
+            "03 소동 시작: 악귀는 고정 경로, 사신은 자동 공격합니다.",
+            "04 결계 수호: 30번째 소동까지 해결하면 승리합니다.",
         ]
         for i, line in enumerate(lines):
             self._text(line, 360, 290 + i * 54, self.font_med, COLOR_WHITE)
@@ -136,7 +136,7 @@ class Renderer:
         draw_panel(self.screen, panel)
         left, right = panel.x + 40, panel.right - 40
 
-        title = self.font_big.render(f"{result.stage}번째 웨이브 방어 성공", True, COLOR_WHITE)
+        title = self.font_big.render(f"{result.stage}번째 소동 해결 성공", True, COLOR_WHITE)
         self.screen.blit(title, title.get_rect(center=(panel.centerx, panel.y + 48)))
         if result.boss_name:
             boss_result = "처치 성공" if result.boss_kills else "결계 도달"
@@ -146,7 +146,7 @@ class Renderer:
         rows = [
             (f"일반 적 처치 {result.normal_kills}마리", f"{result.kill_gold} G"),
             (f"보스 처치 {result.boss_kills}마리", f"{result.boss_gold} G"),
-            ("웨이브 클리어", f"{result.clear_gold} G"),
+            ("소동 해결", f"{result.clear_gold} G"),
             ("총 획득", f"{result.total_gold} G"),
             ("결계 변화", f"{result.life_before} -> {result.life_after}"),
         ]
@@ -181,7 +181,7 @@ class Renderer:
         phase = "전투" if state.phase == GamePhase.WAVE_ACTIVE else "준비"
         if state.phase == GamePhase.SETTLEMENT:
             phase = "정산"
-        self._text(f"웨이브 {state.current_stage:02d} / 30", 250, 46, self.font_med, COLOR_WHITE)
+        self._text(f"{state.current_stage:02d} / 30 번째 소동", 250, 46, self.font_med, COLOR_WHITE)
         self._text(f"결계 {state.life}", 430, 46, self.font_med, COLOR_MINT)
         self._text(f"{state.gold} G", 548, 46, self.font_med, COLOR_GOLD)
         self._text(phase, 680, 46, self.font_med, COLOR_CYAN)
@@ -378,9 +378,9 @@ class Renderer:
             buttons.append(Button(pygame.Rect(PANEL_X + 158, y + 418, 126, 40), "판매", "SELL", self.economy.can_sell(state, selected)))
 
         desc = WaveManager().describe_stage(state.current_stage)
-        self._text("다음 웨이브", PANEL_X + 24, 624, self.font_small, COLOR_GRAY)
+        self._text("다음 소동", PANEL_X + 24, 624, self.font_small, COLOR_GRAY)
         self._text(desc, PANEL_X + 24, 650, self.font_small, COLOR_WHITE)
-        buttons.append(Button(pygame.Rect(PANEL_X + 24, 682, 260, 40), f"{state.current_stage}번째 웨이브 시작", "START_WAVE"))
+        buttons.append(Button(pygame.Rect(PANEL_X + 24, 682, 260, 40), f"{state.current_stage}번째 소동 시작", "START_WAVE"))
 
     def _render_result(self, state: GameState) -> None:
         if state.phase == GamePhase.GAME_OVER:
@@ -392,7 +392,7 @@ class Renderer:
         self._text(title, 470, 270, self.font_title, COLOR_WHITE)
         self._text(result, 520, 340, self.font_big, COLOR_MOON)
         if state.phase == GamePhase.GAME_OVER:
-            fail_text = f"{state.current_stage}번째 웨이브에서 실패했어요"
+            fail_text = f"{state.current_stage}번째 소동에서 실패했어요"
             fail_surface = self.font_med.render(fail_text, True, COLOR_RED)
             self.screen.blit(fail_surface, fail_surface.get_rect(center=(SCREEN_WIDTH // 2, 420)))
         self.buttons.set_buttons([
