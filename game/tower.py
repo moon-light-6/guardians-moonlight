@@ -33,8 +33,8 @@ class Tower:
             "damage": 40,
             "attack_interval": 2.0,
             "range": 2.5,
-            "splash_radius": 1.0,
-            "description": "대포형 · 반경 1칸 광역",
+            "splash_radius": 2.0,
+            "description": "대포형 · 반경 2칸 광역",
         },
         TowerType.ICE: {
             "guardian": "현무",

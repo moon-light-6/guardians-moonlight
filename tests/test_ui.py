@@ -226,9 +226,9 @@ class TestPygameUI(unittest.TestCase):
         with patch.object(self.renderer, "_text", wraps=self.renderer._text) as draw_text:
             self.render("settlement-rewards-integrated")
         values = [call.args[0] for call in draw_text.call_args_list]
-        for value in ("일반 적 처치 1마리", "보스 처치 1마리", "5 G", "100 G", "125 G", "230 G"):
+        for value in ("일반 적 처치 1마리", "보스 처치 1마리", "5 G", "100 G", "225 G", "330 G"):
             self.assertIn(value, values)
-        self.assertEqual(state.gold, 430)
+        self.assertEqual(state.gold, 530)
 
     def test_slow_field_color_is_visible_until_expiry(self):
         from config import CELL_SIZE

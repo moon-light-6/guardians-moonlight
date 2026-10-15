@@ -84,7 +84,9 @@ class TestGameEngine(unittest.TestCase):
                     self.assertEqual(self.state.phase, GamePhase.SETTLEMENT)
                     expected_gold += WaveManager.STAGE_COUNTS[stage] * 5 + 100 + stage * 5
                     if stage % 5 == 0:
-                        expected_gold += 100
+                        expected_gold += 100  # 보스 처치 보상
+                    if stage % 5 == 0 or 26 <= stage <= 29:
+                        expected_gold += 100  # 추가 클리어 보상
                     self.assertEqual(self.state.gold, expected_gold)
                     self.assertEqual(self.state.wave_result.normal_kills, WaveManager.STAGE_COUNTS[stage])
                     self.assertEqual(self.state.wave_result.boss_kills, int(stage % 5 == 0))
@@ -109,7 +111,8 @@ class TestGameEngine(unittest.TestCase):
                 game.update(0.1)
                 self.assertEqual(game.state.life, 20 - boss_data["life_damage"])
                 self.assertEqual(game.state.wave_boss_gold, 0)
-                self.assertEqual(game.state.phase, GamePhase.SETTLEMENT)
+                expected_phase = GamePhase.GAME_OVER if stage == 30 else GamePhase.SETTLEMENT
+                self.assertEqual(game.state.phase, expected_phase)
 
     def test_fatal_escape_stops_combat_immediately_without_clear_reward(self):
         self.game.step(Action(ActionType.START_WAVE))
@@ -125,6 +128,29 @@ class TestGameEngine(unittest.TestCase):
         self.assertEqual(self.state.gold, gold)
         self.game.step(Action(ActionType.CANCEL))
         self.assertEqual(self.state.phase, GamePhase.GAME_OVER)
+
+    def test_final_boss_escape_is_defeat_even_at_full_life(self):
+        for life in (20, 5):
+            with self.subTest(life=life):
+                game = Game()
+                state = game.reset(start_at_title=False)
+                state.current_stage = 30
+                state.life = life
+                game.step(Action(ActionType.START_WAVE))
+                spawned = game.wave_manager.update(100, [(0, 0), (0.001, 0)])
+                boss = next(enemy for enemy in spawned if enemy.is_boss)
+                self.assertEqual(boss.life_damage, 20)
+                state.enemies = [boss]
+                gold_before = state.gold
+                game.update(0.1)
+                self.assertTrue(boss.reached_base)
+                self.assertEqual(state.life, life - 20)
+                self.assertEqual(state.phase, GamePhase.GAME_OVER)
+                self.assertEqual(state.gold, gold_before)
+                self.assertEqual(state.wave_clear_gold, 0)
+                self.assertNotIn(30, state.clear_rewarded_stages)
+                game.step(Action(ActionType.CONTINUE))
+                self.assertEqual(state.phase, GamePhase.GAME_OVER)
 
 
 if __name__ == "__main__":

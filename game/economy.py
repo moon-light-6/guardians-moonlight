@@ -2,6 +2,8 @@ from typing import Optional
 
 from config import (
     CLEAR_GOLD_BASE,
+    CLEAR_GOLD_BONUS,
+    CLEAR_GOLD_BONUS_STAGES,
     CLEAR_GOLD_PER_STAGE,
     MAX_ACTIONS_PER_WAVE,
     MAX_TOWER_LEVEL,
@@ -41,6 +43,8 @@ class Economy:
         ):
             return False
         reward = CLEAR_GOLD_BASE + stage * CLEAR_GOLD_PER_STAGE
+        if stage in CLEAR_GOLD_BONUS_STAGES:
+            reward += CLEAR_GOLD_BONUS
         state.clear_rewarded_stages.add(stage)
         state.wave_clear_gold = reward
         state.gold += reward

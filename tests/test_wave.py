@@ -25,9 +25,9 @@ class TestWave(unittest.TestCase):
 
     def test_all_six_bosses_match_plan(self):
         expected = [
-            (5, "먹그림자", 500, 3), (10, "철갓장군", 1200, 4),
-            (15, "서리석귀", 3000, 5), (20, "홍염귀왕", 6000, 5),
-            (25, "흑운이무기", 12000, 7), (30, "월식대왕", 25000, 10),
+            (5, "먹그림자", 750, 3), (10, "철갓장군", 1800, 4),
+            (15, "서리석귀", 4500, 5), (20, "홍염귀왕", 9000, 5),
+            (25, "흑운이무기", 18000, 7), (30, "월식대왕", 25000, 20),
         ]
         for stage, name, hp, damage in expected:
             with self.subTest(stage=stage):

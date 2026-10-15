@@ -18,7 +18,7 @@
     "damage": 40,
     "attack_interval": 2.0,
     "range": 2.5,
-    "special": "반경 1칸 광역 피해"
+    "special": "반경 2칸 광역 피해"
   },
   "ICE": {
     "name": "현무",
