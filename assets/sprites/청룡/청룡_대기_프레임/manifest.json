@@ -1,0 +1,482 @@
+[
+  {
+    "name": "NW_0.png",
+    "row": 0,
+    "col": 0,
+    "cell_bounds": [
+      0,
+      0,
+      314,
+      314
+    ],
+    "crop_bbox": [
+      36,
+      34,
+      314,
+      314
+    ],
+    "sprite_size": [
+      278,
+      280
+    ],
+    "paste_xy": [
+      21,
+      22
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302
+  },
+  {
+    "name": "NW_1.png",
+    "row": 0,
+    "col": 1,
+    "cell_bounds": [
+      314,
+      0,
+      627,
+      314
+    ],
+    "crop_bbox": [
+      36,
+      34,
+      313,
+      314
+    ],
+    "sprite_size": [
+      277,
+      280
+    ],
+    "paste_xy": [
+      21,
+      22
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302
+  },
+  {
+    "name": "NW_2.png",
+    "row": 0,
+    "col": 2,
+    "cell_bounds": [
+      627,
+      0,
+      940,
+      314
+    ],
+    "crop_bbox": [
+      39,
+      37,
+      313,
+      314
+    ],
+    "sprite_size": [
+      274,
+      277
+    ],
+    "paste_xy": [
+      23,
+      25
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302
+  },
+  {
+    "name": "NW_3.png",
+    "row": 0,
+    "col": 3,
+    "cell_bounds": [
+      940,
+      0,
+      1254,
+      314
+    ],
+    "crop_bbox": [
+      40,
+      38,
+      313,
+      314
+    ],
+    "sprite_size": [
+      273,
+      276
+    ],
+    "paste_xy": [
+      23,
+      26
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302
+  },
+  {
+    "name": "NE_0.png",
+    "row": 1,
+    "col": 0,
+    "cell_bounds": [
+      0,
+      314,
+      314,
+      627
+    ],
+    "crop_bbox": [
+      6,
+      31,
+      299,
+      313
+    ],
+    "sprite_size": [
+      293,
+      282
+    ],
+    "paste_xy": [
+      13,
+      20
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302
+  },
+  {
+    "name": "NE_1.png",
+    "row": 1,
+    "col": 1,
+    "cell_bounds": [
+      314,
+      314,
+      627,
+      627
+    ],
+    "crop_bbox": [
+      5,
+      31,
+      298,
+      313
+    ],
+    "sprite_size": [
+      293,
+      282
+    ],
+    "paste_xy": [
+      13,
+      20
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302
+  },
+  {
+    "name": "NE_2.png",
+    "row": 1,
+    "col": 2,
+    "cell_bounds": [
+      627,
+      314,
+      940,
+      627
+    ],
+    "crop_bbox": [
+      6,
+      30,
+      299,
+      313
+    ],
+    "sprite_size": [
+      293,
+      283
+    ],
+    "paste_xy": [
+      13,
+      19
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302
+  },
+  {
+    "name": "NE_3.png",
+    "row": 1,
+    "col": 3,
+    "cell_bounds": [
+      940,
+      314,
+      1254,
+      627
+    ],
+    "crop_bbox": [
+      7,
+      29,
+      293,
+      313
+    ],
+    "sprite_size": [
+      286,
+      284
+    ],
+    "paste_xy": [
+      17,
+      18
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302
+  },
+  {
+    "name": "SW_0.png",
+    "row": 2,
+    "col": 0,
+    "cell_bounds": [
+      0,
+      627,
+      314,
+      940
+    ],
+    "crop_bbox": [
+      13,
+      16,
+      314,
+      299
+    ],
+    "sprite_size": [
+      301,
+      283
+    ],
+    "paste_xy": [
+      9,
+      19
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302
+  },
+  {
+    "name": "SW_1.png",
+    "row": 2,
+    "col": 1,
+    "cell_bounds": [
+      314,
+      627,
+      627,
+      940
+    ],
+    "crop_bbox": [
+      11,
+      20,
+      313,
+      298
+    ],
+    "sprite_size": [
+      302,
+      278
+    ],
+    "paste_xy": [
+      9,
+      24
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302
+  },
+  {
+    "name": "SW_2.png",
+    "row": 2,
+    "col": 2,
+    "cell_bounds": [
+      627,
+      627,
+      940,
+      940
+    ],
+    "crop_bbox": [
+      9,
+      17,
+      313,
+      299
+    ],
+    "sprite_size": [
+      304,
+      282
+    ],
+    "paste_xy": [
+      8,
+      20
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302
+  },
+  {
+    "name": "SW_3.png",
+    "row": 2,
+    "col": 3,
+    "cell_bounds": [
+      940,
+      627,
+      1254,
+      940
+    ],
+    "crop_bbox": [
+      9,
+      22,
+      314,
+      298
+    ],
+    "sprite_size": [
+      305,
+      276
+    ],
+    "paste_xy": [
+      7,
+      26
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302
+  },
+  {
+    "name": "SE_0.png",
+    "row": 3,
+    "col": 0,
+    "cell_bounds": [
+      0,
+      940,
+      314,
+      1254
+    ],
+    "crop_bbox": [
+      4,
+      1,
+      311,
+      277
+    ],
+    "sprite_size": [
+      307,
+      276
+    ],
+    "paste_xy": [
+      6,
+      26
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302
+  },
+  {
+    "name": "SE_1.png",
+    "row": 3,
+    "col": 1,
+    "cell_bounds": [
+      314,
+      940,
+      627,
+      1254
+    ],
+    "crop_bbox": [
+      1,
+      2,
+      313,
+      278
+    ],
+    "sprite_size": [
+      312,
+      276
+    ],
+    "paste_xy": [
+      4,
+      26
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302
+  },
+  {
+    "name": "SE_2.png",
+    "row": 3,
+    "col": 2,
+    "cell_bounds": [
+      627,
+      940,
+      940,
+      1254
+    ],
+    "crop_bbox": [
+      4,
+      3,
+      313,
+      280
+    ],
+    "sprite_size": [
+      309,
+      277
+    ],
+    "paste_xy": [
+      5,
+      25
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302
+  },
+  {
+    "name": "SE_3.png",
+    "row": 3,
+    "col": 3,
+    "cell_bounds": [
+      940,
+      940,
+      1254,
+      1254
+    ],
+    "crop_bbox": [
+      10,
+      6,
+      314,
+      278
+    ],
+    "sprite_size": [
+      304,
+      272
+    ],
+    "paste_xy": [
+      8,
+      30
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302
+  }
+]
