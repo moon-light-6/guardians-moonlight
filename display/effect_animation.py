@@ -29,6 +29,28 @@ class AttackEffectAnimator:
             "frame_count": 8,
             "size": (82, 82),
         },
+        
+        "claw": {
+            "path": (
+                "백호",
+                "핑크 고양이 발바닥 임팩트 스프라이트.png",
+            ),
+            "rows": 1,
+            "cols": 8,
+            "frame_count": 8,
+            "size": (70, 70),
+        },
+        "fire": {
+            "path": (
+                "주작",
+                "마법의 불꽃 폭발 8프레임 시트.png",
+            ),
+            "rows": 1,
+            "cols": 8,
+            "frame_count": 8,
+            "size": (90, 90),
+        },
+
     }
 
     def __init__(self):
@@ -132,13 +154,13 @@ class AttackEffectAnimator:
         if kind == "lightning":
             targets = effect.get("points", [])
 
-        # 현무는 공격 대상 위치에 이펙트 표시
-        elif kind == "water":
+        elif kind in ("water", "claw", "fire"):
             target = effect.get("to")
             targets = [target] if target is not None else []
 
         else:
             targets = []
+
 
         for target in targets:
             pos = game_map.grid_to_pixel(target)

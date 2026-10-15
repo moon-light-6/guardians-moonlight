@@ -5,18 +5,30 @@ import pygame
 
 
 class TowerSpriteAnimator:
-    """청룡과 현무의 대기/공격 애니메이션을 담당합니다."""
-
     SPRITE_CONFIG = {
         "LIGHTNING": {
             "folder": "청룡",
             "effect": "lightning",
             "idle_start": 0,
+            "attack_start": 0,
         },
         "ICE": {
             "folder": "현무",
             "effect": "water",
             "idle_start": 1,
+            "attack_start": 0,
+        },
+        "ARCHER": {
+            "folder": "백호",
+            "effect": "claw",
+            "idle_start": 0,
+            "attack_start": 1,
+        },
+        "CANNON": {
+            "folder": "주작",
+            "effect": "fire",
+            "idle_start": 0,
+            "attack_start": 0,
         },
     }
 
@@ -62,9 +74,10 @@ class TowerSpriteAnimator:
                     for index in range(self.FRAME_COUNT):
                         frame_number = index
 
-                        # 현무 대기 이미지는 1~4번으로 저장됨
                         if motion == "idle":
                             frame_number += config["idle_start"]
+                        else:
+                            frame_number += config["attack_start"]
 
                         filename = f"{direction}_{frame_number}.png"
                         path = folder / filename
@@ -134,7 +147,11 @@ class TowerSpriteAnimator:
 
     @staticmethod
     def _get_target_position(effect):
-        """공격 이펙트에서 대상 좌표를 가져옵니다."""
+        """
+        공격 이펙트에서 대상 좌표를 가져옵니다.
+        청룡(연쇄공격) = points
+        백호, 주작, 현무 = 공격 대상 좌표 to
+        """
 
         if effect["kind"] == "lightning":
             points = effect.get("points", [])

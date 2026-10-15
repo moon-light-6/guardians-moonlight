@@ -303,7 +303,12 @@ class Renderer:
         alpha = 1.0 - effect["age"] / effect["ttl"]
 
         # 공격 이펙트 출력
-        if effect["kind"] in ("lightning", "water"):
+        if effect["kind"] in (
+            "lightning",
+            "water",
+            "claw",
+            "fire",
+        ):
             if self.effect_animator.draw(
                 self.screen,
                 effect,
@@ -311,7 +316,7 @@ class Renderer:
             ):
                 return
         alpha = 1.0 - effect["age"] / effect["ttl"]
-        
+
         if effect["kind"] == "slow_field":
             if effect["age"] >= effect["ttl"]:
                 return
