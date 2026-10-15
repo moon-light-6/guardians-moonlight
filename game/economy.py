@@ -114,4 +114,5 @@ class Economy:
         return int(self.get_total_investment(state, slot_id) * self.SELL_REFUND_RATE)
 
     def buy_random_tower(self, rng) -> str:
-        return rng.choice(Tower.all_types())
+        # return rng.choice(Tower.all_types())
+        return "ICE"

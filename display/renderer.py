@@ -176,9 +176,9 @@ class Renderer:
             center = self.map.grid_to_pixel(cell)
             self._text(label, center[0] - 12, center[1] - 13, self.font_med, color)
 
-        # 장판은 유닛 아래에 칠해 몰려 있는 몬스터와 구분합니다.
+        # 현무의 연속 장판 애니메이션을 유닛 아래에 한 번만 표시합니다.
         for effect in state.effects:
-            if effect["kind"] == "slow_field" and effect["age"] < effect["ttl"]:
+            if effect["kind"] == "slow_field" and effect["age"] < effect["ttl"] - 1e-9:
                 self._draw_effect(effect)
 
         for slot_id, bounds in self.map.slots.items():
@@ -232,18 +232,6 @@ class Renderer:
         )
 
         if animated:
-            # 이미지 아래에 타워 레벨 표시
-            level_text = self.font_small.render(
-                str(tower_data["level"]),
-                True,
-                COLOR_WHITE,
-            )
-
-            level_rect = level_text.get_rect(
-                center=(pos[0], pos[1] + 23)
-            )
-
-            self.screen.blit(level_text, level_rect)
             return
 
         # 백호·주작은 기존 원형 디자인 유지
@@ -300,12 +288,17 @@ class Renderer:
         pygame.draw.rect(self.screen, COLOR_GREEN, (pos[0] - 18, pos[1] - radius - 14, int(36 * hp_ratio), 4))
 
     def _draw_effect(self, effect: dict) -> None:
+        # water 이벤트는 현무 본체의 공격 모션에만 사용합니다.
+        if effect["kind"] == "water":
+            return
+        if effect["kind"] == "slow_field":
+            self.effect_animator.draw(self.screen, effect, self.map)
+            return
         alpha = 1.0 - effect["age"] / effect["ttl"]
 
         # 공격 이펙트 출력
         if effect["kind"] in (
             "lightning",
-            "water",
             "claw",
             "fire",
         ):
@@ -317,27 +310,13 @@ class Renderer:
                 return
         alpha = 1.0 - effect["age"] / effect["ttl"]
 
-        if effect["kind"] == "slow_field":
-            if effect["age"] >= effect["ttl"]:
-                return
-            cx, cy = self.map.grid_to_pixel(effect["cell"])
-            tile = pygame.Rect(cx - CELL_SIZE // 2 + 3, cy - CELL_SIZE // 2 + 3, CELL_SIZE - 6, CELL_SIZE - 6)
-            # 남색 배경과 대비되는 호박색. 만료 전까지 색을 유지합니다.
-            pygame.draw.rect(self.screen, (235, 147, 46), tile, border_radius=7)
-            pygame.draw.rect(self.screen, (255, 225, 147), tile, width=2, border_radius=7)
-            pygame.draw.line(self.screen, (255, 244, 213), (tile.left + 3, tile.bottom - 5),
-                             (tile.left + 3 + int((tile.width - 6) * alpha), tile.bottom - 5), 3)
-        elif effect["kind"] == "lightning":
+        if effect["kind"] == "lightning":
             points = [self.map.grid_to_pixel(effect["from"])] + [self.map.grid_to_pixel(p) for p in effect["points"]]
             if len(points) > 1:
                 pygame.draw.lines(self.screen, COLOR_CYAN, False, points, max(1, int(4 * alpha)))
         elif effect["kind"] == "fire":
             end = self.map.grid_to_pixel(effect["to"])
             pygame.draw.circle(self.screen, (239, 101, 78), end, int(22 * alpha), 2)
-        elif effect["kind"] == "water":
-            start = self.map.grid_to_pixel(effect["from"])
-            end = self.map.grid_to_pixel(effect["to"])
-            pygame.draw.line(self.screen, COLOR_MINT, start, end, 3)
         else:
             start = self.map.grid_to_pixel(effect["from"])
             end = self.map.grid_to_pixel(effect["to"])

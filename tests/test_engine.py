@@ -45,6 +45,30 @@ class TestGameEngine(unittest.TestCase):
                 break
         self.assertIn(self.state.phase, {GamePhase.SETTLEMENT, GamePhase.GAME_OVER})
 
+    def test_final_attack_effects_are_cleared_before_settlement_and_next_wave(self):
+        for tower_type in Tower.all_types():
+            with self.subTest(tower_type=tower_type):
+                self.state = self.game.reset(seed=42, start_at_title=False)
+                self.game.step(Action(ActionType.BUY, slot_id=0))
+                self.state.towers[0]["type"] = tower_type
+                self.game.step(Action(ActionType.START_WAVE))
+                position = self.game.map.get_slot_position(0)
+                enemy = Enemy.create(EnemyType.BASIC, [position, (position[0] + 10, position[1])], 1)
+                enemy.speed = 0
+                self.state.enemies = [enemy]
+                self.game.wave_manager.spawn_queue = []
+
+                self.game.update(1 / 120)
+
+                self.assertEqual(self.state.phase, GamePhase.SETTLEMENT)
+                self.assertEqual(self.state.effects, [])
+                cooldown = self.state.towers[0]["cooldown"]
+                self.game.step(Action(ActionType.CONTINUE))
+                self.assertEqual(self.state.effects, [])
+                self.game.step(Action(ActionType.START_WAVE))
+                self.assertEqual(self.state.effects, [])
+                self.assertEqual(self.state.towers[0]["cooldown"], cooldown)
+
     def test_restart_from_title(self):
         state = self.game.reset(seed=1)
         self.assertEqual(state.phase, GamePhase.TITLE)

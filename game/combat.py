@@ -6,6 +6,14 @@ from game.tower import Tower, TowerType
 
 
 class Combat:
+    # 화면 연출 전용 시간. 실제 공격 간격과 장판 지속시간에는 영향을 주지 않음.
+    EFFECT_TTL = {
+        "claw": 0.40,       # 백호: 공격 주기 0.5초보다 짧게
+        "fire": 0.65,
+        "water": 0.60,
+        "lightning": 0.60,
+    }
+
     def get_target(self, tower_pos: tuple, tower_range: float, enemies: List[Enemy]) -> Optional[Enemy]:
         targets = [
             enemy for enemy in enemies
@@ -26,22 +34,37 @@ class Combat:
 
         if tower_type == TowerType.ARCHER:
             self.apply_damage(target, stats["damage"])
-            effects.append({"kind": "claw", "from": tower_pos, "to": target.get_current_position(), "age": 0.0, "ttl": 0.18})
+            effects.append({"kind": "claw", "from": tower_pos, "to": target.get_current_position(),
+                            "age": 0.0, "ttl": self.EFFECT_TTL["claw"]})
         elif tower_type == TowerType.CANNON:
             center = target.get_current_position()
             self.apply_splash_damage(center, stats["splash_radius"], stats["damage"], enemies)
-            effects.append({"kind": "fire", "from": tower_pos, "to": center, "age": 0.0, "ttl": 0.32, "radius": stats["splash_radius"]})
+            effects.append({"kind": "fire", "from": tower_pos, "to": center,
+                            "age": 0.0, "ttl": self.EFFECT_TTL["fire"], "radius": stats["splash_radius"]})
         elif tower_type == TowerType.ICE:
             self.apply_damage(target, stats["damage"])
-            # 정수 좌표가 타일 중심인 게임 좌표계에서 대상의 현재 타일을 고정합니다.
             cell = tuple(math.floor(value + 0.5) for value in target.get_current_position())
-            effects.append({"kind": "water", "from": tower_pos, "to": target.get_current_position(), "age": 0.0, "ttl": 0.35})
-            effects.append({"kind": "slow_field", "cell": cell, "factor": stats["slow_factor"],
-                            "age": 0.0, "ttl": stats["slow_duration"]})
+            effects.append({"kind": "water", "from": tower_pos, "to": target.get_current_position(),
+                            "age": 0.0, "ttl": self.EFFECT_TTL["water"]})
+            # 실제 이동속도 30% 감소와 2초 유지: 기존 규칙 그대로
+            effects.append({
+                "kind": "slow_field",
+                "cell": cell,
+                "factor": stats["slow_factor"],
+                "age": 0.0,
+
+                # 장판 이미지는 2초 유지
+                "ttl": 2.0,
+
+                # 실제 이동속도 감소는 2초만 적용
+                "slow_ttl": stats["slow_duration"],
+            })
+
         elif tower_type == TowerType.LIGHTNING:
             chain = self.apply_chain_damage(target, stats["damage"], stats["chain_count"], enemies)
             points = [enemy.get_current_position() for enemy in chain]
-            effects.append({"kind": "lightning", "from": tower_pos, "points": points, "age": 0.0, "ttl": 0.22})
+            effects.append({"kind": "lightning", "from": tower_pos, "points": points,
+                            "age": 0.0, "ttl": self.EFFECT_TTL["lightning"]})
 
         tower.reset_attack_cooldown()
         tower_data["cooldown"] = tower.time_since_last_attack
@@ -69,18 +92,35 @@ class Combat:
             current = self._find_nearest_enemy(current.get_current_position(), enemies, {id(enemy) for enemy in chained})
         return chained
 
+
     @staticmethod
     def get_field_speed_modifier(position: tuple, effects: list) -> float:
-        """장판 안에 있을 때만 적용하며 겹친 장판은 가장 강한 하나만 사용합니다."""
+        """장판 표시와 실제 둔화 모두 최초 2초 동안 유지합니다."""
+
         x, y = position
         factors = [1.0]
+
         for effect in effects:
-            if effect["kind"] != "slow_field" or effect["age"] >= effect["ttl"]:
+            if effect["kind"] != "slow_field":
                 continue
+
+            # 실제 둔화 유효시간은 별도로 판단
+            slow_ttl = effect.get("slow_ttl", effect["ttl"])
+
+            # 엔진의 이펙트 만료와 같은 오차 허용값으로 2초 경계를 맞춥니다.
+            if effect["age"] >= slow_ttl - 1e-9:
+                continue
+
             cx, cy = effect["cell"]
-            if cx - 0.5 <= x < cx + 0.5 and cy - 0.5 <= y < cy + 0.5:
+
+            if (
+                cx - 0.5 <= x < cx + 0.5
+                and cy - 0.5 <= y < cy + 0.5
+            ):
                 factors.append(effect["factor"])
+
         return min(factors)
+
 
     @staticmethod
     def update_status_effects(enemies: List[Enemy], elapsed_time: float) -> None:
