@@ -25,7 +25,7 @@ class Tower:
             "guardian": "백호",
             "damage": 15,
             "attack_interval": 0.5,
-            "range": 2.5,
+            "range": 3.5,
             "description": "궁수형 · 빠른 단일 공격",
         },
         TowerType.CANNON: {
