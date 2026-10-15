@@ -1,6 +1,32 @@
 {
-  "LIGHTNING": {"name": "청룡", "damage": 25, "attack_interval": 1.5, "range": 2.5, "special": "최대 3명 연쇄"},
-  "ARCHER": {"name": "백호", "damage": 15, "attack_interval": 0.5, "range": 2.5, "special": "빠른 단일 공격"},
-  "CANNON": {"name": "주작", "damage": 40, "attack_interval": 2.0, "range": 2.5, "special": "반경 1칸 광역 피해"},
-  "ICE": {"name": "현무", "damage": 10, "attack_interval": 1.0, "range": 3.0, "special": "2초간 이동속도 30% 감소"}
+  "LIGHTNING": {
+    "name": "청룡",
+    "damage": 25,
+    "attack_interval": 1.5,
+    "range": 2.5,
+    "special": "최대 3명 연쇄"
+  },
+  "ARCHER": {
+    "name": "백호",
+    "damage": 15,
+    "attack_interval": 0.5,
+    "range": 2.5,
+    "special": "빠른 단일 공격"
+  },
+  "CANNON": {
+    "name": "주작",
+    "damage": 40,
+    "attack_interval": 2.0,
+    "range": 2.5,
+    "special": "반경 1칸 광역 피해"
+  },
+  "ICE": {
+    "name": "현무",
+    "damage": 10,
+    "attack_interval": 4.0,
+    "range": 3.0,
+    "special": "대상 타일에 2초간 30% 둔화 장판",
+    "slow_factor": 0.7,
+    "slow_duration": 2.0
+  }
 }

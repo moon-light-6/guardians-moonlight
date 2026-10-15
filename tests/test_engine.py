@@ -82,7 +82,7 @@ class TestGameEngine(unittest.TestCase):
                         if self.state.phase != GamePhase.WAVE_ACTIVE:
                             break
                     self.assertEqual(self.state.phase, GamePhase.SETTLEMENT)
-                    expected_gold += WaveManager.STAGE_COUNTS[stage] * 5 + 70 + stage * 5
+                    expected_gold += WaveManager.STAGE_COUNTS[stage] * 5 + 100 + stage * 5
                     if stage % 5 == 0:
                         expected_gold += 100
                     self.assertEqual(self.state.gold, expected_gold)

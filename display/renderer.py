@@ -165,8 +165,17 @@ class Renderer:
             rect = pygame.Rect(GRID_ORIGIN[0] + cell[0] * CELL_SIZE + 3, GRID_ORIGIN[1] + cell[1] * CELL_SIZE + 3, CELL_SIZE - 6, CELL_SIZE - 6)
             pygame.draw.rect(self.screen, (48, 55, 78), rect, border_radius=8)
 
-        self._text("S", GRID_ORIGIN[0] + 8, GRID_ORIGIN[1] + 2 * CELL_SIZE + 8, self.font_med, COLOR_MINT)
-        self._text("E", GRID_ORIGIN[0] + 19 * CELL_SIZE + 9, GRID_ORIGIN[1] + 10 * CELL_SIZE + 8, self.font_med, COLOR_RED)
+        for label, cell, color in (
+            ("S", self.map.get_start_position(), COLOR_MINT),
+            ("E", self.map.get_base_position(), COLOR_RED),
+        ):
+            center = self.map.grid_to_pixel(cell)
+            self._text(label, center[0] - 12, center[1] - 13, self.font_med, color)
+
+        # 장판은 유닛 아래에 칠해 몰려 있는 몬스터와 구분합니다.
+        for effect in state.effects:
+            if effect["kind"] == "slow_field" and effect["age"] < effect["ttl"]:
+                self._draw_effect(effect)
 
         for slot_id, bounds in self.map.slots.items():
             pos = self.map.grid_to_pixel(self.map.get_slot_position(slot_id))
@@ -189,7 +198,8 @@ class Renderer:
         for enemy in state.enemies:
             self._draw_enemy(enemy)
         for effect in state.effects:
-            self._draw_effect(effect)
+            if effect["kind"] != "slow_field":
+                self._draw_effect(effect)
 
     def _draw_tower(self, slot_id: int, tower_data: dict) -> None:
         pos = self.map.grid_to_pixel(self.map.get_slot_position(slot_id))
@@ -227,7 +237,17 @@ class Renderer:
 
     def _draw_effect(self, effect: dict) -> None:
         alpha = 1.0 - effect["age"] / effect["ttl"]
-        if effect["kind"] == "lightning":
+        if effect["kind"] == "slow_field":
+            if effect["age"] >= effect["ttl"]:
+                return
+            cx, cy = self.map.grid_to_pixel(effect["cell"])
+            tile = pygame.Rect(cx - CELL_SIZE // 2 + 3, cy - CELL_SIZE // 2 + 3, CELL_SIZE - 6, CELL_SIZE - 6)
+            # 남색 배경과 대비되는 호박색. 만료 전까지 색을 유지합니다.
+            pygame.draw.rect(self.screen, (235, 147, 46), tile, border_radius=7)
+            pygame.draw.rect(self.screen, (255, 225, 147), tile, width=2, border_radius=7)
+            pygame.draw.line(self.screen, (255, 244, 213), (tile.left + 3, tile.bottom - 5),
+                             (tile.left + 3 + int((tile.width - 6) * alpha), tile.bottom - 5), 3)
+        elif effect["kind"] == "lightning":
             points = [self.map.grid_to_pixel(effect["from"])] + [self.map.grid_to_pixel(p) for p in effect["points"]]
             if len(points) > 1:
                 pygame.draw.lines(self.screen, COLOR_CYAN, False, points, max(1, int(4 * alpha)))

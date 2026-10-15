@@ -33,8 +33,11 @@ class Combat:
             effects.append({"kind": "fire", "from": tower_pos, "to": center, "age": 0.0, "ttl": 0.32, "radius": stats["splash_radius"]})
         elif tower_type == TowerType.ICE:
             self.apply_damage(target, stats["damage"])
-            target.apply_slow_effect(stats["slow_factor"], stats["slow_duration"], elapsed)
+            # 정수 좌표가 타일 중심인 게임 좌표계에서 대상의 현재 타일을 고정합니다.
+            cell = tuple(math.floor(value + 0.5) for value in target.get_current_position())
             effects.append({"kind": "water", "from": tower_pos, "to": target.get_current_position(), "age": 0.0, "ttl": 0.35})
+            effects.append({"kind": "slow_field", "cell": cell, "factor": stats["slow_factor"],
+                            "age": 0.0, "ttl": stats["slow_duration"]})
         elif tower_type == TowerType.LIGHTNING:
             chain = self.apply_chain_damage(target, stats["damage"], stats["chain_count"], enemies)
             points = [enemy.get_current_position() for enemy in chain]
@@ -65,6 +68,19 @@ class Combat:
             chained.append(current)
             current = self._find_nearest_enemy(current.get_current_position(), enemies, {id(enemy) for enemy in chained})
         return chained
+
+    @staticmethod
+    def get_field_speed_modifier(position: tuple, effects: list) -> float:
+        """장판 안에 있을 때만 적용하며 겹친 장판은 가장 강한 하나만 사용합니다."""
+        x, y = position
+        factors = [1.0]
+        for effect in effects:
+            if effect["kind"] != "slow_field" or effect["age"] >= effect["ttl"]:
+                continue
+            cx, cy = effect["cell"]
+            if cx - 0.5 <= x < cx + 0.5 and cy - 0.5 <= y < cy + 0.5:
+                factors.append(effect["factor"])
+        return min(factors)
 
     @staticmethod
     def update_status_effects(enemies: List[Enemy], elapsed_time: float) -> None:

@@ -20,7 +20,9 @@ class TestCombat(unittest.TestCase):
         enemy_a.path_index = 3
         enemy_b.path_index = 6
 
-        target = Combat().get_target((6.5, 0.5), 5.0, [enemy_a, enemy_b])
+        # 맵 경로 변경과 무관하게 두 적을 모두 사거리 안에 두고 진행도를 비교합니다.
+        tower_pos = (enemy_a.x, enemy_a.y - 1)
+        target = Combat().get_target(tower_pos, 5.0, [enemy_a, enemy_b])
         self.assertIs(target, enemy_b)
 
     def test_ice_slow_reduces_speed_temporarily(self):
@@ -33,7 +35,7 @@ class TestCombat(unittest.TestCase):
     def test_upgrade_changes_next_attack_without_resetting_or_pausing_combat(self):
         for kind, damage, interval, effect_kind in (
             ("ARCHER", 15, 0.5, "claw"), ("CANNON", 40, 2, "fire"),
-            ("ICE", 10, 1, "water"), ("LIGHTNING", 25, 1.5, "lightning"),
+            ("ICE", 10, 4, "water"), ("LIGHTNING", 25, 1.5, "lightning"),
         ):
             with self.subTest(tower=kind):
                 game = Game()
@@ -60,14 +62,14 @@ class TestCombat(unittest.TestCase):
                 self.assertEqual(state.phase, GamePhase.WAVE_ACTIVE)
                 self.assertEqual(state.gold, 940)
                 new_stats = Tower.from_data(tower).get_stats()
-                self.assertEqual(new_stats["damage"], damage * 1.5)
+                self.assertEqual(new_stats["damage"], damage * 1.6)
                 self.assertEqual(new_stats["range"], old_stats["range"])
                 self.assertEqual(new_stats["attack_interval"], old_stats["attack_interval"])
                 game.update(interval)
-                self.assertEqual(enemy.health, 10000 - damage - damage * 1.5)
+                self.assertEqual(enemy.health, 10000 - damage - damage * 1.6)
                 self.assertGreater(enemy.distance_travelled, before[2])
                 self.assertGreater(state.wave_elapsed, before[0])
-                self.assertEqual(state.effects[-1]["kind"], effect_kind)
+                self.assertEqual([effect for effect in state.effects if effect["kind"] != "slow_field"][-1]["kind"], effect_kind)
 
 
 if __name__ == "__main__":

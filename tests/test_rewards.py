@@ -49,7 +49,7 @@ class TestRewards(unittest.TestCase):
                 self.assertEqual((state.enemies_killed, state.bosses_killed), (0, 0))
 
     def test_clear_callback_uses_current_stage_and_pays_once_without_advancing(self):
-        for stage, reward in ((1, 75), (5, 95), (10, 120), (30, 220)):
+        for stage, reward in ((1, 105), (5, 125), (10, 150), (30, 250)):
             with self.subTest(stage=stage):
                 state = GameState(phase=GamePhase.WAVE_ACTIVE, current_stage=stage)
                 self.assertTrue(Economy().on_stage_clear(state))
@@ -88,27 +88,27 @@ class TestRewards(unittest.TestCase):
                 self.assertEqual(kill_callback.call_count, 4)
                 clear_callback.assert_called_once_with(state)
         self.assertEqual(state.phase, GamePhase.SETTLEMENT)
-        self.assertEqual(state.gold, 400)
+        self.assertEqual(state.gold, 430)
         self.assertEqual((state.enemies_killed, state.bosses_killed), (1, 1))
         result = state.wave_result
         self.assertEqual((result.stage, result.normal_kills, result.boss_kills), (5, 1, 1))
-        self.assertEqual((result.kill_gold, result.boss_gold, result.clear_gold, result.total_gold), (5, 100, 95, 200))
+        self.assertEqual((result.kill_gold, result.boss_gold, result.clear_gold, result.total_gold), (5, 100, 125, 230))
         state.enemies = [normal, boss]
         game._collect_dead_enemies()
         game._transition_to_settlement()
         self.assertFalse(game.economy.on_stage_clear(state))
-        self.assertEqual(state.gold, 400)
+        self.assertEqual(state.gold, 430)
         self.assertIs(state.wave_result, result)
         game.step(Action(ActionType.CONTINUE))
         self.assertEqual(state.current_stage, 6)
-        self.assertEqual(state.gold, 400)
+        self.assertEqual(state.gold, 430)
         game.step(Action(ActionType.START_WAVE))
         self.assertEqual((state.wave_kill_gold, state.wave_boss_gold, state.wave_clear_gold), (0, 0, 0))
         game.wave_manager.spawn_queue = []
         game.update(1 / 60)
         self.assertEqual(state.phase, GamePhase.SETTLEMENT)
-        self.assertEqual(state.gold, 500)
-        self.assertEqual(state.wave_result.clear_gold, 100)
+        self.assertEqual(state.gold, 560)
+        self.assertEqual(state.wave_result.clear_gold, 130)
         self.assertEqual(state.clear_rewarded_stages, {5, 6})
 
     def test_engine_does_not_clear_before_pending_spawns(self):
@@ -126,14 +126,14 @@ class TestRewards(unittest.TestCase):
         game.step(Action(ActionType.START_WAVE))
         game.wave_manager.spawn_queue = []
         game.update(1 / 60)
-        self.assertEqual(game.state.gold, 275)
+        self.assertEqual(game.state.gold, 305)
         self.assertEqual(game.state.clear_rewarded_stages, {1})
         game.step(Action(ActionType.RESTART))
         self.assertEqual(game.state.clear_rewarded_stages, set())
         game.step(Action(ActionType.START_WAVE))
         game.wave_manager.spawn_queue = []
         game.update(1 / 60)
-        self.assertEqual(game.state.gold, 275)
+        self.assertEqual(game.state.gold, 305)
 
 
 if __name__ == "__main__":

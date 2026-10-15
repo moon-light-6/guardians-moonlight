@@ -19,20 +19,22 @@ class GameMap:
         self.load_from_json(os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "map.json"))
 
     def _initialize_path(self) -> List[Tuple[int, int]]:
-        cells = []
-        cells += [(x, 2) for x in range(0, 18)]
-        cells += [(17, y) for y in range(3, 7)]
-        cells += [(x, 6) for x in range(16, 3, -1)]
-        cells += [(4, y) for y in range(7, 11)]
-        cells += [(x, 10) for x in range(5, 20)]
+        # 4줄 왕복 경로. 둘째~넷째 타워 줄은 두 수평 경로 사이에 배치합니다.
+        cells = [(x, 1) for x in range(19, -1, -1)]
+        cells += [(0, y) for y in range(2, 6)]
+        cells += [(x, 5) for x in range(1, 19)]
+        cells += [(18, y) for y in range(6, 10)]
+        cells += [(x, 9) for x in range(17, -1, -1)]
+        cells += [(0, y) for y in range(10, 14)]
+        cells += [(x, 13) for x in range(1, 20)]
         return cells
 
     def _initialize_slots(self) -> Dict[int, Tuple[int, int, int, int]]:
         coords = [
             (2, 0), (5, 0), (8, 0), (11, 0), (14, 0), (18, 0),
-            (1, 4), (4, 4), (7, 4), (10, 4), (13, 4), (19, 4),
-            (1, 8), (7, 8), (10, 8), (13, 8), (16, 8), (19, 8),
-            (1, 12), (4, 12), (7, 12), (10, 12), (13, 12), (16, 12),
+            (1, 3), (4, 3), (7, 3), (10, 3), (13, 3), (19, 3),
+            (1, 7), (7, 7), (10, 7), (13, 7), (16, 7), (19, 7),
+            (1, 11), (4, 11), (7, 11), (10, 11), (13, 11), (16, 11),
         ]
         return {index: (x, y, 1, 1) for index, (x, y) in enumerate(coords)}
 
@@ -78,7 +80,9 @@ class GameMap:
         if not self.is_valid_slot(slot_id):
             return (0.0, 0.0)
         x, y, width, height = self.slots[slot_id]
-        return (x + width / 2, y + height / 2)
+        # 경로와 동일한 칸 중심 좌표계: 정수 (x, y)가 해당 칸의 중심입니다.
+        # grid_to_pixel에서 반 칸을 더하므로 여기서는 중복 보정하지 않습니다.
+        return (x + (width - 1) / 2, y + (height - 1) / 2)
 
     def get_slot_bounds(self, slot_id: int) -> Tuple[float, float, float, float]:
         if not self.is_valid_slot(slot_id):
@@ -100,7 +104,7 @@ class GameMap:
         for slot_id, (x, y, width, height) in self.slots.items():
             left = GRID_ORIGIN[0] + x * CELL_SIZE
             top = GRID_ORIGIN[1] + y * CELL_SIZE
-            if left <= mx <= left + width * CELL_SIZE and top <= my <= top + height * CELL_SIZE:
+            if left <= mx < left + width * CELL_SIZE and top <= my < top + height * CELL_SIZE:
                 return slot_id
         return None
 

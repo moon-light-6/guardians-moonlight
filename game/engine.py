@@ -99,7 +99,7 @@ class Game:
         self.state.effects = [
             {**effect, "age": effect["age"] + dt}
             for effect in self.state.effects
-            if effect["age"] + dt <= effect["ttl"]
+            if effect["age"] + dt < effect["ttl"] - 1e-9
         ]
 
         self.state.enemies.extend(self.wave_manager.update(dt, self.map.get_path()))
@@ -225,7 +225,10 @@ class Game:
         for enemy in list(self.state.enemies):
             if not enemy.is_alive:
                 continue
-            speed_modifier = enemy.get_speed_modifier(self.state.wave_elapsed)
+            speed_modifier = min(
+                enemy.get_speed_modifier(self.state.wave_elapsed),
+                self.combat.get_field_speed_modifier(enemy.get_current_position(), self.state.effects),
+            )
             if enemy.move(dt, speed_modifier):
                 self.state.life -= enemy.life_damage
                 self.state.enemies_reached_base += 1
@@ -259,6 +262,7 @@ class Game:
             or not self.wave_manager.is_wave_complete(self.state.enemies)
         ):
             return
+        self.state.effects = [effect for effect in self.state.effects if effect["kind"] != "slow_field"]
         stage = self.state.current_stage
         self.economy.on_stage_clear(self.state)
         clear_gold = self.state.wave_clear_gold
