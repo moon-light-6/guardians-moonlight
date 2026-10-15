@@ -266,7 +266,8 @@ class TestPygameUI(unittest.TestCase):
                     expected.blit(image, (center[0] - animator.anchors["water"][0],
                                           center[1] - animator.anchors["water"][1]))
                 field["age"] = age
-                animator.draw(self.screen, field, self.game.map)
+                with patch.object(animator, "_draw_field_energy"):
+                    animator.draw(self.screen, field, self.game.map)
                 self.assertTrue(pygame.image.tobytes(self.screen, "RGB") ==
                                 pygame.image.tobytes(expected, "RGB"))
 

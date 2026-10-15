@@ -2,6 +2,8 @@ from pathlib import Path
 import math
 import pygame
 
+from config import CELL_SIZE
+
 
 class AttackEffectAnimator:
     """교체된 6×2 시트의 원본 12프레임을 재생합니다."""
@@ -121,6 +123,119 @@ class AttackEffectAnimator:
             self.frames[kind], self.anchors[kind] = self._align_frames(source, config["anchors"], config["size"])
             print(f"[Effect] {kind}: {sheet.get_width()}x{sheet.get_height()}, {cols}x{rows}, {len(self.frames[kind])} frames")
 
+    def _draw_claw_motion(self, screen, effect, game_map, frame_index):
+        """타겟 방향으로 짧게 뻗는 발톱 궤적, 발바닥 잔상과 타격 섬광."""
+        target = pygame.Vector2(game_map.grid_to_pixel(effect["to"]))
+        origin = pygame.Vector2(game_map.grid_to_pixel(effect.get("from", effect["to"])))
+        direction = target - origin
+        direction = direction.normalize() if direction.length_squared() else pygame.Vector2(1, 0)
+        normal = pygame.Vector2(-direction.y, direction.x)
+        progress = effect["age"] / effect["ttl"]
+        trail = max(0.0, 1 - progress / 0.65)
+        anchor = pygame.Vector2(self.anchors["claw"])
+        for distance, alpha in ((24, 32), (12, 54)):
+            if trail > 0:
+                ghost = self.frames["claw"][frame_index].copy()
+                ghost.set_alpha(int(alpha * trail))
+                pos = target - direction * distance - anchor
+                screen.blit(ghost, (round(pos.x), round(pos.y)))
+
+        glow = pygame.Surface((176, 176), pygame.SRCALPHA, 32)
+        center = pygame.Vector2(88, 88)
+        sweep = min(1.0, progress / 0.32)
+        for side in (-8, 0, 8):
+            points = []
+            for step in range(9):
+                t = max(0.0, sweep - 0.65) + min(sweep, 0.65) * step / 8
+                point = center + direction * (-38 + 54 * t) + normal * (side + 6 * math.sin(math.pi * t))
+                points.append((round(point.x), round(point.y)))
+            pygame.draw.lines(glow, (255, 80, 155, int(85 * trail)), False, points, 7)
+            pygame.draw.lines(glow, (255, 210, 235, int(220 * trail)), False, points, 2)
+        impact = max(0.0, 1 - abs(progress - 0.3) / 0.16)
+        if impact > 0:
+            size = 4 + 8 * impact
+            vertices = [center + direction * size, center + normal * size * 0.45,
+                        center - direction * size, center - normal * size * 0.45]
+            pygame.draw.polygon(glow, (255, 245, 250, int(245 * impact)),
+                                [(round(p.x), round(p.y)) for p in vertices])
+        screen.blit(glow, (round(target.x) - 88, round(target.y) - 88))
+
+    @staticmethod
+    def _draw_fire_wave(screen, effect, game_map):
+        """불씨의 중심 수렴 후 바깥으로 퍼지는 화염 파동과 방사형 불꽃."""
+        progress = effect["age"] / effect["ttl"]
+        radius = max(24, round(effect.get("radius", 1.0) * CELL_SIZE))
+        padding = radius + 18
+        glow = pygame.Surface((padding * 2, padding * 2), pygame.SRCALPHA, 32)
+        center = pygame.Vector2(padding, padding)
+        if progress < 0.22:
+            gather = progress / 0.22
+            for index in range(8):
+                angle = math.tau * index / 8
+                direction = pygame.Vector2(math.cos(angle), math.sin(angle) * 0.55)
+                point = center + direction * radius * (1 - gather)
+                tail = point + direction * 8
+                pygame.draw.line(glow, (255, 115, 35, 125), point, tail, 3)
+                pygame.draw.circle(glow, (255, 225, 115, 225), point, 2)
+            pygame.draw.circle(glow, (255, 200, 80, int(80 + 100 * gather)), center, round(2 + 6 * gather))
+        if progress >= 0.18:
+            burst = min(1.0, (progress - 0.18) / 0.82)
+            for delay in (0, 0.13):
+                wave = (progress - 0.18 - delay) / (0.82 - delay)
+                if 0 < wave < 1:
+                    spread = max(1, round(radius * (1 - (1 - wave) ** 2)))
+                    rect = pygame.Rect(padding - spread, padding - max(1, round(spread * 0.55)),
+                                       spread * 2, max(2, round(spread * 1.1)))
+                    alpha = int(200 * (1 - wave) ** 0.7)
+                    pygame.draw.ellipse(glow, (255, 75, 15, alpha // 3), rect.inflate(6, 4), 5)
+                    pygame.draw.ellipse(glow, (255, 165, 45, alpha), rect, 2)
+            for index in range(10):
+                angle = math.tau * index / 10 + 0.12
+                direction = pygame.Vector2(math.cos(angle), math.sin(angle) * 0.55)
+                point = center + direction * radius * burst ** 0.65
+                point.y -= 6 * math.sin(math.pi * burst)
+                tail = point - direction * (5 + 5 * burst)
+                alpha = int(220 * (1 - burst))
+                pygame.draw.line(glow, (255, 90, 25, alpha), tail, point, 3)
+                pygame.draw.circle(glow, (255, 235, 140, alpha), point, 2)
+        pos = game_map.grid_to_pixel(effect["to"])
+        screen.blit(glow, (pos[0] - padding, pos[1] - padding))
+
+    @staticmethod
+    def _draw_field_energy(screen, pos, age, ttl):
+        """고정된 마법진의 선행 생성, 한 번의 확산, 상승 기운과 약한 순환 맥동."""
+        glow = pygame.Surface((160, 150), pygame.SRCALPHA, 32)
+        cx, cy = 80, 105
+        fade = min(1.0, max(0.0, (ttl - age) / 0.4))
+        pulse = 0.82 + 0.12 * math.sin(math.tau * age / 0.7)
+        strength = min(1.0, (age + 0.02) / 0.1) * fade
+        base = pygame.Rect(cx - 27, cy - 9, 54, 18)
+        pygame.draw.ellipse(glow, (70, 235, 120, int(75 * strength * pulse)), base.inflate(4, 2), 3)
+        pygame.draw.ellipse(glow, (175, 255, 195, int(145 * strength * pulse)), base, 1)
+        if age < 0.4:
+            spread = age / 0.4
+            radius = round(12 + 42 * (1 - (1 - spread) ** 2))
+            rect = pygame.Rect(cx - radius, cy - round(radius * 0.32), radius * 2, max(2, round(radius * 0.64)))
+            pygame.draw.ellipse(glow, (100, 255, 160, int(140 * (1 - spread))), rect, 2)
+        if 0.08 < age < 0.5:
+            rise = min(1.0, (age - 0.08) / 0.32)
+            alpha = int(150 * (1 - max(0.0, age - 0.32) / 0.18))
+            for index in range(5):
+                x = cx + (index - 2) * 7
+                height = (48 - abs(index - 2) * 6) * rise
+                points = [(x, cy - 2), (x + (index - 2) * 2, round(cy - height * 0.55)),
+                          (x + (index - 2), round(cy - height))]
+                pygame.draw.lines(glow, (45, 225, 110, alpha // 3), False, points, 4)
+                pygame.draw.lines(glow, (175, 255, 205, alpha), False, points, 1)
+        if age >= 0.4:
+            angle = math.tau * age / 1.2
+            for index in range(3):
+                phase = angle + math.tau * index / 3
+                point = (round(cx + 28 * math.cos(phase)), round(cy - 9 * math.sin(phase)))
+                pygame.draw.arc(glow, (100, 255, 155, int(90 * fade)), base, phase, phase + 0.65, 2)
+                pygame.draw.circle(glow, (195, 255, 215, int(150 * fade)), point, 2)
+        screen.blit(glow, (pos[0] - cx, pos[1] - cy))
+
     @staticmethod
     def _draw_chain_link(screen, start, end, progress, opacity):
         """고정된 꺾임의 번개 라인을 진행 방향으로 펼치고 빛나는 중심선을 표시합니다."""
@@ -214,6 +329,7 @@ class AttackEffectAnimator:
             pos = game_map.grid_to_pixel(cell)
             anchor = self.anchors["water"]
             screen.blit(image, (pos[0] - anchor[0], pos[1] - anchor[1]))
+            self._draw_field_energy(screen, pos, age, ttl)
             return True
 
         if kind not in self.frames:
@@ -230,4 +346,8 @@ class AttackEffectAnimator:
         for target in targets:
             pixel = game_map.grid_to_pixel(target)
             screen.blit(image, (pixel[0] - anchor[0], pixel[1] - anchor[1]))
+            if kind == "claw":
+                self._draw_claw_motion(screen, effect, game_map, index)
+            elif kind == "fire":
+                self._draw_fire_wave(screen, effect, game_map)
         return True

@@ -60,7 +60,8 @@ class TestEffectAnimation(unittest.TestCase):
                 with self.subTest(kind=kind, frame=index):
                     screen = Mock()
                     effect["age"] = ttl * (index + 0.5) / 12
-                    self.animator.draw(screen, effect, game_map)
+                    with patch.object(self.animator, "_draw_claw_motion"), patch.object(self.animator, "_draw_fire_wave"):
+                        self.animator.draw(screen, effect, game_map)
                     self.assertEqual(screen.blit.call_count, 1)
                     for call in screen.blit.call_args_list:
                         self.assertIs(call.args[0], self.animator.frames[kind][index])
@@ -102,6 +103,76 @@ class TestEffectAnimation(unittest.TestCase):
             edges = [(call.args[1], call.args[2]) for call in link.call_args_list]
             self.assertEqual(edges, [((40, 210), (200, 210)), ((200, 210), (360, 210)),
                                      ((360, 210), (520, 210))])
+
+    def test_claw_afterimage_follows_target_direction(self):
+        game_map = Mock()
+        game_map.grid_to_pixel.side_effect = lambda point: point
+        effect = {"kind": "claw", "to": (180, 160), "age": 0.1, "ttl": 0.4}
+        centers = []
+        for origin in ((40, 160), (320, 160)):
+            screen = pygame.Surface((360, 300))
+            screen.fill((7, 9, 18))
+            effect["from"] = origin
+            self.animator._draw_claw_motion(screen, effect, game_map, 3)
+            changed = pygame.mask.from_threshold(screen, (7, 9, 18, 255), (1, 1, 1, 255))
+            changed.invert()
+            centers.append(changed.centroid()[0])
+        self.assertLess(centers[0], 180)
+        self.assertGreater(centers[1], 180)
+
+    def test_fire_embers_gather_before_expanding_outward(self):
+        game_map = Mock()
+        game_map.grid_to_pixel.side_effect = lambda point: point
+        effect = {"kind": "fire", "to": (180, 160), "age": 0, "ttl": 0.65, "radius": 1.0}
+        widths = []
+        for age in (0.03, 0.13, 0.5):
+            screen = pygame.Surface((360, 300))
+            screen.fill((7, 9, 18))
+            effect["age"] = age
+            self.animator._draw_fire_wave(screen, effect, game_map)
+            changed = pygame.mask.from_threshold(screen, (7, 9, 18, 255), (1, 1, 1, 255))
+            changed.invert()
+            bounds = changed.get_bounding_rects()
+            widths.append(bounds[0].unionall(bounds[1:]).width)
+        self.assertGreater(widths[0], widths[1] + 15)
+        self.assertGreater(widths[2], widths[1] + 15)
+
+    def test_field_energy_rises_after_base_and_circulates_while_anchored(self):
+        tops, snapshots = [], []
+        for age in (0.02, 0.25, 0.6, 0.8):
+            screen = pygame.Surface((360, 300))
+            screen.fill((7, 9, 18))
+            self.animator._draw_field_energy(screen, (180, 160), age, 2)
+            changed = pygame.mask.from_threshold(screen, (7, 9, 18, 255), (1, 1, 1, 255))
+            changed.invert()
+            bounds = changed.get_bounding_rects()
+            bounds = bounds[0].unionall(bounds[1:])
+            tops.append(bounds.top)
+            snapshots.append(pygame.image.tobytes(screen, "RGB"))
+            if age >= 0.4:
+                self.assertAlmostEqual(bounds.centerx, 180, delta=2)
+                self.assertAlmostEqual(bounds.centery, 160, delta=2)
+        self.assertLess(tops[1], tops[0] - 10)
+        self.assertNotEqual(snapshots[2], snapshots[3])
+
+    def test_motion_accents_do_not_mutate_events_or_outlive_their_effects(self):
+        game_map = Mock()
+        game_map.grid_to_pixel.side_effect = lambda point: point
+        for kind, ttl in (("claw", 0.4), ("fire", 0.65), ("slow_field", 2.0)):
+            with self.subTest(kind=kind):
+                effect = {"kind": kind, "from": (40, 160), "to": (180, 160), "cell": (180, 160),
+                          "age": 0.2, "ttl": ttl, "slow_ttl": 2.0, "radius": 1.0}
+                before = dict(effect)
+                screen = pygame.Surface((360, 300))
+                screen.fill((7, 9, 18))
+                self.animator.draw(screen, effect, game_map)
+                self.assertEqual(effect, before)
+                for age in (ttl - 1e-14, ttl, ttl + 1):
+                    screen.fill((7, 9, 18))
+                    background = pygame.image.tobytes(screen, "RGB")
+                    effect["age"] = age
+                    self.animator.draw(screen, effect, game_map)
+                    self.assertTrue(pygame.image.tobytes(screen, "RGB") == background)
 
     def test_chain_connection_pixels_appear_sequentially_between_targets(self):
         game_map = Mock()
