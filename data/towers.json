@@ -1,53 +1,6 @@
 {
-  "description": "타워 능력치 데이터",
-  "towers": {
-    "ARCHER": {
-      "name": "궁수",
-      "description": "단일 대상에 공격",
-      "base_damage": 10,
-      "attack_speed": 1.0,
-      "range": 3,
-      "cost": 100,
-      "levels": 5
-    },
-    "CANNON": {
-      "name": "대포",
-      "description": "광역 공격",
-      "base_damage": 15,
-      "attack_speed": 0.8,
-      "range": 2.5,
-      "splash_radius": 1.5,
-      "cost": 120,
-      "levels": 5
-    },
-    "ICE": {
-      "name": "빙결",
-      "description": "둔화 효과",
-      "base_damage": 8,
-      "attack_speed": 1.2,
-      "range": 2.5,
-      "slow_factor": 0.5,
-      "slow_duration": 2.0,
-      "cost": 110,
-      "levels": 5
-    },
-    "LIGHTNING": {
-      "name": "번개",
-      "description": "연쇄 공격",
-      "base_damage": 12,
-      "attack_speed": 0.9,
-      "range": 2.0,
-      "chain_count": 2,
-      "cost": 130,
-      "levels": 5
-    }
-  },
-  "upgrade_cost": {
-    "level_1_to_2": 50,
-    "level_2_to_3": 100,
-    "level_3_to_4": 150,
-    "level_4_to_5": 200,
-    "formula": "50 * current_level"
-  },
-  "sell_refund_rate": 0.6
+  "LIGHTNING": {"name": "청룡", "damage": 25, "attack_interval": 1.5, "range": 2.5, "special": "최대 3명 연쇄"},
+  "ARCHER": {"name": "백호", "damage": 15, "attack_interval": 0.5, "range": 2.5, "special": "빠른 단일 공격"},
+  "CANNON": {"name": "주작", "damage": 40, "attack_interval": 2.0, "range": 2.5, "special": "반경 1칸 광역 피해"},
+  "ICE": {"name": "현무", "damage": 10, "attack_interval": 1.0, "range": 3.0, "special": "2초간 이동속도 30% 감소"}
 }

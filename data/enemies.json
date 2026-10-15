@@ -1,36 +1,6 @@
 {
-  "description": "몬스터 능력치 데이터",
-  "enemies": {
-    "BASIC": {
-      "name": "기본 몬스터",
-      "base_health": 30,
-      "speed": 1.0,
-      "gold_reward": 10
-    },
-    "FAST": {
-      "name": "빠른 몬스터",
-      "description": "속도 높음, HP 낮음",
-      "base_health": 15,
-      "speed": 2.0,
-      "gold_reward": 15
-    },
-    "TANK": {
-      "name": "탱크 몬스터",
-      "description": "HP 높음, 속도 낮음",
-      "base_health": 60,
-      "speed": 0.5,
-      "gold_reward": 25
-    },
-    "BOSS": {
-      "name": "보스 몬스터",
-      "description": "매우 높은 HP, 높은 보상",
-      "base_health": 150,
-      "speed": 0.8,
-      "gold_reward": 100
-    }
-  },
-  "stage_scaling": {
-    "formula": "1.0 + (stage - 1) * 0.05",
-    "description": "스테이지가 높아질수록 5%씩 몬스터 강화"
-  }
+  "BASIC": {"name": "갓귀", "speed_ratio": 1.0, "life_damage": 1},
+  "FAST": {"name": "질풍귀", "speed_ratio": 1.5, "life_damage": 1},
+  "TANK": {"name": "철갑귀", "speed_ratio": 0.7, "life_damage": 2},
+  "BOSS_5": {"name": "먹그림자", "hp": 500, "life_damage": 3}
 }

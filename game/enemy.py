@@ -1,154 +1,102 @@
-"""
-[담당: 이승연 - 몬스터/웨이브 시스템]
-
-몬스터 데이터와 이동:
-- 몬스터 종류별 스탯 (HP, 속도, 골드 보상)
-- 경로 진행 (path 따라 이동)
-- 기지 도달 시 라이프 감소
-- 상태 이상 적용 (둔화 등)
-- 스테이지별로 다른 몬스터 구성
-
-wave.py와 함께 웨이브 시스템을 담당합니다.
-"""
-
-from typing import Dict, List, Any
+from dataclasses import dataclass, field
 from enum import Enum
+from typing import Dict, List
+
+from config import BOSS_KILL_GOLD, KILL_GOLD
 
 
 class EnemyType(Enum):
-    """몬스터 종류"""
-    BASIC = "BASIC"          # 기본 몬스터
-    FAST = "FAST"            # 빠른 몬스터 (속도 높음, HP 낮음)
-    TANK = "TANK"            # 탱크 (HP 높음, 속도 낮음)
-    BOSS = "BOSS"            # 보스 (매우 높은 HP, 높은 보상)
+    BASIC = "BASIC"
+    FAST = "FAST"
+    TANK = "TANK"
+    BOSS = "BOSS"
 
 
+@dataclass
 class Enemy:
-    """몬스터 클래스"""
+    enemy_type: EnemyType
+    path: List[tuple]
+    max_health: int
+    speed: float
+    life_damage: int
+    name: str
+    is_boss: bool = False
+    health: float = 0
+    distance_travelled: float = 0.0
+    path_index: int = 0
+    progress_in_segment: float = 0.0
+    is_alive: bool = True
+    reached_base: bool = False
+    status_effects: Dict[str, Dict[str, float]] = field(default_factory=dict)
+    reward_paid: bool = field(default=False, init=False, repr=False)
 
-    # 몬스터별 기본 스탯
-    BASE_STATS = {
-        EnemyType.BASIC: {
-            "health": 30,
-            "speed": 1.0,         # 칸/초
-            "gold_reward": 10,
-            "description": "기본 몬스터"
-        },
-        EnemyType.FAST: {
-            "health": 15,
-            "speed": 2.0,
-            "gold_reward": 15,
-            "description": "빠른 몬스터"
-        },
-        EnemyType.TANK: {
-            "health": 60,
-            "speed": 0.5,
-            "gold_reward": 25,
-            "description": "탱크 몬스터"
-        },
-        EnemyType.BOSS: {
-            "health": 150,
-            "speed": 0.8,
-            "gold_reward": 100,
-            "description": "보스 몬스터"
-        }
+    VISUALS = {
+        EnemyType.BASIC: {"name": "갓귀", "speed": 1.0, "life_damage": 1},
+        EnemyType.FAST: {"name": "질풍귀", "speed": 1.5, "life_damage": 1},
+        EnemyType.TANK: {"name": "철갑귀", "speed": 0.7, "life_damage": 2},
+        EnemyType.BOSS: {"name": "먹그림자", "speed": 0.55, "life_damage": 3},
     }
 
-    def __init__(self, enemy_type: EnemyType, path: List[tuple], stage: int = 1):
-        """
-        몬스터 초기화
+    def __post_init__(self) -> None:
+        if self.health <= 0:
+            self.health = float(self.max_health)
 
-        Args:
-            enemy_type: 몬스터 종류
-            path: 이동할 경로 (좌표 리스트)
-            stage: 현재 스테이지 (높을수록 강해짐)
-        """
-        self.enemy_type = enemy_type
-        self.path = path
-        self.stage = stage
-        self.path_index = 0  # 현재 경로상 위치 인덱스
-        self.progress_in_segment = 0.0  # 현재 경로 세그먼트 내 진행도 (0~1)
-
-        # 스테이지에 따른 스탯 상향
-        base_stats = self.BASE_STATS[enemy_type].copy()
-        stage_multiplier = 1.0 + (stage - 1) * 0.05
-        self.max_health = int(base_stats["health"] * stage_multiplier)
-        self.health = self.max_health
-        self.speed = base_stats["speed"]
-        self.gold_reward = int(base_stats["gold_reward"] * stage_multiplier)
-
-        # 상태
-        self.is_alive = True
-        self.status_effects = {}  # 둔화 등
+    @classmethod
+    def create(cls, enemy_type: EnemyType, path: List[tuple], hp: int, boss_name: str | None = None) -> "Enemy":
+        visual = cls.VISUALS[enemy_type]
+        return cls(
+            enemy_type=enemy_type,
+            path=path,
+            max_health=hp,
+            speed=visual["speed"],
+            life_damage=visual["life_damage"],
+            name=boss_name or visual["name"],
+            is_boss=enemy_type == EnemyType.BOSS,
+        )
 
     def get_current_position(self) -> tuple:
-        """
-        현재 좌표 계산
-
-        Returns:
-            (x, y) 좌표
-        """
-        if self.path_index >= len(self.path):
-            # 경로 완주
+        if self.path_index >= len(self.path) - 1:
             return self.path[-1]
-
         current = self.path[self.path_index]
-        next_pos = self.path[self.path_index + 1] if self.path_index + 1 < len(self.path) else current
-
-        # 선형 보간
+        next_pos = self.path[self.path_index + 1]
         x = current[0] + (next_pos[0] - current[0]) * self.progress_in_segment
         y = current[1] + (next_pos[1] - current[1]) * self.progress_in_segment
-
         return (x, y)
 
     def move(self, dt: float, speed_modifier: float = 1.0) -> bool:
-        """
-        dt 시간만큼 이동
+        if not self.is_alive:
+            return False
 
-        Args:
-            dt: 경과 시간 (초)
-            speed_modifier: 속도 배수 (상태 이상 반영)
-
-        Returns:
-            경로 완주했는지 여부
-        """
-        effective_speed = self.speed * speed_modifier
-        distance = effective_speed * dt  # 이동 거리 (칸 단위)
-
+        distance = self.speed * speed_modifier * dt
         while distance > 0:
             if self.path_index >= len(self.path) - 1:
-                # 경로 완주
+                self.reached_base = True
+                self.is_alive = False
                 return True
 
             current = self.path[self.path_index]
             next_pos = self.path[self.path_index + 1]
-
-            # 현재 세그먼트의 길이
             segment_length = self._calculate_distance(current, next_pos)
-            remaining_distance = segment_length * (1.0 - self.progress_in_segment)
+            if segment_length == 0:
+                self.path_index += 1
+                continue
 
+            remaining_distance = segment_length * (1.0 - self.progress_in_segment)
             if distance >= remaining_distance:
-                # 다음 세그먼트로 이동
                 distance -= remaining_distance
+                self.distance_travelled += remaining_distance
                 self.path_index += 1
                 self.progress_in_segment = 0.0
             else:
-                # 현재 세그먼트 내에서 이동
                 self.progress_in_segment += distance / segment_length
+                self.distance_travelled += distance
                 distance = 0
 
         return False
 
     def take_damage(self, damage: float) -> bool:
-        """
-        피해 입히기
-
-        Args:
-            damage: 피해량
-
-        Returns:
-            사망했는지 여부
-        """
+        if not self.is_alive:
+            return False
         self.health -= damage
         if self.health <= 0:
             self.is_alive = False
@@ -156,48 +104,36 @@ class Enemy:
         return False
 
     def apply_slow_effect(self, slow_factor: float, duration: float, current_time: float) -> None:
-        """
-        둔화 효과 적용
-
-        Args:
-            slow_factor: 속도 배수
-            duration: 지속 시간 (초)
-            current_time: 현재 게임 시간
-        """
-        self.status_effects["slow"] = {
-            "factor": slow_factor,
-            "end_time": current_time + duration
-        }
+        self.status_effects["slow"] = {"factor": slow_factor, "end_time": current_time + duration}
 
     def get_speed_modifier(self, current_time: float) -> float:
-        """
-        현재 속도 배수 계산 (상태 이상 반영)
-
-        Args:
-            current_time: 현재 게임 시간
-
-        Returns:
-            속도 배수
-        """
-        # 만료된 효과 제거
-        expired = [k for k, v in self.status_effects.items()
-                   if v.get("end_time", 0) <= current_time]
+        expired = [
+            key for key, value in self.status_effects.items()
+            if value.get("end_time", 0) <= current_time
+        ]
         for key in expired:
             del self.status_effects[key]
-
-        modifier = 1.0
-        if "slow" in self.status_effects:
-            modifier *= self.status_effects["slow"]["factor"]
-
-        return modifier
+        return self.status_effects.get("slow", {}).get("factor", 1.0)
 
     def has_reached_base(self) -> bool:
-        """기지에 도달했는지 확인"""
-        return self.path_index >= len(self.path) - 1
+        return self.reached_base
 
-    # ===== 내부 헬퍼 메서드 =====
+    @property
+    def gold_reward(self) -> int:
+        return BOSS_KILL_GOLD if self.is_boss else KILL_GOLD
+
+    @property
+    def progress(self) -> float:
+        return self.distance_travelled
+
+    @property
+    def x(self) -> float:
+        return self.get_current_position()[0]
+
+    @property
+    def y(self) -> float:
+        return self.get_current_position()[1]
 
     @staticmethod
     def _calculate_distance(pos1: tuple, pos2: tuple) -> float:
-        """두 위치 간 거리 계산"""
         return ((pos1[0] - pos2[0]) ** 2 + (pos1[1] - pos2[1]) ** 2) ** 0.5

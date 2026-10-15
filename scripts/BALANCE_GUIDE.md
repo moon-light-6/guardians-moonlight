@@ -1,32 +1,32 @@
-# 맵 데이터 및 밸런스 도구
+# 월하사신 맵 및 밸런스 도구
 
-기존 GameMap, BalanceAnalyzer, Action 인터페이스와 JSON 키를 유지한다.
-맵 좌표의 단위는 칸이며 경로는 칸 중심을 연결한다. 슬롯 경계는
-(x, y, width, height), 슬롯 ID는 0~23이다. GameMap은 작업 디렉터리와
-무관하게 data/map.json을 읽는다. 잘못된 데이터는 예외를 발생시키고
-이미 로드한 맵은 보존한다.
+최신 guardians-moonlight/main의 인터페이스와 데이터 형식을 기준으로 한다.
+GameMap의 정수 격자 경로, 슬롯 배치, grid_to_pixel/pixel_to_slot 변환을 유지한다.
+data/*.json의 최신 수치와 스키마는 변경하지 않았다.
+GameMap은 작업 디렉터리와 무관하게 data/map.json을 로드한다.
+잘못된 경로, 슬롯 경계, 중복 및 경로 겹침은 ValueError로 거부하며 기존 맵을 보존한다.
 
 ## 실행
 
 ```sh
-python scripts/balance.py --games 10 --stages 5 --output results/balance.json
+python scripts/balance.py --games 10 --stages 5 --output results/balance-latest.json
+python scripts/balance.py --games 10 --stages 30 --output results/balance-30.json
 python -m unittest discover -s tests -v
 ```
 
-JSON에는 시드별 결과와 스테이지별 골드 변화 및 라이프 손실이 기록된다.
-CSV에는 판별 요약이 기록된다. 오류가 있으면 종료 코드 1을 반환하며
-오류 판은 클리어율에서 제외한다. 웨이브는 1/60초씩 최대 600초 진행한다.
-구매 정책은 시드별 랜덤 정책이며 최적 플레이 가능성을 의미하지 않는다.
+기본값은 최신 코드와 동일하게 10판, 30웨이브다.
+최신 _prepare(game, state, rng) 정책과 reset(start_at_title=False),
+정산 화면의 CONTINUE 처리를 사용한다. 스테이지와 보상은 엔진이 관리한다.
+엔진 내부의 고정 시간 간격을 사용하며 한 웨이브는 최대 600초까지 진행한다.
 
-## 팀원 연결 사항
+결과의 stage/life/gold/kills/phase 키는 최신 main과 동일하다.
+seed/status/error/survived_stages/stage_results는 분석용 추가 필드다.
+stage는 엔진의 현재 웨이브 번호, survived_stages는 완료한 웨이브 수다.
+5웨이브 완료 후 stage=6, survived_stages=5인 것은 정상이다.
+목표 클리어율은 요청한 웨이브 수를 기준으로 계산한다.
+게임 패배는 game_over, 실행 오류 및 시간 초과는 error로 구분하며
+error 판은 통계에서 제외하고 프로그램 종료 코드 1을 반환한다.
 
-현재 engine.py의 _update_wave는 미구현이며 is_wave_complete 호출에
-alive_enemies 인자가 누락되어 있다. 엔진 담당이 전투, 스폰, 정산을
-연결해야 실제 밸런스 측정이 가능하다. 도구는 엔진 상태를 직접 변경하거나
-전투 로직을 대신 구현하지 않는다.
-
-stages.json은 기존 1~5 데이터를 유지하고 6~30은 기존
-WaveManager._generate_wave 규칙을 명시했다. 현재 WaveManager는 JSON을
-읽지 않는다. tower.py와 enemy.py도 자체 상수를 사용한다. 각 담당자가
-데이터 로딩을 연결하기 전 JSON 수치 변경은 게임에 반영되지 않는다.
-기획안과 다른 기존 수치는 팀 합의 없이 변경하지 않았다.
+JSON에는 웨이브별 골드 변화와 라이프 손실을 포함한다.
+CSV에는 판별 요약을 저장한다. 구매/강화 정책의 결과이며 최적 전략의 성능은 아니다.
+기존 results 파일과 가상환경은 덮어쓰지 않는다.

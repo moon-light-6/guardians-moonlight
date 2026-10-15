@@ -1,64 +1,87 @@
-"""
-[담당: 이서진 - 게임 엔진/통합]
-
-공통 게임 상태 정의:
-- 현재 스테이지, 라이프, 골드
-- 타워와 몬스터 목록
-- 게임 단계 (준비, 웨이브 진행, 정산 등)
-- UI에서 조회할 수 있는 모든 정보를 담습니다.
-
-이 클래스는 게임의 "진실의 원천(Single Source of Truth)"입니다.
-"""
-
-from enum import Enum
-from typing import List, Dict, Any
 from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from config import INITIAL_GOLD, INITIAL_LIFE, SLOT_COUNT
 
 
 class GamePhase(Enum):
-    """게임 단계"""
-    PREPARATION = "preparation"  # 준비 단계 (구매, 강화, 배치)
-    WAVE_ACTIVE = "wave_active"  # 웨이브 진행 중 (자동 전투)
-    SETTLEMENT = "settlement"    # 정산 단계
-    GAME_OVER = "game_over"      # 게임 오버
-    VICTORY = "victory"          # 승리
+    TITLE = "title"
+    HELP = "help"
+    PREPARATION = "preparation"
+    SUMMON_CONFIRM = "summon_confirm"
+    MOVING_TOWER = "moving_tower"
+    SELL_CONFIRM = "sell_confirm"
+    WAVE_ACTIVE = "wave_active"
+    SETTLEMENT = "settlement"
+    GAME_OVER = "game_over"
+    VICTORY = "victory"
+
+
+@dataclass
+class WaveResult:
+    stage: int = 0
+    normal_kills: int = 0
+    boss_kills: int = 0
+    kill_gold: int = 0
+    boss_gold: int = 0
+    clear_gold: int = 0
+    total_gold: int = 0
+    life_before: int = 0
+    life_after: int = 0
+    reached_base: int = 0
+    boss_name: Optional[str] = None
 
 
 @dataclass
 class GameState:
-    """게임의 모든 상태를 담는 클래스"""
-
-    # 기본 게임 정보
     current_stage: int = 1
     current_wave: int = 0
-    phase: GamePhase = GamePhase.PREPARATION
-
-    # 자원
-    gold: int = 100
-    life: int = 20
-
-    # 맵 및 타워
-    towers: Dict[int, Dict[str, Any]] = field(default_factory=dict)  # slot_id → 타워 데이터
-    tower_slots: List[bool] = field(default_factory=lambda: [False] * 24)  # 슬롯별 점유 상태
-
-    # 몬스터
-    enemies: List[Dict[str, Any]] = field(default_factory=list)
-
-    # 통계
+    phase: GamePhase = GamePhase.TITLE
+    gold: int = INITIAL_GOLD
+    life: int = INITIAL_LIFE
+    towers: Dict[int, Dict[str, Any]] = field(default_factory=dict)
+    tower_slots: List[bool] = field(default_factory=lambda: [False] * SLOT_COUNT)
+    enemies: List[Any] = field(default_factory=list)
+    effects: List[Dict[str, Any]] = field(default_factory=list)
     enemies_killed: int = 0
+    bosses_killed: int = 0
     enemies_reached_base: int = 0
-
-    # 준비 단계 행동 횟수 추적
     actions_taken_this_wave: int = 0
+    selected_slot: Optional[int] = None
+    moving_from_slot: Optional[int] = None
+    pending_sell_slot: Optional[int] = None
+    message: str = ""
+    wave_result: WaveResult = field(default_factory=WaveResult)
+    wave_elapsed: float = 0.0
+    wave_life_before: int = INITIAL_LIFE
+    wave_kill_gold: int = 0
+    wave_boss_gold: int = 0
+    wave_clear_gold: int = 0
+    clear_rewarded_stages: set[int] = field(default_factory=set)
+    wave_reached_base: int = 0
+    combat_speed: float = 1.0
 
     def is_valid_slot(self, slot_id: int) -> bool:
-        """슬롯이 유효한지 확인"""
-        return 0 <= slot_id < 24
+        return isinstance(slot_id, int) and 0 <= slot_id < SLOT_COUNT
 
     def is_slot_empty(self, slot_id: int) -> bool:
-        """슬롯이 비어있는지 확인"""
-        return not self.tower_slots[slot_id]
+        return self.is_valid_slot(slot_id) and not self.tower_slots[slot_id]
 
     def has_tower(self, slot_id: int) -> bool:
-        """슬롯에 타워가 있는지 확인"""
         return slot_id in self.towers
+
+    def get_observation(self) -> Dict[str, Any]:
+        return {
+            "stage": self.current_stage,
+            "gold": self.gold,
+            "life": self.life,
+            "phase": self.phase.value,
+            "actions": self.actions_taken_this_wave,
+            "towers": {
+                slot: {"type": data["type"], "level": data["level"]}
+                for slot, data in self.towers.items()
+            },
+            "enemy_count": len([enemy for enemy in self.enemies if enemy.is_alive]),
+            "combat_speed": self.combat_speed,
+        }

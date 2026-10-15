@@ -1,39 +1,48 @@
-"""
-[담당: 공통 - 전체 팀]
+"""Shared constants for the Wolha Sasin demo."""
 
-공통 설정 및 상수들을 정의합니다.
-게임의 화면 크기, FPS, 그리드 크기 등 전역 설정값을 관리합니다.
-"""
-
-# ===== 화면 설정 =====
-SCREEN_WIDTH = 1200
-SCREEN_HEIGHT = 800
+SCREEN_WIDTH = 1280
+SCREEN_HEIGHT = 840
 FPS = 60
 
-# ===== 맵 설정 =====
-MAP_WIDTH = 20  # 맵 가로 칸 수
-MAP_HEIGHT = 15  # 맵 세로 칸 수
-SLOT_COUNT = 24  # 타워 설치 가능한 슬롯 수
-MAX_STAGES = 30  # 최대 스테이지 수
+MAP_WIDTH = 20
+MAP_HEIGHT = 15
+SLOT_COUNT = 24
+MAX_STAGES = 30
+COMBAT_SPEEDS = (1.0, 1.5, 2.0, 5.0)
+SIMULATION_STEP = 1.0 / 120.0
 
-# ===== 게임 설정 =====
-INITIAL_LIFE = 20  # 시작 라이프
-MAX_LIFE = 30  # 최대 라이프
-INITIAL_GOLD = 100  # 시작 골드
+INITIAL_LIFE = 20
+INITIAL_GOLD = 200
+MAX_ACTIONS_PER_WAVE = 20
 
-# ===== 타워 설정 =====
-MAX_TOWER_LEVEL = 5  # 타워 최대 강화 레벨
-TOWER_TYPES = ["ARCHER", "CANNON", "ICE", "LIGHTNING"]  # 4가지 타워
+SUMMON_COST = 100
+SELL_REFUND_RATE = 0.6
+MAX_TOWER_LEVEL = 5
+UPGRADE_COSTS = {1: 60, 2: 100, 3: 160, 4: 250}
+LEVEL_DAMAGE_MULTIPLIERS = {1: 1.0, 2: 1.5, 3: 2.0, 4: 2.7, 5: 3.5}
 
-# ===== 전투 설정 =====
-MAX_ACTIONS_PER_WAVE = 20  # 준비 단계에서 최대 행동 가능 횟수 (구매/강화/판매/재배치)
+KILL_GOLD = 5
+BOSS_KILL_GOLD = 100
+CLEAR_GOLD_BASE = 70
+CLEAR_GOLD_PER_STAGE = 5
 
-# ===== 색상 정의 (RGB) =====
-COLOR_BLACK = (0, 0, 0)
-COLOR_WHITE = (255, 255, 255)
-COLOR_GRAY = (128, 128, 128)
-COLOR_RED = (255, 0, 0)
-COLOR_GREEN = (0, 255, 0)
-COLOR_BLUE = (0, 0, 255)
-COLOR_YELLOW = (255, 255, 0)
-COLOR_CYAN = (0, 255, 255)
+GRID_ORIGIN = (42, 126)
+CELL_SIZE = 42
+PANEL_X = 930
+PANEL_WIDTH = 310
+
+COLOR_BLACK = (7, 9, 18)
+COLOR_WHITE = (246, 247, 252)
+COLOR_GRAY = (128, 139, 162)
+COLOR_PANEL = (25, 31, 49)
+COLOR_PANEL_DARK = (15, 19, 32)
+COLOR_BLUE = (88, 142, 197)
+COLOR_NAVY = (20, 31, 61)
+COLOR_MOON = (242, 232, 186)
+COLOR_GOLD = (236, 196, 95)
+COLOR_MINT = (121, 210, 196)
+COLOR_RED = (216, 85, 104)
+COLOR_GREEN = (124, 200, 132)
+COLOR_PURPLE = (117, 77, 145)
+COLOR_CYAN = (132, 218, 238)
+COLOR_YELLOW = (245, 220, 96)
