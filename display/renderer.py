@@ -370,11 +370,14 @@ class Renderer:
             title = "결계가 무너졌어요"
             result = "패배"
         else:
-            title = "도시를 지켜냈어요"
+            title = "결계를 지켜냈어요"
             result = "승리"
         self._text(title, 470, 270, self.font_title, COLOR_WHITE)
         self._text(result, 520, 340, self.font_big, COLOR_MOON)
-        self._text(f"남은 결계 {state.life}", 550, 402, self.font_med, COLOR_MINT)
+        if state.phase == GamePhase.GAME_OVER:
+            fail_text = f"{state.current_stage}번째 웨이브에서 실패했어요"
+            fail_surface = self.font_med.render(fail_text, True, COLOR_RED)
+            self.screen.blit(fail_surface, fail_surface.get_rect(center=(SCREEN_WIDTH // 2, 420)))
         self.buttons.set_buttons([
             Button(pygame.Rect(500, 492, 130, 44), "다시 시작", "RESTART"),
             Button(pygame.Rect(650, 492, 130, 44), "타이틀로", "BACK_TO_TITLE"),
