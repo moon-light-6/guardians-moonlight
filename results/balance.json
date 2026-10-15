@@ -1,0 +1,112 @@
+[
+  {
+    "seed": 0,
+    "status": "error",
+    "error": "WaveManager.is_wave_complete() missing 1 required positional argument: 'alive_enemies'",
+    "survived_stages": 0,
+    "enemies_killed": 0,
+    "enemies_reached": 0,
+    "final_gold": 0,
+    "final_life": 20,
+    "stage_results": []
+  },
+  {
+    "seed": 1,
+    "status": "error",
+    "error": "WaveManager.is_wave_complete() missing 1 required positional argument: 'alive_enemies'",
+    "survived_stages": 0,
+    "enemies_killed": 0,
+    "enemies_reached": 0,
+    "final_gold": 0,
+    "final_life": 20,
+    "stage_results": []
+  },
+  {
+    "seed": 2,
+    "status": "error",
+    "error": "WaveManager.is_wave_complete() missing 1 required positional argument: 'alive_enemies'",
+    "survived_stages": 0,
+    "enemies_killed": 0,
+    "enemies_reached": 0,
+    "final_gold": 0,
+    "final_life": 20,
+    "stage_results": []
+  },
+  {
+    "seed": 3,
+    "status": "error",
+    "error": "WaveManager.is_wave_complete() missing 1 required positional argument: 'alive_enemies'",
+    "survived_stages": 0,
+    "enemies_killed": 0,
+    "enemies_reached": 0,
+    "final_gold": 0,
+    "final_life": 20,
+    "stage_results": []
+  },
+  {
+    "seed": 4,
+    "status": "error",
+    "error": "WaveManager.is_wave_complete() missing 1 required positional argument: 'alive_enemies'",
+    "survived_stages": 0,
+    "enemies_killed": 0,
+    "enemies_reached": 0,
+    "final_gold": 0,
+    "final_life": 20,
+    "stage_results": []
+  },
+  {
+    "seed": 5,
+    "status": "error",
+    "error": "WaveManager.is_wave_complete() missing 1 required positional argument: 'alive_enemies'",
+    "survived_stages": 0,
+    "enemies_killed": 0,
+    "enemies_reached": 0,
+    "final_gold": 0,
+    "final_life": 20,
+    "stage_results": []
+  },
+  {
+    "seed": 6,
+    "status": "error",
+    "error": "WaveManager.is_wave_complete() missing 1 required positional argument: 'alive_enemies'",
+    "survived_stages": 0,
+    "enemies_killed": 0,
+    "enemies_reached": 0,
+    "final_gold": 0,
+    "final_life": 20,
+    "stage_results": []
+  },
+  {
+    "seed": 7,
+    "status": "error",
+    "error": "WaveManager.is_wave_complete() missing 1 required positional argument: 'alive_enemies'",
+    "survived_stages": 0,
+    "enemies_killed": 0,
+    "enemies_reached": 0,
+    "final_gold": 0,
+    "final_life": 20,
+    "stage_results": []
+  },
+  {
+    "seed": 8,
+    "status": "error",
+    "error": "WaveManager.is_wave_complete() missing 1 required positional argument: 'alive_enemies'",
+    "survived_stages": 0,
+    "enemies_killed": 0,
+    "enemies_reached": 0,
+    "final_gold": 0,
+    "final_life": 20,
+    "stage_results": []
+  },
+  {
+    "seed": 9,
+    "status": "error",
+    "error": "WaveManager.is_wave_complete() missing 1 required positional argument: 'alive_enemies'",
+    "survived_stages": 0,
+    "enemies_killed": 0,
+    "enemies_reached": 0,
+    "final_gold": 0,
+    "final_life": 20,
+    "stage_results": []
+  }
+]

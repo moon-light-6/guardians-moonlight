@@ -1,0 +1,11 @@
+﻿seed,status,error,survived_stages,enemies_killed,enemies_reached,final_gold,final_life
+0,error,WaveManager.is_wave_complete() missing 1 required positional argument: 'alive_enemies',0,0,0,0,20
+1,error,WaveManager.is_wave_complete() missing 1 required positional argument: 'alive_enemies',0,0,0,0,20
+2,error,WaveManager.is_wave_complete() missing 1 required positional argument: 'alive_enemies',0,0,0,0,20
+3,error,WaveManager.is_wave_complete() missing 1 required positional argument: 'alive_enemies',0,0,0,0,20
+4,error,WaveManager.is_wave_complete() missing 1 required positional argument: 'alive_enemies',0,0,0,0,20
+5,error,WaveManager.is_wave_complete() missing 1 required positional argument: 'alive_enemies',0,0,0,0,20
+6,error,WaveManager.is_wave_complete() missing 1 required positional argument: 'alive_enemies',0,0,0,0,20
+7,error,WaveManager.is_wave_complete() missing 1 required positional argument: 'alive_enemies',0,0,0,0,20
+8,error,WaveManager.is_wave_complete() missing 1 required positional argument: 'alive_enemies',0,0,0,0,20
+9,error,WaveManager.is_wave_complete() missing 1 required positional argument: 'alive_enemies',0,0,0,0,20

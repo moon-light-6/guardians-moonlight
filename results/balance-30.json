@@ -1,0 +1,1938 @@
+[
+  {
+    "stage": 22,
+    "life": 0,
+    "gold": 235,
+    "kills": 500,
+    "phase": "game_over",
+    "seed": 0,
+    "status": "game_over",
+    "error": "",
+    "survived_stages": 21,
+    "stage_results": [
+      {
+        "stage": 1,
+        "gold_before": 200,
+        "gold_after": 115,
+        "life_lost": 6,
+        "completed": true
+      },
+      {
+        "stage": 2,
+        "gold_before": 115,
+        "gold_after": 175,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 3,
+        "gold_before": 175,
+        "gold_after": 250,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 4,
+        "gold_before": 250,
+        "gold_after": 240,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 5,
+        "gold_before": 240,
+        "gold_after": 315,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 6,
+        "gold_before": 315,
+        "gold_after": 225,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 7,
+        "gold_before": 225,
+        "gold_after": 270,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 8,
+        "gold_before": 270,
+        "gold_after": 310,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 9,
+        "gold_before": 310,
+        "gold_after": 305,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 10,
+        "gold_before": 305,
+        "gold_after": 380,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 11,
+        "gold_before": 380,
+        "gold_after": 335,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 12,
+        "gold_before": 335,
+        "gold_after": 315,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 13,
+        "gold_before": 315,
+        "gold_after": 370,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 14,
+        "gold_before": 370,
+        "gold_after": 350,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 15,
+        "gold_before": 350,
+        "gold_after": 405,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 16,
+        "gold_before": 405,
+        "gold_after": 395,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 17,
+        "gold_before": 395,
+        "gold_after": 430,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 18,
+        "gold_before": 430,
+        "gold_after": 450,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 19,
+        "gold_before": 450,
+        "gold_after": 415,
+        "life_lost": 2,
+        "completed": true
+      },
+      {
+        "stage": 20,
+        "gold_before": 415,
+        "gold_after": 490,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 21,
+        "gold_before": 490,
+        "gold_after": 490,
+        "life_lost": 5,
+        "completed": true
+      },
+      {
+        "stage": 22,
+        "gold_before": 490,
+        "gold_after": 235,
+        "life_lost": 7,
+        "completed": false
+      }
+    ]
+  },
+  {
+    "stage": 23,
+    "life": 0,
+    "gold": 195,
+    "kills": 540,
+    "phase": "game_over",
+    "seed": 1,
+    "status": "game_over",
+    "error": "",
+    "survived_stages": 22,
+    "stage_results": [
+      {
+        "stage": 1,
+        "gold_before": 200,
+        "gold_after": 145,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 2,
+        "gold_before": 145,
+        "gold_after": 205,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 3,
+        "gold_before": 205,
+        "gold_after": 180,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 4,
+        "gold_before": 180,
+        "gold_after": 270,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 5,
+        "gold_before": 270,
+        "gold_after": 345,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 6,
+        "gold_before": 345,
+        "gold_after": 255,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 7,
+        "gold_before": 255,
+        "gold_after": 300,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 8,
+        "gold_before": 300,
+        "gold_after": 240,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 9,
+        "gold_before": 240,
+        "gold_after": 335,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 10,
+        "gold_before": 335,
+        "gold_after": 350,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 11,
+        "gold_before": 350,
+        "gold_after": 305,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 12,
+        "gold_before": 305,
+        "gold_after": 345,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 13,
+        "gold_before": 345,
+        "gold_after": 340,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 14,
+        "gold_before": 340,
+        "gold_after": 400,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 15,
+        "gold_before": 400,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 16,
+        "gold_before": 455,
+        "gold_after": 385,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 17,
+        "gold_before": 385,
+        "gold_after": 390,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 18,
+        "gold_before": 390,
+        "gold_after": 440,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 19,
+        "gold_before": 440,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 20,
+        "gold_before": 455,
+        "gold_after": 430,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 21,
+        "gold_before": 430,
+        "gold_after": 430,
+        "life_lost": 5,
+        "completed": true
+      },
+      {
+        "stage": 22,
+        "gold_before": 430,
+        "gold_after": 455,
+        "life_lost": 9,
+        "completed": true
+      },
+      {
+        "stage": 23,
+        "gold_before": 455,
+        "gold_after": 195,
+        "life_lost": 6,
+        "completed": false
+      }
+    ]
+  },
+  {
+    "stage": 27,
+    "life": 0,
+    "gold": 1250,
+    "kills": 718,
+    "phase": "game_over",
+    "seed": 2,
+    "status": "game_over",
+    "error": "",
+    "survived_stages": 26,
+    "stage_results": [
+      {
+        "stage": 1,
+        "gold_before": 200,
+        "gold_after": 145,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 2,
+        "gold_before": 145,
+        "gold_after": 205,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 3,
+        "gold_before": 205,
+        "gold_after": 180,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 4,
+        "gold_before": 180,
+        "gold_after": 270,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 5,
+        "gold_before": 270,
+        "gold_after": 345,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 6,
+        "gold_before": 345,
+        "gold_after": 255,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 7,
+        "gold_before": 255,
+        "gold_after": 300,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 8,
+        "gold_before": 300,
+        "gold_after": 240,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 9,
+        "gold_before": 240,
+        "gold_after": 335,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 10,
+        "gold_before": 335,
+        "gold_after": 350,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 11,
+        "gold_before": 350,
+        "gold_after": 305,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 12,
+        "gold_before": 305,
+        "gold_after": 345,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 13,
+        "gold_before": 345,
+        "gold_after": 340,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 14,
+        "gold_before": 340,
+        "gold_after": 400,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 15,
+        "gold_before": 400,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 16,
+        "gold_before": 455,
+        "gold_after": 385,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 17,
+        "gold_before": 385,
+        "gold_after": 390,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 18,
+        "gold_before": 390,
+        "gold_after": 440,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 19,
+        "gold_before": 440,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 20,
+        "gold_before": 455,
+        "gold_after": 430,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 21,
+        "gold_before": 430,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 22,
+        "gold_before": 455,
+        "gold_after": 465,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 23,
+        "gold_before": 465,
+        "gold_after": 490,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 24,
+        "gold_before": 490,
+        "gold_after": 590,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 25,
+        "gold_before": 590,
+        "gold_after": 905,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 26,
+        "gold_before": 905,
+        "gold_after": 1110,
+        "life_lost": 3,
+        "completed": true
+      },
+      {
+        "stage": 27,
+        "gold_before": 1110,
+        "gold_after": 1250,
+        "life_lost": 17,
+        "completed": false
+      }
+    ]
+  },
+  {
+    "stage": 26,
+    "life": 0,
+    "gold": 600,
+    "kills": 653,
+    "phase": "game_over",
+    "seed": 3,
+    "status": "game_over",
+    "error": "",
+    "survived_stages": 25,
+    "stage_results": [
+      {
+        "stage": 1,
+        "gold_before": 200,
+        "gold_after": 145,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 2,
+        "gold_before": 145,
+        "gold_after": 205,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 3,
+        "gold_before": 205,
+        "gold_after": 180,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 4,
+        "gold_before": 180,
+        "gold_after": 270,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 5,
+        "gold_before": 270,
+        "gold_after": 345,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 6,
+        "gold_before": 345,
+        "gold_after": 255,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 7,
+        "gold_before": 255,
+        "gold_after": 300,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 8,
+        "gold_before": 300,
+        "gold_after": 240,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 9,
+        "gold_before": 240,
+        "gold_after": 335,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 10,
+        "gold_before": 335,
+        "gold_after": 350,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 11,
+        "gold_before": 350,
+        "gold_after": 305,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 12,
+        "gold_before": 305,
+        "gold_after": 345,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 13,
+        "gold_before": 345,
+        "gold_after": 340,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 14,
+        "gold_before": 340,
+        "gold_after": 400,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 15,
+        "gold_before": 400,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 16,
+        "gold_before": 455,
+        "gold_after": 385,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 17,
+        "gold_before": 385,
+        "gold_after": 390,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 18,
+        "gold_before": 390,
+        "gold_after": 440,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 19,
+        "gold_before": 440,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 20,
+        "gold_before": 455,
+        "gold_after": 430,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 21,
+        "gold_before": 430,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 22,
+        "gold_before": 455,
+        "gold_after": 465,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 23,
+        "gold_before": 465,
+        "gold_after": 490,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 24,
+        "gold_before": 490,
+        "gold_after": 555,
+        "life_lost": 7,
+        "completed": true
+      },
+      {
+        "stage": 25,
+        "gold_before": 555,
+        "gold_after": 770,
+        "life_lost": 7,
+        "completed": true
+      },
+      {
+        "stage": 26,
+        "gold_before": 770,
+        "gold_after": 600,
+        "life_lost": 6,
+        "completed": false
+      }
+    ]
+  },
+  {
+    "stage": 26,
+    "life": 0,
+    "gold": 685,
+    "kills": 670,
+    "phase": "game_over",
+    "seed": 4,
+    "status": "game_over",
+    "error": "",
+    "survived_stages": 25,
+    "stage_results": [
+      {
+        "stage": 1,
+        "gold_before": 200,
+        "gold_after": 145,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 2,
+        "gold_before": 145,
+        "gold_after": 205,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 3,
+        "gold_before": 205,
+        "gold_after": 180,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 4,
+        "gold_before": 180,
+        "gold_after": 270,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 5,
+        "gold_before": 270,
+        "gold_after": 345,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 6,
+        "gold_before": 345,
+        "gold_after": 255,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 7,
+        "gold_before": 255,
+        "gold_after": 300,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 8,
+        "gold_before": 300,
+        "gold_after": 240,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 9,
+        "gold_before": 240,
+        "gold_after": 335,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 10,
+        "gold_before": 335,
+        "gold_after": 350,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 11,
+        "gold_before": 350,
+        "gold_after": 305,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 12,
+        "gold_before": 305,
+        "gold_after": 345,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 13,
+        "gold_before": 345,
+        "gold_after": 340,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 14,
+        "gold_before": 340,
+        "gold_after": 400,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 15,
+        "gold_before": 400,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 16,
+        "gold_before": 455,
+        "gold_after": 385,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 17,
+        "gold_before": 385,
+        "gold_after": 390,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 18,
+        "gold_before": 390,
+        "gold_after": 440,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 19,
+        "gold_before": 440,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 20,
+        "gold_before": 455,
+        "gold_after": 430,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 21,
+        "gold_before": 430,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 22,
+        "gold_before": 455,
+        "gold_after": 465,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 23,
+        "gold_before": 465,
+        "gold_after": 490,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 24,
+        "gold_before": 490,
+        "gold_after": 560,
+        "life_lost": 6,
+        "completed": true
+      },
+      {
+        "stage": 25,
+        "gold_before": 560,
+        "gold_after": 775,
+        "life_lost": 7,
+        "completed": true
+      },
+      {
+        "stage": 26,
+        "gold_before": 775,
+        "gold_after": 685,
+        "life_lost": 7,
+        "completed": false
+      }
+    ]
+  },
+  {
+    "stage": 26,
+    "life": 0,
+    "gold": 780,
+    "kills": 670,
+    "phase": "game_over",
+    "seed": 5,
+    "status": "game_over",
+    "error": "",
+    "survived_stages": 25,
+    "stage_results": [
+      {
+        "stage": 1,
+        "gold_before": 200,
+        "gold_after": 145,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 2,
+        "gold_before": 145,
+        "gold_after": 205,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 3,
+        "gold_before": 205,
+        "gold_after": 180,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 4,
+        "gold_before": 180,
+        "gold_after": 270,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 5,
+        "gold_before": 270,
+        "gold_after": 345,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 6,
+        "gold_before": 345,
+        "gold_after": 255,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 7,
+        "gold_before": 255,
+        "gold_after": 300,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 8,
+        "gold_before": 300,
+        "gold_after": 240,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 9,
+        "gold_before": 240,
+        "gold_after": 335,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 10,
+        "gold_before": 335,
+        "gold_after": 350,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 11,
+        "gold_before": 350,
+        "gold_after": 305,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 12,
+        "gold_before": 305,
+        "gold_after": 345,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 13,
+        "gold_before": 345,
+        "gold_after": 340,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 14,
+        "gold_before": 340,
+        "gold_after": 400,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 15,
+        "gold_before": 400,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 16,
+        "gold_before": 455,
+        "gold_after": 385,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 17,
+        "gold_before": 385,
+        "gold_after": 390,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 18,
+        "gold_before": 390,
+        "gold_after": 440,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 19,
+        "gold_before": 440,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 20,
+        "gold_before": 455,
+        "gold_after": 430,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 21,
+        "gold_before": 430,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 22,
+        "gold_before": 455,
+        "gold_after": 465,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 23,
+        "gold_before": 465,
+        "gold_after": 490,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 24,
+        "gold_before": 490,
+        "gold_after": 565,
+        "life_lost": 5,
+        "completed": true
+      },
+      {
+        "stage": 25,
+        "gold_before": 565,
+        "gold_after": 880,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 26,
+        "gold_before": 880,
+        "gold_after": 780,
+        "life_lost": 15,
+        "completed": false
+      }
+    ]
+  },
+  {
+    "stage": 27,
+    "life": 0,
+    "gold": 1180,
+    "kills": 723,
+    "phase": "game_over",
+    "seed": 6,
+    "status": "game_over",
+    "error": "",
+    "survived_stages": 26,
+    "stage_results": [
+      {
+        "stage": 1,
+        "gold_before": 200,
+        "gold_after": 145,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 2,
+        "gold_before": 145,
+        "gold_after": 205,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 3,
+        "gold_before": 205,
+        "gold_after": 180,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 4,
+        "gold_before": 180,
+        "gold_after": 270,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 5,
+        "gold_before": 270,
+        "gold_after": 345,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 6,
+        "gold_before": 345,
+        "gold_after": 255,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 7,
+        "gold_before": 255,
+        "gold_after": 300,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 8,
+        "gold_before": 300,
+        "gold_after": 240,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 9,
+        "gold_before": 240,
+        "gold_after": 335,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 10,
+        "gold_before": 335,
+        "gold_after": 350,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 11,
+        "gold_before": 350,
+        "gold_after": 305,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 12,
+        "gold_before": 305,
+        "gold_after": 345,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 13,
+        "gold_before": 345,
+        "gold_after": 340,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 14,
+        "gold_before": 340,
+        "gold_after": 400,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 15,
+        "gold_before": 400,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 16,
+        "gold_before": 455,
+        "gold_after": 385,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 17,
+        "gold_before": 385,
+        "gold_after": 390,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 18,
+        "gold_before": 390,
+        "gold_after": 440,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 19,
+        "gold_before": 440,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 20,
+        "gold_before": 455,
+        "gold_after": 430,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 21,
+        "gold_before": 430,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 22,
+        "gold_before": 455,
+        "gold_after": 465,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 23,
+        "gold_before": 465,
+        "gold_after": 490,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 24,
+        "gold_before": 490,
+        "gold_after": 590,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 25,
+        "gold_before": 590,
+        "gold_after": 805,
+        "life_lost": 7,
+        "completed": true
+      },
+      {
+        "stage": 26,
+        "gold_before": 805,
+        "gold_after": 1010,
+        "life_lost": 3,
+        "completed": true
+      },
+      {
+        "stage": 27,
+        "gold_before": 1010,
+        "gold_after": 1180,
+        "life_lost": 10,
+        "completed": false
+      }
+    ]
+  },
+  {
+    "stage": 28,
+    "life": 0,
+    "gold": 1730,
+    "kills": 767,
+    "phase": "game_over",
+    "seed": 7,
+    "status": "game_over",
+    "error": "",
+    "survived_stages": 27,
+    "stage_results": [
+      {
+        "stage": 1,
+        "gold_before": 200,
+        "gold_after": 145,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 2,
+        "gold_before": 145,
+        "gold_after": 205,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 3,
+        "gold_before": 205,
+        "gold_after": 180,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 4,
+        "gold_before": 180,
+        "gold_after": 270,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 5,
+        "gold_before": 270,
+        "gold_after": 345,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 6,
+        "gold_before": 345,
+        "gold_after": 255,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 7,
+        "gold_before": 255,
+        "gold_after": 300,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 8,
+        "gold_before": 300,
+        "gold_after": 240,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 9,
+        "gold_before": 240,
+        "gold_after": 335,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 10,
+        "gold_before": 335,
+        "gold_after": 350,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 11,
+        "gold_before": 350,
+        "gold_after": 305,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 12,
+        "gold_before": 305,
+        "gold_after": 345,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 13,
+        "gold_before": 345,
+        "gold_after": 340,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 14,
+        "gold_before": 340,
+        "gold_after": 400,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 15,
+        "gold_before": 400,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 16,
+        "gold_before": 455,
+        "gold_after": 385,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 17,
+        "gold_before": 385,
+        "gold_after": 390,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 18,
+        "gold_before": 390,
+        "gold_after": 440,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 19,
+        "gold_before": 440,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 20,
+        "gold_before": 455,
+        "gold_after": 430,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 21,
+        "gold_before": 430,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 22,
+        "gold_before": 455,
+        "gold_after": 465,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 23,
+        "gold_before": 465,
+        "gold_after": 490,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 24,
+        "gold_before": 490,
+        "gold_after": 590,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 25,
+        "gold_before": 590,
+        "gold_after": 905,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 26,
+        "gold_before": 905,
+        "gold_after": 1125,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 27,
+        "gold_before": 1125,
+        "gold_after": 1575,
+        "life_lost": 7,
+        "completed": true
+      },
+      {
+        "stage": 28,
+        "gold_before": 1575,
+        "gold_after": 1730,
+        "life_lost": 13,
+        "completed": false
+      }
+    ]
+  },
+  {
+    "stage": 26,
+    "life": 0,
+    "gold": 740,
+    "kills": 662,
+    "phase": "game_over",
+    "seed": 8,
+    "status": "game_over",
+    "error": "",
+    "survived_stages": 25,
+    "stage_results": [
+      {
+        "stage": 1,
+        "gold_before": 200,
+        "gold_after": 145,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 2,
+        "gold_before": 145,
+        "gold_after": 205,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 3,
+        "gold_before": 205,
+        "gold_after": 180,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 4,
+        "gold_before": 180,
+        "gold_after": 270,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 5,
+        "gold_before": 270,
+        "gold_after": 345,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 6,
+        "gold_before": 345,
+        "gold_after": 255,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 7,
+        "gold_before": 255,
+        "gold_after": 300,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 8,
+        "gold_before": 300,
+        "gold_after": 240,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 9,
+        "gold_before": 240,
+        "gold_after": 335,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 10,
+        "gold_before": 335,
+        "gold_after": 350,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 11,
+        "gold_before": 350,
+        "gold_after": 305,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 12,
+        "gold_before": 305,
+        "gold_after": 345,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 13,
+        "gold_before": 345,
+        "gold_after": 340,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 14,
+        "gold_before": 340,
+        "gold_after": 400,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 15,
+        "gold_before": 400,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 16,
+        "gold_before": 455,
+        "gold_after": 385,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 17,
+        "gold_before": 385,
+        "gold_after": 390,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 18,
+        "gold_before": 390,
+        "gold_after": 440,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 19,
+        "gold_before": 440,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 20,
+        "gold_before": 455,
+        "gold_after": 430,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 21,
+        "gold_before": 430,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 22,
+        "gold_before": 455,
+        "gold_after": 465,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 23,
+        "gold_before": 465,
+        "gold_after": 490,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 24,
+        "gold_before": 490,
+        "gold_after": 570,
+        "life_lost": 4,
+        "completed": true
+      },
+      {
+        "stage": 25,
+        "gold_before": 570,
+        "gold_after": 880,
+        "life_lost": 1,
+        "completed": true
+      },
+      {
+        "stage": 26,
+        "gold_before": 880,
+        "gold_after": 740,
+        "life_lost": 15,
+        "completed": false
+      }
+    ]
+  },
+  {
+    "stage": 27,
+    "life": 0,
+    "gold": 1215,
+    "kills": 711,
+    "phase": "game_over",
+    "seed": 9,
+    "status": "game_over",
+    "error": "",
+    "survived_stages": 26,
+    "stage_results": [
+      {
+        "stage": 1,
+        "gold_before": 200,
+        "gold_after": 145,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 2,
+        "gold_before": 145,
+        "gold_after": 205,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 3,
+        "gold_before": 205,
+        "gold_after": 180,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 4,
+        "gold_before": 180,
+        "gold_after": 270,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 5,
+        "gold_before": 270,
+        "gold_after": 345,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 6,
+        "gold_before": 345,
+        "gold_after": 255,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 7,
+        "gold_before": 255,
+        "gold_after": 300,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 8,
+        "gold_before": 300,
+        "gold_after": 240,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 9,
+        "gold_before": 240,
+        "gold_after": 335,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 10,
+        "gold_before": 335,
+        "gold_after": 350,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 11,
+        "gold_before": 350,
+        "gold_after": 305,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 12,
+        "gold_before": 305,
+        "gold_after": 345,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 13,
+        "gold_before": 345,
+        "gold_after": 340,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 14,
+        "gold_before": 340,
+        "gold_after": 400,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 15,
+        "gold_before": 400,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 16,
+        "gold_before": 455,
+        "gold_after": 385,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 17,
+        "gold_before": 385,
+        "gold_after": 390,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 18,
+        "gold_before": 390,
+        "gold_after": 440,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 19,
+        "gold_before": 440,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 20,
+        "gold_before": 455,
+        "gold_after": 430,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 21,
+        "gold_before": 430,
+        "gold_after": 455,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 22,
+        "gold_before": 455,
+        "gold_after": 465,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 23,
+        "gold_before": 465,
+        "gold_after": 490,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 24,
+        "gold_before": 490,
+        "gold_after": 585,
+        "life_lost": 1,
+        "completed": true
+      },
+      {
+        "stage": 25,
+        "gold_before": 585,
+        "gold_after": 900,
+        "life_lost": 0,
+        "completed": true
+      },
+      {
+        "stage": 26,
+        "gold_before": 900,
+        "gold_after": 1075,
+        "life_lost": 9,
+        "completed": true
+      },
+      {
+        "stage": 27,
+        "gold_before": 1075,
+        "gold_after": 1215,
+        "life_lost": 10,
+        "completed": false
+      }
+    ]
+  }
+]

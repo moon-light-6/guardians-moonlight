@@ -1,0 +1,4 @@
+﻿stage,life,gold,kills,phase,seed,status,error,survived_stages
+17,0,160,315,game_over,0,game_over,,16
+18,0,75,342,game_over,1,game_over,,17
+19,0,70,386,game_over,2,game_over,,18
