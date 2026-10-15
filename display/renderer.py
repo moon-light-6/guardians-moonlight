@@ -26,6 +26,8 @@ from config import (
     SCREEN_WIDTH,
 )
 from display.ui import Button, ButtonLayer, draw_panel
+from display.sprite_animation import TowerSpriteAnimator
+from display.effect_animation import AttackEffectAnimator
 from game.economy import Economy
 from game.map import GameMap
 from game.state import GamePhase, GameState
@@ -44,6 +46,8 @@ class Renderer:
         self.font_small = self._font(16)
         self.economy = Economy()
         self.boss_portraits = self._load_boss_portraits()
+        self.tower_animator = TowerSpriteAnimator()
+        self.effect_animator = AttackEffectAnimator()
 
     def _load_boss_portraits(self) -> dict:
         sheet = pygame.image.load(str(Path(__file__).resolve().parents[1] / "data" / "boss_roster.png"))
@@ -194,24 +198,84 @@ class Renderer:
             pygame.draw.circle(self.screen, (97, 167, 213), center, int(stats["range"] * CELL_SIZE), 1)
 
         for slot_id, tower_data in state.towers.items():
-            self._draw_tower(slot_id, tower_data)
+            self._draw_tower(
+                slot_id,
+                tower_data,
+                state.effects,
+            )
         for enemy in state.enemies:
             self._draw_enemy(enemy)
         for effect in state.effects:
             if effect["kind"] != "slow_field":
                 self._draw_effect(effect)
 
-    def _draw_tower(self, slot_id: int, tower_data: dict) -> None:
-        pos = self.map.grid_to_pixel(self.map.get_slot_position(slot_id))
+
+    def _draw_tower(
+        self,
+        slot_id: int,
+        tower_data: dict,
+        effects: list,
+    ) -> None:
+        tower_pos = self.map.get_slot_position(slot_id)
+        pos = self.map.grid_to_pixel(tower_pos)
+
+        tower_type = tower_data["type"]
+
+        # 청룡·현무는 PNG 프레임 애니메이션으로 출력
+        animated = self.tower_animator.draw(
+            screen=self.screen,
+            slot_id=slot_id,
+            tower_type=tower_type,
+            pixel_pos=pos,
+            tower_pos=tower_pos,
+            effects=effects,
+        )
+
+        if animated:
+            # 이미지 아래에 타워 레벨 표시
+            level_text = self.font_small.render(
+                str(tower_data["level"]),
+                True,
+                COLOR_WHITE,
+            )
+
+            level_rect = level_text.get_rect(
+                center=(pos[0], pos[1] + 23)
+            )
+
+            self.screen.blit(level_text, level_rect)
+            return
+
+        # 백호·주작은 기존 원형 디자인 유지
         colors = {
             "LIGHTNING": COLOR_CYAN,
             "ARCHER": COLOR_GOLD,
             "CANNON": (230, 112, 82),
             "ICE": COLOR_MINT,
         }
-        pygame.draw.circle(self.screen, colors[tower_data["type"]], pos, 15)
-        pygame.draw.circle(self.screen, COLOR_WHITE, (pos[0] - 4, pos[1] - 4), 2)
-        self._text(str(tower_data["level"]), pos[0] - 5, pos[1] + 8, self.font_small, COLOR_BLACK)
+
+        pygame.draw.circle(
+            self.screen,
+            colors[tower_type],
+            pos,
+            15,
+        )
+
+        pygame.draw.circle(
+            self.screen,
+            COLOR_WHITE,
+            (pos[0] - 4, pos[1] - 4),
+            2,
+        )
+
+        self._text(
+            str(tower_data["level"]),
+            pos[0] - 5,
+            pos[1] + 8,
+            self.font_small,
+            COLOR_BLACK,
+        )
+
 
     def _draw_enemy(self, enemy) -> None:
         pos = self.map.grid_to_pixel(enemy.get_current_position())
@@ -237,6 +301,17 @@ class Renderer:
 
     def _draw_effect(self, effect: dict) -> None:
         alpha = 1.0 - effect["age"] / effect["ttl"]
+
+        # 공격 이펙트 출력
+        if effect["kind"] in ("lightning", "water"):
+            if self.effect_animator.draw(
+                self.screen,
+                effect,
+                self.map,
+            ):
+                return
+        alpha = 1.0 - effect["age"] / effect["ttl"]
+        
         if effect["kind"] == "slow_field":
             if effect["age"] >= effect["ttl"]:
                 return
