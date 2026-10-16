@@ -1,0 +1,761 @@
+[
+  {
+    "name": "NW_0.png",
+    "row": 0,
+    "col": 0,
+    "expanded_region": [
+      0,
+      0,
+      332,
+      332
+    ],
+    "component_crop_in_region": [
+      35,
+      91,
+      313,
+      332
+    ],
+    "sprite_size": [
+      278,
+      241
+    ],
+    "paste_xy": [
+      21,
+      61
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302,
+    "candidate_count": 1,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 44068,
+        "dist": 0.21765911326189658,
+        "overlap": 60554,
+        "score": 40803.11330107155
+      }
+    ]
+  },
+  {
+    "name": "NW_1.png",
+    "row": 0,
+    "col": 1,
+    "expanded_region": [
+      296,
+      0,
+      645,
+      332
+    ],
+    "component_crop_in_region": [
+      50,
+      54,
+      324,
+      332
+    ],
+    "sprite_size": [
+      274,
+      278
+    ],
+    "paste_xy": [
+      23,
+      24
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302,
+    "candidate_count": 2,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 46854,
+        "dist": 0.1741038463716805,
+        "overlap": 69660,
+        "score": 44242.442304424796
+      },
+      {
+        "label": 2,
+        "area": 601,
+        "dist": 0.6082156135166115,
+        "overlap": 0,
+        "score": -13522.234202749172
+      }
+    ]
+  },
+  {
+    "name": "NW_2.png",
+    "row": 0,
+    "col": 2,
+    "expanded_region": [
+      609,
+      0,
+      958,
+      332
+    ],
+    "component_crop_in_region": [
+      50,
+      49,
+      333,
+      332
+    ],
+    "sprite_size": [
+      283,
+      283
+    ],
+    "paste_xy": [
+      18,
+      19
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302,
+    "candidate_count": 1,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 51557,
+        "dist": 0.15849280270694086,
+        "overlap": 73377,
+        "score": 49179.607959395886
+      }
+    ]
+  },
+  {
+    "name": "NW_3.png",
+    "row": 0,
+    "col": 3,
+    "expanded_region": [
+      922,
+      0,
+      1254,
+      332
+    ],
+    "component_crop_in_region": [
+      56,
+      89,
+      327,
+      332
+    ],
+    "sprite_size": [
+      271,
+      243
+    ],
+    "paste_xy": [
+      24,
+      59
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302,
+    "candidate_count": 2,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 43611,
+        "dist": 0.21567812412438056,
+        "overlap": 59541,
+        "score": 40375.82813813429
+      },
+      {
+        "label": 2,
+        "area": 740,
+        "dist": 0.6006168715436523,
+        "overlap": 0,
+        "score": -13269.253073154785
+      }
+    ]
+  },
+  {
+    "name": "NE_0.png",
+    "row": 1,
+    "col": 0,
+    "expanded_region": [
+      0,
+      296,
+      332,
+      645
+    ],
+    "component_crop_in_region": [
+      15,
+      115,
+      291,
+      349
+    ],
+    "sprite_size": [
+      276,
+      234
+    ],
+    "paste_xy": [
+      22,
+      68
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302,
+    "candidate_count": 2,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 5284,
+        "dist": 0.515673560341034,
+        "overlap": 3852,
+        "score": -7451.103405115509
+      },
+      {
+        "label": 2,
+        "area": 43579,
+        "dist": 0.23638486262814812,
+        "overlap": 58208,
+        "score": 40033.22706057778
+      }
+    ]
+  },
+  {
+    "name": "NE_1.png",
+    "row": 1,
+    "col": 1,
+    "expanded_region": [
+      296,
+      296,
+      645,
+      645
+    ],
+    "component_crop_in_region": [
+      25,
+      84,
+      317,
+      349
+    ],
+    "sprite_size": [
+      292,
+      265
+    ],
+    "paste_xy": [
+      14,
+      37
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302,
+    "candidate_count": 2,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 4747,
+        "dist": 0.5136983308521592,
+        "overlap": 3654,
+        "score": -7958.4749627823885
+      },
+      {
+        "label": 2,
+        "area": 49860,
+        "dist": 0.19619918523523824,
+        "overlap": 70560,
+        "score": 46917.01222147143
+      }
+    ]
+  },
+  {
+    "name": "NE_2.png",
+    "row": 1,
+    "col": 2,
+    "expanded_region": [
+      609,
+      296,
+      958,
+      645
+    ],
+    "component_crop_in_region": [
+      20,
+      57,
+      316,
+      349
+    ],
+    "sprite_size": [
+      296,
+      292
+    ],
+    "paste_xy": [
+      12,
+      10
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302,
+    "candidate_count": 2,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 5038,
+        "dist": 0.5128097637230662,
+        "overlap": 3838,
+        "score": -7654.146455845993
+      },
+      {
+        "label": 2,
+        "area": 55334,
+        "dist": 0.153313456474647,
+        "overlap": 79424,
+        "score": 53034.29815288029
+      }
+    ]
+  },
+  {
+    "name": "NE_3.png",
+    "row": 1,
+    "col": 3,
+    "expanded_region": [
+      922,
+      296,
+      1254,
+      645
+    ],
+    "component_crop_in_region": [
+      29,
+      111,
+      310,
+      349
+    ],
+    "sprite_size": [
+      281,
+      238
+    ],
+    "paste_xy": [
+      19,
+      64
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302,
+    "candidate_count": 2,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 5463,
+        "dist": 0.5132701717311129,
+        "overlap": 4200,
+        "score": -7236.052575966693
+      },
+      {
+        "label": 2,
+        "area": 44424,
+        "dist": 0.2366225157298091,
+        "overlap": 60386,
+        "score": 40874.662264052866
+      }
+    ]
+  },
+  {
+    "name": "SW_0.png",
+    "row": 2,
+    "col": 0,
+    "expanded_region": [
+      0,
+      609,
+      332,
+      958
+    ],
+    "component_crop_in_region": [
+      15,
+      111,
+      307,
+      338
+    ],
+    "sprite_size": [
+      292,
+      227
+    ],
+    "paste_xy": [
+      14,
+      75
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302,
+    "candidate_count": 2,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 7353,
+        "dist": 0.49972474421638624,
+        "overlap": 6272,
+        "score": -5142.8711632457935
+      },
+      {
+        "label": 2,
+        "area": 44998,
+        "dist": 0.18980534157344198,
+        "overlap": 63072,
+        "score": 42150.91987639837
+      }
+    ]
+  },
+  {
+    "name": "SW_1.png",
+    "row": 2,
+    "col": 1,
+    "expanded_region": [
+      296,
+      609,
+      645,
+      958
+    ],
+    "component_crop_in_region": [
+      55,
+      70,
+      335,
+      337
+    ],
+    "sprite_size": [
+      280,
+      267
+    ],
+    "paste_xy": [
+      20,
+      35
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302,
+    "candidate_count": 2,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 6375,
+        "dist": 0.5076211444316118,
+        "overlap": 4884,
+        "score": -6239.317166474177
+      },
+      {
+        "label": 2,
+        "area": 48356,
+        "dist": 0.14074467136285027,
+        "overlap": 71240,
+        "score": 46244.82992955724
+      }
+    ]
+  },
+  {
+    "name": "SW_2.png",
+    "row": 2,
+    "col": 2,
+    "expanded_region": [
+      609,
+      609,
+      958,
+      958
+    ],
+    "component_crop_in_region": [
+      43,
+      63,
+      331,
+      335
+    ],
+    "sprite_size": [
+      288,
+      272
+    ],
+    "paste_xy": [
+      16,
+      30
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302,
+    "candidate_count": 3,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 6364,
+        "dist": 0.505838127117138,
+        "overlap": 5037,
+        "score": -6223.571906757071
+      },
+      {
+        "label": 2,
+        "area": 51200,
+        "dist": 0.11924429855346538,
+        "overlap": 75828,
+        "score": 49411.33552169802
+      },
+      {
+        "label": 3,
+        "area": 902,
+        "dist": 0.5707469588453611,
+        "overlap": 124,
+        "score": -12659.204382680417
+      }
+    ]
+  },
+  {
+    "name": "SW_3.png",
+    "row": 2,
+    "col": 3,
+    "expanded_region": [
+      922,
+      609,
+      1254,
+      958
+    ],
+    "component_crop_in_region": [
+      47,
+      108,
+      323,
+      339
+    ],
+    "sprite_size": [
+      276,
+      231
+    ],
+    "paste_xy": [
+      22,
+      71
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302,
+    "candidate_count": 3,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 8017,
+        "dist": 0.4967799640814917,
+        "overlap": 7200,
+        "score": -4434.699461222376
+      },
+      {
+        "label": 2,
+        "area": 43030,
+        "dist": 0.19448435413225204,
+        "overlap": 60384,
+        "score": 40112.73468801622
+      },
+      {
+        "label": 3,
+        "area": 627,
+        "dist": 0.579372425518866,
+        "overlap": 0,
+        "score": -13063.58638278299
+      }
+    ]
+  },
+  {
+    "name": "SE_0.png",
+    "row": 3,
+    "col": 0,
+    "expanded_region": [
+      0,
+      922,
+      332,
+      1254
+    ],
+    "component_crop_in_region": [
+      16,
+      81,
+      307,
+      302
+    ],
+    "sprite_size": [
+      291,
+      221
+    ],
+    "paste_xy": [
+      14,
+      81
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302,
+    "candidate_count": 2,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 2995,
+        "dist": 0.5335908894872361,
+        "overlap": 1055,
+        "score": -10008.863342308541
+      },
+      {
+        "label": 2,
+        "area": 44032,
+        "dist": 0.08449016364254028,
+        "overlap": 62279,
+        "score": 42764.6475453619
+      }
+    ]
+  },
+  {
+    "name": "SE_1.png",
+    "row": 3,
+    "col": 1,
+    "expanded_region": [
+      296,
+      922,
+      645,
+      1254
+    ],
+    "component_crop_in_region": [
+      29,
+      49,
+      315,
+      298
+    ],
+    "sprite_size": [
+      286,
+      249
+    ],
+    "paste_xy": [
+      17,
+      53
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302,
+    "candidate_count": 3,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 2598,
+        "dist": 0.5362972104336862,
+        "overlap": 732,
+        "score": -10446.458156505292
+      },
+      {
+        "label": 2,
+        "area": 46725,
+        "dist": 0.039664130099633474,
+        "overlap": 69090,
+        "score": 46130.0380485055
+      },
+      {
+        "label": 3,
+        "area": 991,
+        "dist": 0.5392516915561123,
+        "overlap": 237,
+        "score": -12097.775373341685
+      }
+    ]
+  },
+  {
+    "name": "SE_2.png",
+    "row": 3,
+    "col": 2,
+    "expanded_region": [
+      609,
+      922,
+      958,
+      1254
+    ],
+    "component_crop_in_region": [
+      13,
+      32,
+      299,
+      300
+    ],
+    "sprite_size": [
+      286,
+      268
+    ],
+    "paste_xy": [
+      17,
+      34
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302,
+    "candidate_count": 2,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 2418,
+        "dist": 0.5378307495064292,
+        "overlap": 384,
+        "score": -10649.461242596437
+      },
+      {
+        "label": 2,
+        "area": 50185,
+        "dist": 0.039639713253219945,
+        "overlap": 73656,
+        "score": 49590.4043012017
+      }
+    ]
+  },
+  {
+    "name": "SE_3.png",
+    "row": 3,
+    "col": 3,
+    "expanded_region": [
+      922,
+      922,
+      1254,
+      1254
+    ],
+    "component_crop_in_region": [
+      25,
+      79,
+      312,
+      306
+    ],
+    "sprite_size": [
+      287,
+      227
+    ],
+    "paste_xy": [
+      16,
+      75
+    ],
+    "canvas_size": [
+      320,
+      320
+    ],
+    "baseline_y": 302,
+    "candidate_count": 2,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 3088,
+        "dist": 0.532134316040251,
+        "overlap": 1188,
+        "score": -9894.014740603765
+      },
+      {
+        "label": 2,
+        "area": 43780,
+        "dist": 0.09278985492066422,
+        "overlap": 63109,
+        "score": 42388.15217619004
+      }
+    ]
+  }
+]

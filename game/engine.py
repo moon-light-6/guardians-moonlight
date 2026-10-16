@@ -28,12 +28,14 @@ class Game:
         self.economy = Economy()
         self.rng = random.Random()
         self._simulation_accumulator = 0.0
+        self._next_enemy_id = 1
 
     def reset(self, seed: Optional[int] = None, start_at_title: bool = True) -> GameState:
         self.rng = random.Random(seed)
         self.wave_manager.reset()
         self.state = GameState()
         self._simulation_accumulator = 0.0
+        self._next_enemy_id = 1
         if not start_at_title:
             self._new_run()
         return self.state
@@ -103,7 +105,11 @@ class Game:
         ]
 
         self.state.enemies.extend(self.wave_manager.update(dt, self.map.get_path()))
+        self._assign_enemy_ids()
         self._move_enemies(dt)
+        # Capture arrival/death positions before enemies leave the state, even
+        # when several simulation steps run between rendered frames.
+        self._update_effect_targets()
         if self.state.life <= 0:
             self.state.phase = GamePhase.GAME_OVER
             self.state.message = "소동 해결 실패"
@@ -121,6 +127,7 @@ class Game:
     def _new_run(self) -> None:
         self.wave_manager.reset()
         self._simulation_accumulator = 0.0
+        self._next_enemy_id = 1
         self.state = GameState(phase=GamePhase.PREPARATION, gold=INITIAL_GOLD, life=INITIAL_LIFE)
         self.state.message = "빈 슬롯을 선택해 사신을 소환하세요"
 
@@ -221,6 +228,37 @@ class Game:
         self.state.message = "소동 해결 중"
         self.wave_manager.start_wave(self.state.current_stage)
 
+    def _assign_enemy_ids(self) -> None:
+        """Run-local monotonic IDs; preserve IDs in restored/injected state."""
+        used = [enemy.enemy_id for enemy in self.state.enemies if enemy.enemy_id is not None]
+        for effect in self.state.effects:
+            used.extend(value for value in effect.get("target_ids", []) if value is not None)
+            if effect.get("target_id") is not None:
+                used.append(effect["target_id"])
+        self._next_enemy_id = max(self._next_enemy_id, max(used, default=0) + 1)
+        for enemy in self.state.enemies:
+            if enemy.enemy_id is None:
+                enemy.enemy_id = self._next_enemy_id
+                self._next_enemy_id += 1
+
+    def _update_effect_targets(self) -> None:
+        """Update only visual fallback coordinates; impact coordinates stay fixed."""
+        positions = {enemy.enemy_id: enemy.get_current_position()
+                     for enemy in self.state.enemies if enemy.enemy_id is not None}
+        for effect in self.state.effects:
+            if effect["kind"] in {"claw", "fire"}:
+                target_id = effect.get("target_id")
+                if target_id in positions:
+                    effect["last_target_position"] = positions[target_id]
+            elif effect["kind"] == "lightning":
+                points = effect.get("points", [])
+                last = effect.get("last_target_positions", points)
+                ids = effect.get("target_ids", [])
+                effect["last_target_positions"] = [
+                    positions.get(ids[index], last[index]) if index < len(ids) else last[index]
+                    for index in range(len(points))
+                ]
+
     def _move_enemies(self, dt: float) -> None:
         for enemy in list(self.state.enemies):
             if not enemy.is_alive:
@@ -262,7 +300,7 @@ class Game:
             or not self.wave_manager.is_wave_complete(self.state.enemies)
         ):
             return
-        self.state.effects = [effect for effect in self.state.effects if effect["kind"] != "slow_field"]
+        self.state.effects = []
         stage = self.state.current_stage
         self.economy.on_stage_clear(self.state)
         clear_gold = self.state.wave_clear_gold
