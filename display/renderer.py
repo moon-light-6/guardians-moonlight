@@ -1,4 +1,4 @@
-import math
+
 from pathlib import Path
 from typing import List
 
@@ -26,6 +26,11 @@ from config import (
     SCREEN_WIDTH,
 )
 from display.ui import Button, ButtonLayer, draw_panel
+from display.sprite_animation import TowerSpriteAnimator
+from display.effect_animation import AttackEffectAnimator
+from display.boss_animation import BossSpriteAnimator
+from display.enemy_animation import EnemySpriteAnimator
+from display.render_sizes import TOWER_BOTTOM_OFFSET, TOWER_LEVEL_GAP
 from game.economy import Economy
 from game.map import GameMap
 from game.state import GamePhase, GameState
@@ -44,6 +49,10 @@ class Renderer:
         self.font_small = self._font(16)
         self.economy = Economy()
         self.boss_portraits = self._load_boss_portraits()
+        self.tower_animator = TowerSpriteAnimator()
+        self.effect_animator = AttackEffectAnimator()
+        self.boss_animator = BossSpriteAnimator()
+        self.enemy_animator = EnemySpriteAnimator()
 
     def _load_boss_portraits(self) -> dict:
         sheet = pygame.image.load(str(Path(__file__).resolve().parents[1] / "data" / "boss_roster.png"))
@@ -52,7 +61,7 @@ class Renderer:
             "철갓장군": (448, 396, 408, 370),
             "서리석귀": (869, 400, 385, 365),
             "홍염귀왕": (20, 770, 394, 410),
-            "흑운이무기": (432, 770, 437, 410),
+            "흑운이무기": (432, 770, 437, 433),
             "월식대왕": (864, 754, 390, 433),
         }
         portraits = {}
@@ -172,9 +181,13 @@ class Renderer:
             center = self.map.grid_to_pixel(cell)
             self._text(label, center[0] - 12, center[1] - 13, self.font_med, color)
 
-        # 장판은 유닛 아래에 칠해 몰려 있는 몬스터와 구분합니다.
-        for effect in state.effects:
-            if effect["kind"] == "slow_field" and effect["age"] < effect["ttl"]:
+        # 현무의 연속 장판 애니메이션을 유닛 아래에 한 번만 표시합니다.
+        target_positions = {enemy.enemy_id: enemy.get_current_position()
+                            for enemy in state.enemies if enemy.enemy_id is not None}
+        effects = [self.effect_animator.resolve_targets(effect, target_positions)
+                   for effect in state.effects]
+        for effect in effects:
+            if effect["kind"] == "slow_field" and effect["age"] < effect["ttl"] - 1e-9:
                 self._draw_effect(effect)
 
         for slot_id, bounds in self.map.slots.items():
@@ -194,70 +207,132 @@ class Renderer:
             pygame.draw.circle(self.screen, (97, 167, 213), center, int(stats["range"] * CELL_SIZE), 1)
 
         for slot_id, tower_data in state.towers.items():
-            self._draw_tower(slot_id, tower_data)
+            self._draw_tower(
+                slot_id,
+                tower_data,
+                effects,
+            )
         for enemy in state.enemies:
-            self._draw_enemy(enemy)
-        for effect in state.effects:
+            self._draw_enemy(enemy, state.wave_elapsed)
+        for effect in effects:
             if effect["kind"] != "slow_field":
                 self._draw_effect(effect)
 
-    def _draw_tower(self, slot_id: int, tower_data: dict) -> None:
-        pos = self.map.grid_to_pixel(self.map.get_slot_position(slot_id))
-        colors = {
-            "LIGHTNING": COLOR_CYAN,
-            "ARCHER": COLOR_GOLD,
-            "CANNON": (230, 112, 82),
-            "ICE": COLOR_MINT,
-        }
-        pygame.draw.circle(self.screen, colors[tower_data["type"]], pos, 15)
-        pygame.draw.circle(self.screen, COLOR_WHITE, (pos[0] - 4, pos[1] - 4), 2)
-        self._text(str(tower_data["level"]), pos[0] - 5, pos[1] + 8, self.font_small, COLOR_BLACK)
+    def _draw_tower(
+        self,
+        slot_id: int,
+        tower_data: dict,
+        effects: list,
+    ) -> None:
+        tower_pos = self.map.get_slot_position(slot_id)
+        pos = self.map.grid_to_pixel(tower_pos)
 
-    def _draw_enemy(self, enemy) -> None:
+        tower_type = tower_data["type"]
+
+        # PNG 프레임 애니메이션 출력
+        animated = self.tower_animator.draw(
+            screen=self.screen,
+            slot_id=slot_id,
+            tower_type=tower_type,
+            pixel_pos=pos,
+            tower_pos=tower_pos,
+            effects=effects,
+        )
+
+        # 애니메이션이 없는 타워는 기존 원형 디자인 유지
+        if not animated:
+            colors = {
+                "LIGHTNING": COLOR_CYAN,
+                "ARCHER": COLOR_GOLD,
+                "CANNON": (230, 112, 82),
+                "ICE": COLOR_MINT,
+            }
+
+            pygame.draw.circle(
+                self.screen,
+                colors[tower_type],
+                pos,
+                15,
+            )
+
+            pygame.draw.circle(
+                self.screen,
+                COLOR_WHITE,
+                (pos[0] - 4, pos[1] - 4),
+                2,
+            )
+
+        # 모든 타워 아래에 레벨 표시
+        level_text = f"Lv.{tower_data['level']}"
+
+        text_surface = self.font_small.render(
+            level_text,
+            True,
+            COLOR_WHITE,
+        )
+
+        text_rect = text_surface.get_rect(
+            midtop=(pos[0], pos[1] + TOWER_BOTTOM_OFFSET + TOWER_LEVEL_GAP)
+        )
+
+        # 검은 그림자
+        shadow_surface = self.font_small.render(
+            level_text,
+            True,
+            COLOR_BLACK,
+        )
+
+        self.screen.blit(
+            shadow_surface,
+            text_rect.move(1, 1),
+        )
+
+        self.screen.blit(
+            text_surface,
+            text_rect,
+        )
+
+    def _draw_enemy(self, enemy, animation_time: float = 0.0) -> None:
         pos = self.map.grid_to_pixel(enemy.get_current_position())
         if enemy.is_boss:
-            radius = 30
-            portrait = self.boss_portraits[enemy.name, 60]
-            self.screen.blit(portrait, portrait.get_rect(center=pos))
-        elif enemy.enemy_type.name == "FAST":
-            color = (154, 86, 183)
-            radius = 11
-        elif enemy.enemy_type.name == "TANK":
-            color = (69, 54, 92)
-            radius = 15
+            sprite_rect = self.boss_animator.draw(self.screen, enemy, pos, animation_time)
         else:
-            color = COLOR_PURPLE
-            radius = 12
-        if not enemy.is_boss:
-            pygame.draw.circle(self.screen, color, pos, radius)
-            pygame.draw.arc(self.screen, COLOR_BLACK, (pos[0] - radius, pos[1] - radius - 8, radius * 2, 14), math.pi, math.tau, 2)
+            sprite_rect = self.enemy_animator.draw(self.screen, enemy, pos, animation_time)
         hp_ratio = max(0, enemy.health / enemy.max_health)
-        pygame.draw.rect(self.screen, COLOR_RED, (pos[0] - 18, pos[1] - radius - 14, 36, 4))
-        pygame.draw.rect(self.screen, COLOR_GREEN, (pos[0] - 18, pos[1] - radius - 14, int(36 * hp_ratio), 4))
+        hp_top = sprite_rect.top - 14
+        pygame.draw.rect(self.screen, COLOR_RED, (pos[0] - 18, hp_top, 36, 4))
+        pygame.draw.rect(self.screen, COLOR_GREEN, (pos[0] - 18, hp_top, int(36 * hp_ratio), 4))
 
     def _draw_effect(self, effect: dict) -> None:
-        alpha = 1.0 - effect["age"] / effect["ttl"]
+        # water 이벤트는 현무 본체의 공격 모션에만 사용합니다.
+        if effect["kind"] == "water":
+            return
         if effect["kind"] == "slow_field":
-            if effect["age"] >= effect["ttl"]:
+            self.effect_animator.draw(self.screen, effect, self.map)
+            return
+        alpha = 1.0 - effect["age"] / effect["ttl"]
+
+        # 공격 이펙트 출력
+        if effect["kind"] in (
+            "lightning",
+            "claw",
+            "fire",
+        ):
+            if self.effect_animator.draw(
+                self.screen,
+                effect,
+                self.map,
+            ):
                 return
-            cx, cy = self.map.grid_to_pixel(effect["cell"])
-            tile = pygame.Rect(cx - CELL_SIZE // 2 + 3, cy - CELL_SIZE // 2 + 3, CELL_SIZE - 6, CELL_SIZE - 6)
-            # 남색 배경과 대비되는 호박색. 만료 전까지 색을 유지합니다.
-            pygame.draw.rect(self.screen, (235, 147, 46), tile, border_radius=7)
-            pygame.draw.rect(self.screen, (255, 225, 147), tile, width=2, border_radius=7)
-            pygame.draw.line(self.screen, (255, 244, 213), (tile.left + 3, tile.bottom - 5),
-                             (tile.left + 3 + int((tile.width - 6) * alpha), tile.bottom - 5), 3)
-        elif effect["kind"] == "lightning":
+        alpha = 1.0 - effect["age"] / effect["ttl"]
+
+        if effect["kind"] == "lightning":
             points = [self.map.grid_to_pixel(effect["from"])] + [self.map.grid_to_pixel(p) for p in effect["points"]]
             if len(points) > 1:
                 pygame.draw.lines(self.screen, COLOR_CYAN, False, points, max(1, int(4 * alpha)))
         elif effect["kind"] == "fire":
             end = self.map.grid_to_pixel(effect["to"])
             pygame.draw.circle(self.screen, (239, 101, 78), end, int(22 * alpha), 2)
-        elif effect["kind"] == "water":
-            start = self.map.grid_to_pixel(effect["from"])
-            end = self.map.grid_to_pixel(effect["to"])
-            pygame.draw.line(self.screen, COLOR_MINT, start, end, 3)
         else:
             start = self.map.grid_to_pixel(effect["from"])
             end = self.map.grid_to_pixel(effect["to"])

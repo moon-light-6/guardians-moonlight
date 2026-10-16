@@ -28,6 +28,7 @@ class TestSlowFields(unittest.TestCase):
         fields = [effect for effect in game.state.effects if effect["kind"] == "slow_field"]
         self.assertEqual(len(fields), 1)
         self.assertEqual(fields[0]["cell"], (10, 1))
+        self.assertEqual(fields[0]["slow_ttl"], 2)
         self.assertEqual(fields[0]["ttl"], 2)
         self.assertEqual([enemy.health for enemy in game.state.enemies], [990, 1000])
         for enemy in game.state.enemies:
@@ -43,6 +44,19 @@ class TestSlowFields(unittest.TestCase):
         for enemy in game.state.enemies:
             self.assertAlmostEqual(enemy.distance_travelled, 0.175)
 
+    def test_field_position_stays_fixed_when_target_moves(self):
+        game = self.make_game()
+        game.update(SIMULATION_STEP)
+        field = next(effect for effect in game.state.effects if effect["kind"] == "slow_field")
+        for enemy in game.state.enemies:
+            enemy.speed = 2
+        game.update(1)
+        self.assertEqual(field["cell"], (10, 1))
+        self.assertGreater(game.state.enemies[0].get_current_position()[0], 11)
+        fields = [effect for effect in game.state.effects if effect["kind"] == "slow_field"]
+        self.assertEqual(len(fields), 1)
+        self.assertEqual(fields[0]["cell"], field["cell"])
+
     def test_leave_expire_and_overlap_do_not_leave_a_debuff(self):
         field = {"kind": "slow_field", "cell": (10, 1), "factor": 0.7, "age": 0, "ttl": 2}
         effects = [field, dict(field)]
@@ -52,35 +66,82 @@ class TestSlowFields(unittest.TestCase):
             effect["age"] = 2
         self.assertEqual(Combat.get_field_speed_modifier((10, 1), effects), 1)
 
+    def test_slow_and_visual_expire_together_and_overlap_does_not_stack(self):
+        field = {"kind": "slow_field", "cell": (10, 1), "factor": 0.7,
+                 "age": 0, "ttl": 2, "slow_ttl": 2}
+        for age, expected in ((0, 0.7), (1.6, 0.7), (1.999, 0.7), (2, 1), (3, 1)):
+            with self.subTest(age=age):
+                field["age"] = age
+                self.assertEqual(Combat.get_field_speed_modifier((10, 1), [field, dict(field)]), expected)
+        # 만료된 PNG와 새 장판이 겹치면 새 장판의 둔화만 적용됩니다.
+        fresh = {**field, "age": 0}
+        self.assertEqual(Combat.get_field_speed_modifier((10, 1), [field, fresh]), 0.7)
+
+    def test_actual_movement_returns_to_normal_when_visual_expires(self):
+        game = self.make_game()
+        game.update(SIMULATION_STEP)
+        game.state.towers.clear()  # 재공격 없이 최초 장판의 만료만 확인합니다.
+        for enemy in game.state.enemies:
+            enemy.speed = 0.1  # 검사 중 같은 타일 안에 머물게 합니다.
+        game.update(2 - SIMULATION_STEP)
+        for enemy in game.state.enemies:
+            self.assertAlmostEqual(enemy.distance_travelled, 0.1 * 0.7 * (2 - SIMULATION_STEP))
+        before = [enemy.distance_travelled for enemy in game.state.enemies]
+        game.update(SIMULATION_STEP)
+        fields = [effect for effect in game.state.effects if effect["kind"] == "slow_field"]
+        self.assertEqual(fields, [])
+        for enemy, distance in zip(game.state.enemies, before):
+            self.assertEqual(Combat.get_field_speed_modifier(enemy.get_current_position(), fields), 1)
+            self.assertAlmostEqual(enemy.distance_travelled - distance, 0.1 * SIMULATION_STEP)
+        before = [enemy.distance_travelled for enemy in game.state.enemies]
+        game.update(1)
+        for enemy, distance in zip(game.state.enemies, before):
+            self.assertAlmostEqual(enemy.distance_travelled - distance, 0.1)
+        self.assertFalse(any(effect["kind"] == "slow_field" for effect in game.state.effects))
+
     def test_two_second_gap_before_next_shot(self):
         game = self.make_game()
         game.update(SIMULATION_STEP)
         game.update(2)
-        self.assertFalse(any(effect["kind"] == "slow_field" for effect in game.state.effects))
+        fields = [effect for effect in game.state.effects if effect["kind"] == "slow_field"]
+        self.assertEqual(fields, [])
+        self.assertEqual(Combat.get_field_speed_modifier((10, 1), fields), 1)
         self.assertEqual(game.state.enemies[0].health, 990)
         game.update(1.9)
-        self.assertFalse(any(effect["kind"] == "slow_field" for effect in game.state.effects))
+        fields = [effect for effect in game.state.effects if effect["kind"] == "slow_field"]
+        self.assertEqual(fields, [])
+        self.assertEqual(Combat.get_field_speed_modifier((10, 1), fields), 1)
         game.update(0.1)
-        self.assertTrue(any(effect["kind"] == "slow_field" for effect in game.state.effects))
+        fields = [effect for effect in game.state.effects if effect["kind"] == "slow_field"]
+        self.assertEqual(len(fields), 1)
+        self.assertEqual(fields[0]["age"], 0)
+        self.assertEqual(Combat.get_field_speed_modifier((10, 1), fields), 0.7)
         self.assertEqual(game.state.enemies[0].health, 980)
 
     def test_field_duration_uses_combat_speed(self):
         for speed in (1, 1.5, 2, 5):
             game = self.make_game()
             game.update(SIMULATION_STEP)
+            game.state.towers.clear()
             game.state.combat_speed = speed
             game.update(1 / speed)
             fields = [effect for effect in game.state.effects if effect["kind"] == "slow_field"]
             self.assertEqual(len(fields), 1)
             self.assertAlmostEqual(fields[0]["age"], 1)
-            game.update(1 / speed)
+            game.update((1 - SIMULATION_STEP) / speed)
+            self.assertTrue(any(effect["kind"] == "slow_field" for effect in game.state.effects))
+            game.update(SIMULATION_STEP / speed)
             self.assertFalse(any(effect["kind"] == "slow_field" for effect in game.state.effects))
+            self.assertEqual(Combat.get_field_speed_modifier((10, 1), game.state.effects), 1)
 
     def test_wave_end_clears_field(self):
-        game = self.make_game()
-        game.update(SIMULATION_STEP)
-        for enemy in game.state.enemies:
-            enemy.take_damage(10000)
-        game.update(SIMULATION_STEP)
-        self.assertEqual(game.state.phase, GamePhase.SETTLEMENT)
-        self.assertFalse(any(effect["kind"] == "slow_field" for effect in game.state.effects))
+        for age in (0, 1.8):
+            with self.subTest(age=age):
+                game = self.make_game()
+                game.update(SIMULATION_STEP)
+                game.update(age)
+                for enemy in game.state.enemies:
+                    enemy.take_damage(10000)
+                game.update(SIMULATION_STEP)
+                self.assertEqual(game.state.phase, GamePhase.SETTLEMENT)
+                self.assertFalse(any(effect["kind"] == "slow_field" for effect in game.state.effects))
