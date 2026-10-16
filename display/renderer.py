@@ -160,10 +160,10 @@ class Renderer:
             self.screen.blit(boss_line, boss_line.get_rect(center=(panel.centerx, panel.y + 92)))
 
         rows = [
-            (f"일반 악귀 처치 {result.normal_kills}마리", f"{result.kill_gold} G"),
-            (f"보스 악귀 처치 {result.boss_kills}마리", f"{result.boss_gold} G"),
-            ("소동 해결", f"{result.clear_gold} G"),
-            ("총 획득", f"{result.total_gold} G"),
+            (f"일반 악귀 {result.normal_kills}마리 처치 보상", f"{result.kill_gold} G"),
+            (f"보스 악귀 {result.boss_kills}마리 처치 보상", f"{result.boss_gold} G"),
+            ("소동 해결 보상", f"{result.clear_gold} G"),
+            ("총 획득 보상", f"{result.total_gold} G"),
             ("결계 변화", f"{result.life_before} -> {result.life_after}"),
         ]
         row_y = panel.y + 130
@@ -327,7 +327,7 @@ class Renderer:
             self._text("소동 해결 중", PANEL_X + 24, y, self.font_med, COLOR_WHITE)
             self._text("사신이 범위 내 적을 공격합니다", PANEL_X + 24, y + 34, self.font_small, COLOR_GRAY)
             self._text(f"화면의 악귀 {alive}마리", PANEL_X + 24, y + 80, self.font_small, COLOR_WHITE)
-            self._text(f"이번 소동 해결 보상 +{state.wave_kill_gold + state.wave_boss_gold} G", PANEL_X + 24, y + 116, self.font_small, COLOR_GOLD)
+            self._text(f"이번 소동 처치 보상 +{state.wave_kill_gold + state.wave_boss_gold} G", PANEL_X + 24, y + 116, self.font_small, COLOR_GOLD)
             selected = state.selected_slot
             if state.has_tower(selected):
                 if boss:
