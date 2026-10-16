@@ -70,7 +70,7 @@ class Renderer:
     def _font(self, size: int) -> pygame.font.Font:
         return pygame.font.SysFont("malgungothic,arial", size)
 
-    def render(self, state: GameState) -> None:
+    def render(self, state: GameState, quit_confirm: bool = False) -> None:
         self.screen.fill(COLOR_BLACK)
         self._draw_moonlit_background()
         if state.phase == GamePhase.TITLE:
@@ -81,6 +81,8 @@ class Renderer:
             self._render_result(state)
         else:
             self._render_game(state)
+        if quit_confirm:
+            self._render_quit_popup()
 
     def _draw_moonlit_background(self) -> None:
         pygame.draw.circle(self.screen, COLOR_MOON, (1000, 88), 38)
@@ -99,6 +101,20 @@ class Renderer:
             Button(pygame.Rect(520, 496, 240, 46), "종료", "QUIT"),
         ]
         self.buttons.set_buttons(buttons)
+        self.buttons.render(self.screen, self.font_med)
+
+    def _render_quit_popup(self) -> None:
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        self.screen.blit(overlay, (0, 0))
+        panel = pygame.Rect(430, 280, 420, 200)
+        draw_panel(self.screen, panel)
+        message = self.font_med.render("게임을 종료하시겠습니까?", True, COLOR_WHITE)
+        self.screen.blit(message, message.get_rect(center=(panel.centerx, panel.y + 66)))
+        self.buttons.set_buttons([
+            Button(pygame.Rect(454, 410, 174, 42), "아니요", "QUIT_NO"),
+            Button(pygame.Rect(652, 410, 174, 42), "예", "QUIT_YES"),
+        ])
         self.buttons.render(self.screen, self.font_med)
 
     def _render_help(self) -> None:
