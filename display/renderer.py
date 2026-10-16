@@ -164,7 +164,7 @@ class Renderer:
             (f"보스 악귀 {result.boss_kills}마리 처치 보상", f"{result.boss_gold} G"),
             ("소동 해결 보상", f"{result.clear_gold} G"),
             ("총 획득 보상", f"{result.total_gold} G"),
-            ("결계 변화", f"{result.life_before} -> {result.life_after}"),
+            ("결계 변화", f"{result.life_before} → {result.life_after}"),
         ]
         row_y = panel.y + 130
         for i, (label, value) in enumerate(rows):
@@ -349,10 +349,13 @@ class Renderer:
                 Button(pygame.Rect(PANEL_X + 24, 606, 260, 40), "랜덤 사신 소환 100 G", "BUY", False),
             ])
             buttons.append(Button(pygame.Rect(PANEL_X + 24, 672, 260, 42), f"배속 ×{state.combat_speed:g}", "CYCLE_SPEED"))
+        elif state.phase == GamePhase.SETTLEMENT:
+            self._text("정산 중", PANEL_X + 24, y, self.font_med, COLOR_WHITE)
+            self._text("소동 해결 결과를 확인하세요", PANEL_X + 24, y + 34, self.font_small, COLOR_GRAY)
         else:
             self._render_management_panel(state, buttons, y)
 
-        if state.message:
+        if state.message and state.phase != GamePhase.SETTLEMENT:
             self._text(state.message, PANEL_X + 24, 728, self.font_small, COLOR_MOON)
         self.buttons.set_buttons(buttons)
 
