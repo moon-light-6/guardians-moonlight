@@ -144,8 +144,8 @@ class Renderer:
             self.screen.blit(boss_line, boss_line.get_rect(center=(panel.centerx, panel.y + 92)))
 
         rows = [
-            (f"일반 적 처치 {result.normal_kills}마리", f"{result.kill_gold} G"),
-            (f"보스 처치 {result.boss_kills}마리", f"{result.boss_gold} G"),
+            (f"일반 악귀 처치 {result.normal_kills}마리", f"{result.kill_gold} G"),
+            (f"보스 악귀 처치 {result.boss_kills}마리", f"{result.boss_gold} G"),
             ("소동 해결", f"{result.clear_gold} G"),
             ("총 획득", f"{result.total_gold} G"),
             ("결계 변화", f"{result.life_before} -> {result.life_after}"),
@@ -208,7 +208,7 @@ class Renderer:
             center = self.map.grid_to_pixel(cell)
             self._text(label, center[0] - 12, center[1] - 13, self.font_med, color)
 
-        # 장판은 유닛 아래에 칠해 몰려 있는 몬스터와 구분합니다.
+        # 장판은 유닛 아래에 칠해 몰려 있는 악귀와 구분합니다.
         for effect in state.effects:
             if effect["kind"] == "slow_field" and effect["age"] < effect["ttl"]:
                 self._draw_effect(effect)
@@ -321,7 +321,7 @@ class Renderer:
                 buttons.append(Button(pygame.Rect(PANEL_X + 24, 510, 260, 40), f"강화 {cost} G", "UPGRADE", self.economy.can_upgrade(state, selected)))
             elif boss:
                 self._text(boss.name, PANEL_X + 24, y + 170, self.font_med, COLOR_MOON)
-                self._text(f"보스 HP {int(boss.health)} / {boss.max_health}", PANEL_X + 24, y + 204, self.font_small, COLOR_RED)
+                self._text(f"보스 악귀 HP {int(boss.health)} / {boss.max_health}", PANEL_X + 24, y + 204, self.font_small, COLOR_RED)
                 portrait = self.boss_portraits[boss.name, 130]
                 self.screen.blit(portrait, portrait.get_rect(center=(PANEL_X + PANEL_WIDTH // 2, 450)))
                 hp_ratio = max(0, boss.health / boss.max_health)
