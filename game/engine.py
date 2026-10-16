@@ -294,4 +294,4 @@ class Game:
         self.state.actions_taken_this_wave = 0
         self.state.selected_slot = None
         self.state.phase = GamePhase.PREPARATION
-        self.state.message = "다음 준비 단계"
+        self.state.message = "다음 수호 준비 단계"

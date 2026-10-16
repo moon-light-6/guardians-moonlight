@@ -122,7 +122,7 @@ class Renderer:
         self._text("게임 방법", 360, 220, self.font_big, COLOR_WHITE)
         lines = [
             "01 빈 슬롯 선택: 100G로 사신 1종을 랜덤 소환합니다.",
-            "02 사신 관리: 준비 단계에서 강화, 이동, 판매합니다.",
+            "02 사신 관리: 수호 준비 단계에서 강화, 이동, 판매합니다.",
             "03 소동 시작: 악귀는 고정 경로, 사신은 자동 공격합니다.",
             "04 결계 수호: 30번째 소동까지 해결하면 승리합니다.",
         ]
@@ -172,7 +172,7 @@ class Renderer:
             self._text(label, left, y, self.font_med, COLOR_GRAY)
             self._text(value, right - self.font_med.size(value)[0], y, self.font_med, COLOR_GOLD)
 
-        label = "최종 승리 확인" if state.current_stage == 30 else "다음 준비 단계로"
+        label = "최종 승리 확인" if state.current_stage == 30 else "다음 수호 준비 단계로"
         self.buttons.set_buttons([Button(pygame.Rect(panel.centerx - 140, panel.bottom - 80, 280, 46), label, "CONTINUE")])
 
     def _render_sell_popup(self, state: GameState) -> None:
@@ -194,14 +194,14 @@ class Renderer:
 
     def _render_hud(self, state: GameState) -> None:
         self._text("월하사신", 42, 34, self.font_big, COLOR_WHITE)
-        phase = "소동 발생" if state.phase == GamePhase.WAVE_ACTIVE else "준비"
+        phase = "소동 발생" if state.phase == GamePhase.WAVE_ACTIVE else "수호 준비"
         if state.phase == GamePhase.SETTLEMENT:
             phase = "정산"
         self._text(f"소동 {state.current_stage:02d} / 30", 250, 46, self.font_med, COLOR_WHITE)
         self._text(f"결계 {state.life}", 430, 46, self.font_med, COLOR_MINT)
         self._text(f"{state.gold} G", 548, 46, self.font_med, COLOR_GOLD)
         self._text(phase, 680, 46, self.font_med, COLOR_CYAN)
-        self._text(f"준비 행동 {state.actions_taken_this_wave} / 20", 760, 46, self.font_small, COLOR_GRAY)
+        self._text(f"수호 준비 행동 {state.actions_taken_this_wave} / 20", 760, 46, self.font_small, COLOR_GRAY)
 
     def _render_board(self, state: GameState) -> None:
         board = pygame.Rect(GRID_ORIGIN[0], GRID_ORIGIN[1], 20 * CELL_SIZE, 15 * CELL_SIZE)
@@ -326,7 +326,7 @@ class Renderer:
             boss = next((enemy for enemy in state.enemies if enemy.is_boss and enemy.is_alive), None)
             self._text("소동 해결 중", PANEL_X + 24, y, self.font_med, COLOR_WHITE)
             self._text("사신이 범위 내 적을 공격합니다", PANEL_X + 24, y + 34, self.font_small, COLOR_GRAY)
-            self._text(f"화면의 악귀 {alive}마리", PANEL_X + 24, y + 80, self.font_small, COLOR_WHITE)
+            self._text(f"남은 악귀 {alive}마리", PANEL_X + 24, y + 80, self.font_small, COLOR_WHITE)
             self._text(f"이번 소동 처치 보상 +{state.wave_kill_gold + state.wave_boss_gold} G", PANEL_X + 24, y + 116, self.font_small, COLOR_GOLD)
             selected = state.selected_slot
             if state.has_tower(selected):
