@@ -1,3 +1,4 @@
+
 import math
 from pathlib import Path
 from typing import List
@@ -56,7 +57,7 @@ class Renderer:
             "철갓장군": (448, 396, 408, 370),
             "서리석귀": (869, 400, 385, 365),
             "홍염귀왕": (20, 770, 394, 410),
-            "흑운이무기": (432, 770, 437, 410),
+            "흑운이무기": (432, 770, 437, 433),
             "월식대왕": (864, 754, 390, 433),
         }
         portraits = {}
@@ -209,7 +210,6 @@ class Renderer:
             if effect["kind"] != "slow_field":
                 self._draw_effect(effect)
 
-
     def _draw_tower(
         self,
         slot_id: int,
@@ -221,7 +221,7 @@ class Renderer:
 
         tower_type = tower_data["type"]
 
-        # 청룡·현무는 PNG 프레임 애니메이션으로 출력
+        # PNG 프레임 애니메이션 출력
         animated = self.tower_animator.draw(
             screen=self.screen,
             slot_id=slot_id,
@@ -231,39 +231,58 @@ class Renderer:
             effects=effects,
         )
 
-        if animated:
-            return
+        # 애니메이션이 없는 타워는 기존 원형 디자인 유지
+        if not animated:
+            colors = {
+                "LIGHTNING": COLOR_CYAN,
+                "ARCHER": COLOR_GOLD,
+                "CANNON": (230, 112, 82),
+                "ICE": COLOR_MINT,
+            }
 
-        # 백호·주작은 기존 원형 디자인 유지
-        colors = {
-            "LIGHTNING": COLOR_CYAN,
-            "ARCHER": COLOR_GOLD,
-            "CANNON": (230, 112, 82),
-            "ICE": COLOR_MINT,
-        }
+            pygame.draw.circle(
+                self.screen,
+                colors[tower_type],
+                pos,
+                15,
+            )
 
-        pygame.draw.circle(
-            self.screen,
-            colors[tower_type],
-            pos,
-            15,
-        )
+            pygame.draw.circle(
+                self.screen,
+                COLOR_WHITE,
+                (pos[0] - 4, pos[1] - 4),
+                2,
+            )
 
-        pygame.draw.circle(
-            self.screen,
+        # 모든 타워 아래에 레벨 표시
+        level_text = f"Lv.{tower_data['level']}"
+
+        text_surface = self.font_small.render(
+            level_text,
+            True,
             COLOR_WHITE,
-            (pos[0] - 4, pos[1] - 4),
-            2,
         )
 
-        self._text(
-            str(tower_data["level"]),
-            pos[0] - 5,
-            pos[1] + 8,
-            self.font_small,
+        text_rect = text_surface.get_rect(
+            midtop=(pos[0], pos[1] + 23)
+        )
+
+        # 검은 그림자
+        shadow_surface = self.font_small.render(
+            level_text,
+            True,
             COLOR_BLACK,
         )
 
+        self.screen.blit(
+            shadow_surface,
+            text_rect.move(1, 1),
+        )
+
+        self.screen.blit(
+            text_surface,
+            text_rect,
+        )
 
     def _draw_enemy(self, enemy) -> None:
         pos = self.map.grid_to_pixel(enemy.get_current_position())
