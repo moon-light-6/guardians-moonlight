@@ -108,7 +108,7 @@ class TestGameEngine(unittest.TestCase):
                     self.assertEqual(self.state.phase, GamePhase.SETTLEMENT)
                     expected_gold += WaveManager.STAGE_COUNTS[stage] * 5 + 100 + stage * 5
                     if stage % 5 == 0:
-                        expected_gold += 100  # 보스 처치 보상
+                        expected_gold += 100  # 보스 악귀 처치 보상
                     if stage % 5 == 0 or 26 <= stage <= 29:
                         expected_gold += 100  # 추가 클리어 보상
                     self.assertEqual(self.state.gold, expected_gold)

@@ -22,15 +22,18 @@ def main():
         dt = clock.tick(FPS) / 1000.0
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
+                input_handler.quit_confirm = True
                 continue
             action = input_handler.handle_event(event, state)
             if action:
                 state = game.step(action)
+        if input_handler.should_quit:
+            running = False
 
-        game.update(dt)
+        if not input_handler.quit_confirm:
+            game.update(dt)
         state = game.get_state()
-        renderer.render(state)
+        renderer.render(state, input_handler.quit_confirm)
         pygame.display.flip()
 
     pygame.quit()

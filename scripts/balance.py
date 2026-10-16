@@ -33,7 +33,7 @@ class BalanceAnalyzer:
             self.results.append(result)
             print(
                 f"[{seed + 1:02d}] 도달 {result['stage']}웨이브, "
-                f"라이프 {result['life']}, 골드 {result['gold']}G, 처치 {result['kills']}"
+                f"라이프 {result['life']}, {result['gold']}G, 처치 {result['kills']}"
             )
             if result["status"] == "error":
                 print(f"  실행 오류: {result['error']}")
