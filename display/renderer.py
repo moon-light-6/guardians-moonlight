@@ -29,6 +29,8 @@ from config import (
 from display.ui import Button, ButtonLayer, draw_panel
 from display.sprite_animation import TowerSpriteAnimator
 from display.effect_animation import AttackEffectAnimator
+from display.boss_animation import BossSpriteAnimator
+from display.render_sizes import NORMAL_ENEMY_RADIUS, TOWER_BOTTOM_OFFSET, TOWER_LEVEL_GAP
 from game.economy import Economy
 from game.map import GameMap
 from game.state import GamePhase, GameState
@@ -49,6 +51,7 @@ class Renderer:
         self.boss_portraits = self._load_boss_portraits()
         self.tower_animator = TowerSpriteAnimator()
         self.effect_animator = AttackEffectAnimator()
+        self.boss_animator = BossSpriteAnimator()
 
     def _load_boss_portraits(self) -> dict:
         sheet = pygame.image.load(str(Path(__file__).resolve().parents[1] / "data" / "boss_roster.png"))
@@ -205,7 +208,7 @@ class Renderer:
                 state.effects,
             )
         for enemy in state.enemies:
-            self._draw_enemy(enemy)
+            self._draw_enemy(enemy, state.wave_elapsed)
         for effect in state.effects:
             if effect["kind"] != "slow_field":
                 self._draw_effect(effect)
@@ -264,7 +267,7 @@ class Renderer:
         )
 
         text_rect = text_surface.get_rect(
-            midtop=(pos[0], pos[1] + 23)
+            midtop=(pos[0], pos[1] + TOWER_BOTTOM_OFFSET + TOWER_LEVEL_GAP)
         )
 
         # 검은 그림자
@@ -284,27 +287,25 @@ class Renderer:
             text_rect,
         )
 
-    def _draw_enemy(self, enemy) -> None:
+    def _draw_enemy(self, enemy, animation_time: float = 0.0) -> None:
         pos = self.map.grid_to_pixel(enemy.get_current_position())
+        radius = NORMAL_ENEMY_RADIUS
         if enemy.is_boss:
-            radius = 30
-            portrait = self.boss_portraits[enemy.name, 60]
-            self.screen.blit(portrait, portrait.get_rect(center=pos))
+            sprite_rect = self.boss_animator.draw(self.screen, enemy, pos, animation_time)
         elif enemy.enemy_type.name == "FAST":
             color = (154, 86, 183)
-            radius = 11
         elif enemy.enemy_type.name == "TANK":
             color = (69, 54, 92)
-            radius = 15
         else:
             color = COLOR_PURPLE
-            radius = 12
         if not enemy.is_boss:
             pygame.draw.circle(self.screen, color, pos, radius)
-            pygame.draw.arc(self.screen, COLOR_BLACK, (pos[0] - radius, pos[1] - radius - 8, radius * 2, 14), math.pi, math.tau, 2)
+            # Keep the cap inside the circle's visual diameter, including its stroke.
+            pygame.draw.arc(self.screen, COLOR_BLACK, (pos[0] - radius + 1, pos[1] - radius - 6, radius * 2 - 2, 14), math.pi, math.tau, 2)
         hp_ratio = max(0, enemy.health / enemy.max_health)
-        pygame.draw.rect(self.screen, COLOR_RED, (pos[0] - 18, pos[1] - radius - 14, 36, 4))
-        pygame.draw.rect(self.screen, COLOR_GREEN, (pos[0] - 18, pos[1] - radius - 14, int(36 * hp_ratio), 4))
+        hp_top = sprite_rect.top - 14 if enemy.is_boss else pos[1] - radius - 14
+        pygame.draw.rect(self.screen, COLOR_RED, (pos[0] - 18, hp_top, 36, 4))
+        pygame.draw.rect(self.screen, COLOR_GREEN, (pos[0] - 18, hp_top, int(36 * hp_ratio), 4))
 
     def _draw_effect(self, effect: dict) -> None:
         # water 이벤트는 현무 본체의 공격 모션에만 사용합니다.

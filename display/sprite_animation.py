@@ -1,6 +1,8 @@
 from pathlib import Path
 import pygame
 
+from display.render_sizes import TOWER_BOTTOM_OFFSET, TOWER_SIZE
+
 
 class TowerSpriteAnimator:
     """사신 4종의 대기/공격 애니메이션을 그리는 뷰 전용 클래스."""
@@ -12,8 +14,11 @@ class TowerSpriteAnimator:
         "CANNON": {"folder": "주작", "effect": "fire", "idle_start": 0, "attack_start": 0},
     }
     DIRECTIONS = ("NE", "NW", "SE", "SW")
+    SPRITE_SIZE = (70, 70)
+    BAEKHO_SCALE = 1.1
+    IDLE_FRAME_MS = 180
     FRAME_COUNT = 4
-    SPRITE_SIZE = (58, 58)
+    SPRITE_SIZE = TOWER_SIZE
     IDLE_FRAME_MS = 180
 
     def __init__(self):
@@ -35,10 +40,22 @@ class TowerSpriteAnimator:
                     images = []
                     for index in range(self.FRAME_COUNT):
                         path = folder / f"{direction}_{index + start_index}.png"
+
                         if not path.is_file():
                             raise FileNotFoundError(f"스프라이트 파일 없음: {path}")
+
                         image = pygame.image.load(str(path)).convert_alpha()
-                        images.append(pygame.transform.smoothscale(image, self.SPRITE_SIZE))
+
+                        size = self.SPRITE_SIZE
+
+                        # 백호만 1.15배 확대
+                        if tower_type == "ARCHER":
+                            size = (
+                                round(size[0] * self.BAEKHO_SCALE),
+                                round(size[1] * self.BAEKHO_SCALE),
+                            )
+
+                        images.append(pygame.transform.smoothscale(image, size))
                     self.frames[(tower_type, motion, direction)] = images
 
     @staticmethod
@@ -90,5 +107,6 @@ class TowerSpriteAnimator:
             index = (pygame.time.get_ticks() // self.IDLE_FRAME_MS) % self.FRAME_COUNT
 
         image = self.frames[(tower_type, motion, direction)][index]
-        screen.blit(image, image.get_rect(center=(pixel_pos[0], pixel_pos[1] - 8)))
+        screen.blit(image, image.get_rect(
+            midbottom=(pixel_pos[0], pixel_pos[1] + TOWER_BOTTOM_OFFSET)))
         return True
