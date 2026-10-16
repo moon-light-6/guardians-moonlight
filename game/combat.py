@@ -36,11 +36,13 @@ class Combat:
         if tower_type == TowerType.ARCHER:
             self.apply_damage(target, stats["damage"])
             effects.append({"kind": "claw", "from": tower_pos, "to": target.get_current_position(),
+                            "target_id": target.enemy_id, "last_target_position": target.get_current_position(),
                             "age": 0.0, "ttl": self.EFFECT_TTL["claw"]})
         elif tower_type == TowerType.CANNON:
             center = target.get_current_position()
             self.apply_splash_damage(center, stats["splash_radius"], stats["damage"], enemies)
             effects.append({"kind": "fire", "from": tower_pos, "to": center,
+                            "target_id": target.enemy_id, "last_target_position": center,
                             "age": 0.0, "ttl": self.EFFECT_TTL["fire"], "radius": stats["splash_radius"]})
         elif tower_type == TowerType.ICE:
             self.apply_damage(target, stats["damage"])
@@ -66,6 +68,8 @@ class Combat:
             points = [enemy.get_current_position() for enemy in chain]
             hit_ttl = self.EFFECT_TTL["lightning"]
             effects.append({"kind": "lightning", "from": tower_pos, "points": points,
+                            "target_ids": [enemy.enemy_id for enemy in chain],
+                            "last_target_positions": list(points),
                             "age": 0.0, "hit_ttl": hit_ttl,
                             "hit_stagger": self.LIGHTNING_HIT_STAGGER,
                             "ttl": hit_ttl + self.LIGHTNING_HIT_STAGGER * max(0, len(points) - 1)})

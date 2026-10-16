@@ -29,6 +29,8 @@ class Enemy:
     reached_base: bool = False
     status_effects: Dict[str, Dict[str, float]] = field(default_factory=dict)
     reward_paid: bool = field(default=False, init=False, repr=False)
+    # Assigned by Game within a run. Excluded from gameplay value equality.
+    enemy_id: int | None = field(default=None, compare=False, repr=False)
 
     VISUALS = {
         EnemyType.BASIC: {"name": "갓귀", "speed": 1.0, "life_damage": 1},

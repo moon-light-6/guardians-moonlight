@@ -295,6 +295,28 @@ class AttackEffectAnimator:
             screen.blit(frames[frame], (target[0] - anchor[0], target[1] - anchor[1]))
         return True
 
+    @staticmethod
+    def resolve_targets(effect, target_positions):
+        """Return a view-only event without changing damage centers or game state.
+
+        Old coordinate-only events remain supported. Missing targets finish at
+        their last simulation position; ICE's water/cell coordinates stay fixed.
+        """
+        kind = effect.get("kind")
+        if kind in {"claw", "fire"}:
+            target = target_positions.get(
+                effect.get("target_id"), effect.get("last_target_position", effect.get("to")))
+            return {**effect, "to": target}
+        if kind == "lightning":
+            points = effect.get("points", [])
+            last = effect.get("last_target_positions", points)
+            ids = effect.get("target_ids", [])
+            return {**effect, "points": [
+                target_positions.get(ids[index], last[index]) if index < len(ids) else last[index]
+                for index in range(len(points))
+            ]}
+        return effect
+
     def draw(self, screen, effect, game_map):
         kind = effect.get("kind")
         age = effect.get("age", 0.0)

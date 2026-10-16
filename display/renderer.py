@@ -181,7 +181,11 @@ class Renderer:
             self._text(label, center[0] - 12, center[1] - 13, self.font_med, color)
 
         # 현무의 연속 장판 애니메이션을 유닛 아래에 한 번만 표시합니다.
-        for effect in state.effects:
+        target_positions = {enemy.enemy_id: enemy.get_current_position()
+                            for enemy in state.enemies if enemy.enemy_id is not None}
+        effects = [self.effect_animator.resolve_targets(effect, target_positions)
+                   for effect in state.effects]
+        for effect in effects:
             if effect["kind"] == "slow_field" and effect["age"] < effect["ttl"] - 1e-9:
                 self._draw_effect(effect)
 
@@ -205,11 +209,11 @@ class Renderer:
             self._draw_tower(
                 slot_id,
                 tower_data,
-                state.effects,
+                effects,
             )
         for enemy in state.enemies:
             self._draw_enemy(enemy, state.wave_elapsed)
-        for effect in state.effects:
+        for effect in effects:
             if effect["kind"] != "slow_field":
                 self._draw_effect(effect)
 
