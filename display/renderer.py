@@ -5,6 +5,11 @@ from typing import List
 import pygame
 
 from config import (
+    BOARD_BOTTOM_WIDTH,
+    BOARD_BOTTOM_Y,
+    BOARD_TILE_DEPTH,
+    BOARD_TOP_WIDTH,
+    BOARD_TOP_Y,
     CELL_SIZE,
     COLOR_BLACK,
     COLOR_BLUE,
@@ -24,11 +29,18 @@ from config import (
     PANEL_X,
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
+    MURAL_ORIGINS,
+    SUMMON_CORE_COLOR,
+    SUMMON_GATHER_SECONDS,
+    SUMMON_GLOW_COLOR,
+    SUMMON_TOTAL_SECONDS,
+    SUMMON_TRAVEL_SECONDS,
+    SUMMON_WAKE_SECONDS,
 )
 from display.ui import Button, ButtonLayer, draw_panel
 from display.sprite_animation import TowerSpriteAnimator
-from display.effect_animation import AttackEffectAnimator
 from display.boss_animation import BossSpriteAnimator
+from display.effect_animation import AttackEffectAnimator
 from display.enemy_animation import EnemySpriteAnimator
 from display.render_sizes import TOWER_BOTTOM_OFFSET, TOWER_LEVEL_GAP
 from game.economy import Economy
@@ -48,10 +60,11 @@ class Renderer:
         self.font_med = self._font(22)
         self.font_small = self._font(16)
         self.economy = Economy()
+        self.background = self._load_background()
         self.boss_portraits = self._load_boss_portraits()
         self.tower_animator = TowerSpriteAnimator()
-        self.effect_animator = AttackEffectAnimator()
         self.boss_animator = BossSpriteAnimator()
+        self.effect_animator = AttackEffectAnimator()
         self.enemy_animator = EnemySpriteAnimator()
 
     def _load_boss_portraits(self) -> dict:
@@ -76,8 +89,25 @@ class Renderer:
                 portraits[name, size] = masked
         return portraits
 
+    def _load_background(self) -> pygame.Surface:
+        """원본 달빛 뜰 배경을 게임 해상도에 맞춰 한 번만 준비합니다."""
+        path = Path(__file__).resolve().parents[1] / "assets" / "backgrounds" / "moonlit-courtyard.png"
+        image = pygame.image.load(str(path)).convert()
+        return pygame.transform.smoothscale(image, (SCREEN_WIDTH, SCREEN_HEIGHT))
+
     def _font(self, size: int) -> pygame.font.Font:
-        return pygame.font.SysFont("malgungothic,arial", size)
+        # 한국어 글씨체 - 맥북 운영체제
+        for font_name in (
+            "Apple SD Gothic Neo",  # macOS
+            "AppleGothic",          # older macOS versions
+            "Malgun Gothic",        # Windows
+            "NanumGothic",          # common Korean Linux font
+        ):
+            font_path = pygame.font.match_font(font_name)
+            if font_path:
+                return pygame.font.Font(font_path, size)
+
+        return pygame.font.Font(None, size)
 
     def render(self, state: GameState, quit_confirm: bool = False, start_confirm: bool = False) -> None:
         self.screen.fill(COLOR_BLACK)
@@ -94,10 +124,8 @@ class Renderer:
             self._render_quit_popup()
 
     def _draw_moonlit_background(self) -> None:
-        pygame.draw.circle(self.screen, COLOR_MOON, (1000, 88), 38)
-        for x in range(0, SCREEN_WIDTH, 80):
-            h = 40 + (x * 7) % 95
-            pygame.draw.rect(self.screen, (13, 19, 34), (x, 92 - h // 2, 46, h))
+        # 사신 벽화도 원본에 포함되어 있으므로 별도의 도형으로 덮어쓰지 않습니다.
+        self.screen.blit(self.background, (0, 0))
 
     def _render_title(self) -> None:
         title = self.font_title.render("월하사신", True, COLOR_WHITE)
@@ -157,6 +185,7 @@ class Renderer:
     def _render_game(self, state: GameState) -> None:
         self._render_hud(state)
         self._render_board(state)
+        # 기존 관리 패널의 코드와 동작을 그대로 유지합니다.
         self._render_side_panel(state)
         if state.phase == GamePhase.SELL_CONFIRM:
             self._render_sell_popup(state)
@@ -241,18 +270,21 @@ class Renderer:
             self._text(f"{state.actions_taken_this_wave} / 20", count_x, 50, self.font_small, COLOR_GRAY)
 
     def _render_board(self, state: GameState) -> None:
-        board = pygame.Rect(GRID_ORIGIN[0], GRID_ORIGIN[1], 20 * CELL_SIZE, 15 * CELL_SIZE)
-        pygame.draw.rect(self.screen, (12, 19, 34), board, border_radius=10)
-        for x in range(21):
-            px = GRID_ORIGIN[0] + x * CELL_SIZE
-            pygame.draw.line(self.screen, (28, 41, 66), (px, GRID_ORIGIN[1]), (px, GRID_ORIGIN[1] + 15 * CELL_SIZE))
-        for y in range(16):
-            py = GRID_ORIGIN[1] + y * CELL_SIZE
-            pygame.draw.line(self.screen, (28, 41, 66), (GRID_ORIGIN[0], py), (GRID_ORIGIN[0] + 20 * CELL_SIZE, py))
+        # map.path(87칸)와 map.slots(24칸)를 그대로 투영합니다. 이곳에서 좌표를
+        # 새로 만들지 않으므로, 보드 외형이 바뀌어도 이동/배치/판정 수는 유지됩니다.
+        board = self.map.board_polygon()
+        pygame.draw.polygon(self.screen, (4, 8, 17), self._offset_polygon(board, 10))
+        pygame.draw.polygon(self.screen, (13, 22, 39), board)
+        pygame.draw.polygon(self.screen, (62, 79, 108), board, 2)
+
+        # 희미한 줄눈으로 뜰의 깊이만 주고, 경로 타일은 별도로 명확히 구분합니다.
+        for row in range(1, self.map.map_height):
+            left = self.map.cell_polygon(0, row)[0]
+            right = self.map.cell_polygon(self.map.map_width - 1, row)[1]
+            pygame.draw.line(self.screen, (20, 34, 58), left, right, 1)
 
         for cell in self.map.get_path():
-            rect = pygame.Rect(GRID_ORIGIN[0] + cell[0] * CELL_SIZE + 3, GRID_ORIGIN[1] + cell[1] * CELL_SIZE + 3, CELL_SIZE - 6, CELL_SIZE - 6)
-            pygame.draw.rect(self.screen, (48, 55, 78), rect, border_radius=8)
+            self._draw_path_tile(cell)
 
         for label, cell, color in (
             ("S", self.map.get_start_position(), COLOR_MINT),
@@ -270,23 +302,31 @@ class Renderer:
             if effect["kind"] == "slow_field" and effect["age"] < effect["ttl"] - 1e-9:
                 self._draw_effect(effect)
 
-        for slot_id, bounds in self.map.slots.items():
+        pending_slots = {summon["slot_id"] for summon in state.summons}
+        for slot_id in self.map.slots:
             pos = self.map.grid_to_pixel(self.map.get_slot_position(slot_id))
-            occupied = state.has_tower(slot_id)
+            occupied = state.has_tower(slot_id) or slot_id in pending_slots
             selected = state.selected_slot == slot_id
             moving = state.phase == GamePhase.MOVING_TOWER and state.is_slot_empty(slot_id)
-            color = COLOR_MINT if moving else (COLOR_GOLD if selected else (85, 100, 131))
-            pygame.draw.circle(self.screen, color, pos, 18, 3)
+            self._draw_slot_tile(slot_id, selected, moving, occupied)
+            color = COLOR_MINT if moving else (COLOR_GOLD if selected else (123, 145, 180))
             if not occupied:
-                self._text("+", pos[0] - 6, pos[1] - 15, self.font_med, color)
+                self._text("+", pos[0] - 6, pos[1] - 12, self.font_med, color)
 
-        if state.selected_slot is not None and state.has_tower(state.selected_slot):
+        if (state.selected_slot is not None
+                and state.has_tower(state.selected_slot)
+                and state.selected_slot not in pending_slots):
             tower_data = state.towers[state.selected_slot]
             stats = Tower.from_data(tower_data).get_stats()
             center = self.map.grid_to_pixel(self.map.get_slot_position(state.selected_slot))
-            pygame.draw.circle(self.screen, (97, 167, 213), center, int(stats["range"] * CELL_SIZE), 1)
+            self._draw_projected_range(center, stats["range"])
+
+        for summon in state.summons:
+            self._draw_summon_effect(summon)
 
         for slot_id, tower_data in state.towers.items():
+            if slot_id in pending_slots:
+                continue
             self._draw_tower(
                 slot_id,
                 tower_data,
@@ -297,6 +337,93 @@ class Renderer:
         for effect in effects:
             if effect["kind"] != "slow_field":
                 self._draw_effect(effect)
+
+    @staticmethod
+    def _offset_polygon(points, y_offset: int):
+        return [(x, y + y_offset) for x, y in points]
+
+    def _draw_path_tile(self, cell) -> None:
+        """기존 경로의 한 칸을 두께 있는 돌 타일로 표현합니다."""
+        polygon = self.map.cell_polygon(cell[0] + 0.06, cell[1] + 0.08, 0.88, 0.82)
+        pygame.draw.polygon(self.screen, (22, 28, 43), self._offset_polygon(polygon, BOARD_TILE_DEPTH))
+        pygame.draw.polygon(self.screen, (72, 80, 105), polygon)
+        pygame.draw.polygon(self.screen, (124, 133, 157), polygon, 1)
+
+    def _draw_slot_tile(self, slot_id: int, selected: bool, moving: bool, occupied: bool) -> None:
+        polygon = self.map.slot_polygon(slot_id)
+        if selected:
+            glow = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+            pygame.draw.polygon(glow, (244, 210, 112, 70), polygon)
+            self.screen.blit(glow, (0, 0))
+        side_color = (38, 52, 77)
+        face_color = (57, 75, 108) if occupied else (47, 63, 92)
+        border = COLOR_MINT if moving else (COLOR_GOLD if selected else (118, 140, 174))
+        pygame.draw.polygon(self.screen, side_color, self._offset_polygon(polygon, BOARD_TILE_DEPTH))
+        pygame.draw.polygon(self.screen, face_color, polygon)
+        pygame.draw.polygon(self.screen, border, polygon, 2)
+
+    def _draw_projected_range(self, center, logical_range: float) -> None:
+        # 전투 판정은 논리 좌표에서 유지하고, 표시만 현 행의 사다리꼴 비율에 맞춘 타원으로 냅니다.
+        row_ratio = (center[1] - BOARD_TOP_Y) / (BOARD_BOTTOM_Y - BOARD_TOP_Y)
+        cell_width = (BOARD_TOP_WIDTH + (BOARD_BOTTOM_WIDTH - BOARD_TOP_WIDTH) * row_ratio) / self.map.map_width
+        cell_height = (BOARD_BOTTOM_Y - BOARD_TOP_Y) / self.map.map_height
+        rect = pygame.Rect(
+            round(center[0] - logical_range * cell_width),
+            round(center[1] - logical_range * cell_height),
+            round(logical_range * cell_width * 2),
+            round(logical_range * cell_height * 2),
+        )
+        pygame.draw.ellipse(self.screen, (97, 167, 213), rect, 1)
+
+    def _draw_summon_effect(self, summon: dict) -> None:
+        """벽화의 빛 → 달빛 덩어리 → 도착지 수렴. 캐릭터는 완료 전 보이지 않습니다."""
+        elapsed = summon["elapsed"]
+        origin = pygame.Vector2(MURAL_ORIGINS[summon["tower_type"]])
+        target = pygame.Vector2(self.map.grid_to_pixel(self.map.get_slot_position(summon["slot_id"])))
+
+        if elapsed < SUMMON_WAKE_SECONDS:
+            progress = elapsed / SUMMON_WAKE_SECONDS
+            position = origin
+            radius = 8 + 22 * progress
+            strength = progress
+        elif elapsed < SUMMON_WAKE_SECONDS + SUMMON_TRAVEL_SECONDS:
+            progress = (elapsed - SUMMON_WAKE_SECONDS) / SUMMON_TRAVEL_SECONDS
+            smooth = progress * progress * (3 - 2 * progress)
+            position = origin.lerp(target, smooth)
+            radius = 24 - 7 * smooth
+            strength = 1.0
+        else:
+            progress = min(1.0, (elapsed - SUMMON_WAKE_SECONDS - SUMMON_TRAVEL_SECONDS) / SUMMON_GATHER_SECONDS)
+            position = target
+            radius = 18 + 22 * (1 - progress)
+            strength = 1.0 - progress * 0.25
+
+        # Pygame에는 블러 필터가 없으므로, 알파가 연속적으로 바뀌는 미세한 원을
+        # 바깥에서 안쪽으로 겹쳐 부드러운 달빛 번짐으로 보이게 합니다.
+        blur_radius = max(12, round(radius * 1.8))
+        soft_glow = pygame.Surface((blur_radius * 2, blur_radius * 2), pygame.SRCALPHA)
+        glow_center = (blur_radius, blur_radius)
+        for ring_radius in range(blur_radius, 0, -1):
+            toward_center = 1 - ring_radius / blur_radius
+            alpha = round(145 * strength * toward_center ** 1.7)
+            pygame.draw.circle(
+                soft_glow,
+                (*SUMMON_GLOW_COLOR, alpha),
+                glow_center,
+                ring_radius,
+            )
+        self.screen.blit(
+            soft_glow,
+            (round(position.x) - blur_radius, round(position.y) - blur_radius),
+        )
+
+        # 중심의 흰빛만 작고 선명하게 남깁니다.
+        pygame.draw.circle(
+            self.screen,
+            (*SUMMON_CORE_COLOR, round(230 * strength)),
+            (round(position.x), round(position.y)),
+            max(3, round(radius * 0.3)),
+        )
 
     def _draw_tower(
         self,
@@ -417,6 +544,63 @@ class Renderer:
             start = self.map.grid_to_pixel(effect["from"])
             end = self.map.grid_to_pixel(effect["to"])
             pygame.draw.line(self.screen, COLOR_GOLD, start, end, 4)
+
+    def _render_bottom_panel(self, state: GameState) -> None:
+        """보드를 가리지 않는 하단 조작부입니다."""
+        panel = pygame.Rect(42, 728, SCREEN_WIDTH - 84, 92)
+        draw_panel(self.screen, panel)
+        buttons: List[Button] = []
+        selected = state.selected_slot
+        pending_slots = {summon["slot_id"] for summon in state.summons}
+
+        if state.phase == GamePhase.SETTLEMENT:
+            result = state.wave_result
+            self._text(f"{result.stage}번째 웨이브 방어 성공", 66, 744, self.font_med, COLOR_WHITE)
+            rewards = f"일반 적 처치 {result.normal_kills}마리  +{result.kill_gold} G   ·   보스 처치 {result.boss_kills}마리  +{result.boss_gold} G   ·   클리어 +{result.clear_gold} G"
+            self._text(rewards, 66, 779, self.font_small, COLOR_MOON)
+            label = "최종 승리 확인" if state.current_stage == 30 else "다음 준비 단계로"
+            buttons.append(Button(pygame.Rect(1022, 765, 188, 38), label, "CONTINUE"))
+        elif state.phase == GamePhase.WAVE_ACTIVE:
+            self._text("자동 전투 중 · 선택한 사신만 강화할 수 있습니다", 66, 745, self.font_small, COLOR_GRAY)
+            if state.has_tower(selected):
+                tower = state.towers[selected]
+                self._text(f"{Tower.display_name(tower['type'])} Lv.{tower['level']}", 66, 778, self.font_med, COLOR_WHITE)
+                cost = self.economy.get_upgrade_cost(state, selected)
+                buttons.append(Button(pygame.Rect(290, 765, 168, 38), f"강화 {cost} G", "UPGRADE", self.economy.can_upgrade(state, selected)))
+            buttons.append(Button(pygame.Rect(1022, 765, 188, 38), f"배속 ×{state.combat_speed:g}", "CYCLE_SPEED"))
+        elif state.phase == GamePhase.MOVING_TOWER:
+            self._text("사신 이동 · 옮길 빈 돌판을 선택하세요", 66, 752, self.font_med, COLOR_WHITE)
+            buttons.append(Button(pygame.Rect(1022, 765, 188, 38), "취소", "CANCEL"))
+        elif selected in pending_slots:
+            self._text("벽화의 달빛이 선택한 돌판으로 이동 중입니다", 66, 752, self.font_med, COLOR_MOON)
+            buttons.extend([
+                Button(pygame.Rect(760, 765, 116, 38), "이동", "BEGIN_RELOCATE", self.economy.can_take_preparation_action(state)),
+                Button(pygame.Rect(886, 765, 126, 38), "소환 취소", "SELL", self.economy.can_sell(state, selected)),
+                Button(pygame.Rect(1022, 765, 188, 38), f"{state.current_stage}번째 웨이브 시작", "START_WAVE"),
+            ])
+        elif state.has_tower(selected):
+            tower = state.towers[selected]
+            self._text(f"{Tower.display_name(tower['type'])}  Lv.{tower['level']}", 66, 744, self.font_med, COLOR_WHITE)
+            self._text(Tower.from_data(tower).get_stats()["description"], 66, 779, self.font_small, COLOR_GRAY)
+            cost = self.economy.get_upgrade_cost(state, selected)
+            buttons.extend([
+                Button(pygame.Rect(290, 765, 150, 38), f"강화 {cost} G", "UPGRADE", self.economy.can_upgrade(state, selected)),
+                Button(pygame.Rect(450, 765, 116, 38), "이동", "BEGIN_RELOCATE", self.economy.can_take_preparation_action(state)),
+                Button(pygame.Rect(576, 765, 116, 38), "판매", "SELL", self.economy.can_sell(state, selected)),
+                Button(pygame.Rect(1022, 765, 188, 38), f"{state.current_stage}번째 웨이브 시작", "START_WAVE"),
+            ])
+        else:
+            self._text("빈 돌판을 선택해 벽화 속 사신을 소환하세요", 66, 744, self.font_med, COLOR_WHITE)
+            self._text("청룡 · 백호 · 주작 · 현무 중 하나가 달빛을 타고 도착합니다", 66, 779, self.font_small, COLOR_GRAY)
+            buttons.extend([
+                Button(pygame.Rect(570, 765, 222, 38), "랜덤 사신 소환 100 G", "BUY", selected is not None and self.economy.can_buy(state, selected)),
+                Button(pygame.Rect(1022, 765, 188, 38), f"{state.current_stage}번째 웨이브 시작", "START_WAVE"),
+            ])
+
+        if state.message:
+            message = self.font_small.render(state.message, True, COLOR_MOON)
+            self.screen.blit(message, message.get_rect(topright=(996, 744)))
+        self.buttons.set_buttons(buttons)
 
     def _render_side_panel(self, state: GameState) -> None:
         panel = pygame.Rect(PANEL_X, 126, PANEL_WIDTH, 630)

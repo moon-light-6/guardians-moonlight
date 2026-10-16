@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
+from config import SLOT_COUNT
+
 
 class ActionType(Enum):
     START_GAME = "START_GAME"
@@ -69,7 +71,7 @@ class ActionValidator:
             return []
 
         valid_actions = []
-        for slot_id in range(24):
+        for slot_id in range(SLOT_COUNT):
             if economy.can_buy(state, slot_id):
                 valid_actions.append(Action(ActionType.BUY, slot_id=slot_id))
             if economy.can_upgrade(state, slot_id):
@@ -77,8 +79,8 @@ class ActionValidator:
             if economy.can_sell(state, slot_id):
                 valid_actions.append(Action(ActionType.SELL, slot_id=slot_id))
 
-        for from_slot in range(24):
-            for to_slot in range(24):
+        for from_slot in range(SLOT_COUNT):
+            for to_slot in range(SLOT_COUNT):
                 if economy.can_relocate(state, from_slot, to_slot):
                     valid_actions.append(
                         Action(ActionType.RELOCATE, from_slot_id=from_slot, to_slot_id=to_slot)

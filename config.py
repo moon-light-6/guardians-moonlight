@@ -33,6 +33,31 @@ CELL_SIZE = 42
 PANEL_X = 930
 PANEL_WIDTH = 310
 
+# 화면 투영 전용 값입니다. data/map.json의 논리 좌표(path 87칸, slots 24칸)는
+# 바꾸지 않고 이 사다리꼴 위에만 그립니다.
+# 기존 우측 관리 패널(PANEL_X=930)을 가리지 않는 게임판 영역입니다.
+BOARD_CENTER_X = 465
+BOARD_TOP_Y = 365
+BOARD_BOTTOM_Y = 704
+BOARD_TOP_WIDTH = 700
+BOARD_BOTTOM_WIDTH = 840
+BOARD_TILE_DEPTH = 7
+
+# 벽화 → 배치 칸 소환 연출. 초 단위와 색상은 여기서 조절합니다.
+SUMMON_TOTAL_SECONDS = 3.0
+SUMMON_WAKE_SECONDS = 0.55
+SUMMON_TRAVEL_SECONDS = 1.75
+SUMMON_GATHER_SECONDS = SUMMON_TOTAL_SECONDS - SUMMON_WAKE_SECONDS - SUMMON_TRAVEL_SECONDS
+SUMMON_CORE_COLOR = (255, 255, 248)
+SUMMON_GLOW_COLOR = (255, 229, 145)
+MURAL_ORIGINS = {
+    # 실제 배경 벽화의 위치: 현무 · 백호 · 청룡 · 주작 (왼쪽부터)
+    "ICE": (300, 302),
+    "ARCHER": (440, 302),
+    "LIGHTNING": (610, 302),
+    "CANNON": (790, 302),
+}
+
 COLOR_BLACK = (7, 9, 18)
 COLOR_WHITE = (246, 247, 252)
 COLOR_GRAY = (128, 139, 162)
