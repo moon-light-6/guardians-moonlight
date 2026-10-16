@@ -136,7 +136,7 @@ class Renderer:
         draw_panel(self.screen, panel)
         left, right = panel.x + 40, panel.right - 40
 
-        title = self.font_big.render(f"{result.stage}번째 소동 해결 성공", True, COLOR_WHITE)
+        title = self.font_big.render(f"{result.stage}번째 소동 해결!", True, COLOR_WHITE)
         self.screen.blit(title, title.get_rect(center=(panel.centerx, panel.y + 48)))
         if result.boss_name:
             boss_result = "처치 성공" if result.boss_kills else "결계 도달"
@@ -178,10 +178,10 @@ class Renderer:
 
     def _render_hud(self, state: GameState) -> None:
         self._text("월하사신", 42, 34, self.font_big, COLOR_WHITE)
-        phase = "전투" if state.phase == GamePhase.WAVE_ACTIVE else "준비"
+        phase = "소동 발생" if state.phase == GamePhase.WAVE_ACTIVE else "준비"
         if state.phase == GamePhase.SETTLEMENT:
             phase = "정산"
-        self._text(f"{state.current_stage:02d} / 30 번째 소동", 250, 46, self.font_med, COLOR_WHITE)
+        self._text(f"소동 {state.current_stage:02d} / 30", 250, 46, self.font_med, COLOR_WHITE)
         self._text(f"결계 {state.life}", 430, 46, self.font_med, COLOR_MINT)
         self._text(f"{state.gold} G", 548, 46, self.font_med, COLOR_GOLD)
         self._text(phase, 680, 46, self.font_med, COLOR_CYAN)
@@ -308,10 +308,10 @@ class Renderer:
         if state.phase == GamePhase.WAVE_ACTIVE:
             alive = len([enemy for enemy in state.enemies if enemy.is_alive])
             boss = next((enemy for enemy in state.enemies if enemy.is_boss and enemy.is_alive), None)
-            self._text("자동 전투 중", PANEL_X + 24, y, self.font_med, COLOR_WHITE)
+            self._text("소동 해결 중", PANEL_X + 24, y, self.font_med, COLOR_WHITE)
             self._text("사신이 범위 내 적을 공격합니다", PANEL_X + 24, y + 34, self.font_small, COLOR_GRAY)
             self._text(f"화면의 악귀 {alive}마리", PANEL_X + 24, y + 80, self.font_small, COLOR_WHITE)
-            self._text(f"이번 전투 처치 보상 +{state.wave_kill_gold + state.wave_boss_gold} G", PANEL_X + 24, y + 116, self.font_small, COLOR_GOLD)
+            self._text(f"이번 소동 해결 보상 +{state.wave_kill_gold + state.wave_boss_gold} G", PANEL_X + 24, y + 116, self.font_small, COLOR_GOLD)
             selected = state.selected_slot
             if state.has_tower(selected):
                 if boss:

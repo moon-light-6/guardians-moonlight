@@ -218,7 +218,7 @@ class Game:
         self._simulation_accumulator = 0.0
         self.state.enemies = []
         self.state.effects = []
-        self.state.message = "자동 전투 중"
+        self.state.message = "소동 해결 중"
         self.wave_manager.start_wave(self.state.current_stage)
 
     def _move_enemies(self, dt: float) -> None:
@@ -281,7 +281,7 @@ class Game:
             boss_name=boss_name,
         )
         self.state.phase = GamePhase.SETTLEMENT
-        self.state.message = f"{stage}번째 소동 해결 성공"
+        self.state.message = f"{stage}번째 소동 해결!"
 
     def _continue_after_settlement(self) -> None:
         if self.state.phase != GamePhase.SETTLEMENT:
