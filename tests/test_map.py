@@ -71,23 +71,12 @@ class TestMapDataSafety(unittest.TestCase):
 
 class TestSerpentineLayout(unittest.TestCase):
     def test_all_tower_centers_and_click_regions_match(self):
-        from config import CELL_SIZE, GRID_ORIGIN
         game_map = GameMap()
         for slot_id, (x, y, width, height) in game_map.slots.items():
             center = game_map.grid_to_pixel(game_map.get_slot_position(slot_id))
-            expected = (int(GRID_ORIGIN[0] + (x + width / 2) * CELL_SIZE),
-                        int(GRID_ORIGIN[1] + (y + height / 2) * CELL_SIZE))
-            self.assertEqual(center, expected)
+            # 2.5D 사다리꼴 투영에서도 같은 슬롯의 중심을 클릭할 수 있어야 합니다.
             self.assertEqual(game_map.pixel_to_slot(center), slot_id)
-            # 슬롯 외곽선(반경 18px)까지 타일 안에 들어와야 합니다.
-            self.assertGreaterEqual(center[0] - 18, GRID_ORIGIN[0] + x * CELL_SIZE)
-            self.assertGreaterEqual(center[1] - 18, GRID_ORIGIN[1] + y * CELL_SIZE)
-            self.assertLess(center[0] + 18, GRID_ORIGIN[0] + (x + width) * CELL_SIZE)
-            self.assertLess(center[1] + 18, GRID_ORIGIN[1] + (y + height) * CELL_SIZE)
-        x, y, w, h = game_map.get_slot_bounds(0)
-        right_edge = (GRID_ORIGIN[0] + (x + w) * CELL_SIZE,
-                      GRID_ORIGIN[1] + (y + h / 2) * CELL_SIZE)
-        self.assertIsNone(game_map.pixel_to_slot(right_edge))
+            self.assertTrue(game_map._point_in_polygon(center, game_map.slot_polygon(slot_id)))
 
     def test_every_tower_type_can_reach_path_from_every_slot(self):
         import math
