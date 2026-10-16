@@ -36,7 +36,7 @@ class TestPygameUI(unittest.TestCase):
         self.input = InputHandler(self.renderer.buttons)
 
     def render(self, name=None):
-        self.renderer.render(self.game.state)
+        self.renderer.render(self.game.state, start_confirm=self.input.start_confirm)
         bounds = self.screen.get_rect()
         for button in self.renderer.buttons.buttons:
             self.assertTrue(bounds.contains(button.rect))
@@ -49,13 +49,51 @@ class TestPygameUI(unittest.TestCase):
             path.mkdir(parents=True, exist_ok=True)
             pygame.image.save(self.screen, str(path / f"{name}.png"))
 
-    def click(self, action_name):
+    def press(self, action_name):
         self.render()
         button = next(button for button in self.renderer.buttons.buttons if button.action == action_name)
         event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=button.rect.center)
-        action = self.input.handle_event(event, self.game.state)
+        return self.input.handle_event(event, self.game.state)
+
+    def click(self, action_name):
+        if action_name == "START_WAVE":
+            # 소동 시작 버튼은 확인 팝업을 한 번 거친 뒤 "예"를 눌러야 시작된다.
+            self.assertIsNone(self.press("OPEN_START_CONFIRM"))
+            action_name = "START_WAVE_YES"
+        action = self.press(action_name)
         self.assertIsNotNone(action)
         self.game.step(action)
+
+    def test_start_wave_asks_for_confirmation_first(self):
+        self.assertIsNone(self.press("OPEN_START_CONFIRM"))
+        self.assertTrue(self.input.start_confirm)
+        self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
+        self.render("start-confirm")
+        actions = {button.action for button in self.renderer.buttons.buttons}
+        self.assertEqual(actions, {"START_WAVE_NO", "START_WAVE_YES"})
+
+    def test_start_confirm_no_closes_popup_without_starting(self):
+        self.press("OPEN_START_CONFIRM")
+        self.assertIsNone(self.press("START_WAVE_NO"))
+        self.assertFalse(self.input.start_confirm)
+        self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
+
+    def test_start_confirm_yes_starts_wave(self):
+        self.press("OPEN_START_CONFIRM")
+        action = self.press("START_WAVE_YES")
+        self.assertEqual(action.action_type, ActionType.START_WAVE)
+        self.assertFalse(self.input.start_confirm)
+        self.game.step(action)
+        self.assertEqual(self.game.state.phase, GamePhase.WAVE_ACTIVE)
+
+    def test_space_and_escape_use_start_confirmation(self):
+        space = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE)
+        self.assertIsNone(self.input.handle_event(space, self.game.state))
+        self.assertTrue(self.input.start_confirm)
+        escape = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE)
+        self.assertIsNone(self.input.handle_event(escape, self.game.state))
+        self.assertFalse(self.input.start_confirm)
+        self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
 
     def test_guardian_sprites_have_no_level_number_below_them(self):
         position = self.game.map.grid_to_pixel(self.game.map.get_slot_position(0))

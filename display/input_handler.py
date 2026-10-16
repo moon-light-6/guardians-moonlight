@@ -13,6 +13,7 @@ class InputHandler:
         self.buttons = buttons
         self.map = GameMap()
         self.quit_confirm = False
+        self.start_confirm = False
         self.should_quit = False
 
     def handle_event(self, event: pygame.event.Event, state: GameState) -> Optional[Action]:
@@ -34,6 +35,15 @@ class InputHandler:
             if action_name == "QUIT_YES":
                 self.should_quit = True
                 return None
+            if action_name == "OPEN_START_CONFIRM":
+                self.start_confirm = state.phase == GamePhase.PREPARATION
+                return None
+            if action_name == "START_WAVE_NO":
+                self.start_confirm = False
+                return None
+            if action_name == "START_WAVE_YES":
+                self.start_confirm = False
+                return Action(ActionType.START_WAVE)
             mapping = {
                 "START_GAME": Action(ActionType.START_GAME),
                 "SHOW_HELP": Action(ActionType.SHOW_HELP),
@@ -41,7 +51,6 @@ class InputHandler:
                 "CONTINUE": Action(ActionType.CONTINUE),
                 "RESTART": Action(ActionType.RESTART),
                 "CANCEL": Action(ActionType.CANCEL),
-                "START_WAVE": Action(ActionType.START_WAVE),
                 "CYCLE_SPEED": Action(ActionType.CYCLE_SPEED),
                 "BUY": Action(ActionType.BUY, slot_id=state.selected_slot),
                 "UPGRADE": Action(ActionType.UPGRADE, slot_id=state.selected_slot),
@@ -51,7 +60,7 @@ class InputHandler:
             }
             return mapping.get(action_name)
 
-        if self.quit_confirm:
+        if self.quit_confirm or self.start_confirm:
             return None
         slot_id = self.map.pixel_to_slot(pos)
         if slot_id is None:
@@ -69,11 +78,15 @@ class InputHandler:
             if state.phase == GamePhase.TITLE or self.quit_confirm:
                 self.quit_confirm = not self.quit_confirm
                 return None
+            if self.start_confirm:
+                self.start_confirm = False
+                return None
             return Action(ActionType.CANCEL if state.phase in {GamePhase.MOVING_TOWER, GamePhase.SELL_CONFIRM} else ActionType.BACK_TO_TITLE)
-        if self.quit_confirm:
+        if self.quit_confirm or self.start_confirm:
             return None
         if key == pygame.K_SPACE and state.phase == GamePhase.PREPARATION:
-            return Action(ActionType.START_WAVE)
+            self.start_confirm = True
+            return None
         if key == pygame.K_RETURN and state.phase == GamePhase.SETTLEMENT:
             return Action(ActionType.CONTINUE)
         return None

@@ -79,7 +79,7 @@ class Renderer:
     def _font(self, size: int) -> pygame.font.Font:
         return pygame.font.SysFont("malgungothic,arial", size)
 
-    def render(self, state: GameState, quit_confirm: bool = False) -> None:
+    def render(self, state: GameState, quit_confirm: bool = False, start_confirm: bool = False) -> None:
         self.screen.fill(COLOR_BLACK)
         self._draw_moonlit_background()
         if state.phase == GamePhase.TITLE:
@@ -88,6 +88,8 @@ class Renderer:
             self._render_help()
         else:
             self._render_game(state)
+        if start_confirm and state.phase == GamePhase.PREPARATION:
+            self._render_start_popup(state)
         if quit_confirm:
             self._render_quit_popup()
 
@@ -124,13 +126,27 @@ class Renderer:
         ])
         self.buttons.render(self.screen, self.font_med)
 
+    def _render_start_popup(self, state: GameState) -> None:
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        self.screen.blit(overlay, (0, 0))
+        panel = pygame.Rect(430, 280, 420, 200)
+        draw_panel(self.screen, panel)
+        message = self.font_med.render(f"{state.current_stage}번째 수호를 시작할까요?", True, COLOR_WHITE)
+        self.screen.blit(message, message.get_rect(center=(panel.centerx, panel.y + 66)))
+        self.buttons.set_buttons([
+            Button(pygame.Rect(454, 410, 174, 42), "아니요", "START_WAVE_NO"),
+            Button(pygame.Rect(652, 410, 174, 42), "예", "START_WAVE_YES"),
+        ])
+        self.buttons.render(self.screen, self.font_med)
+
     def _render_help(self) -> None:
         draw_panel(self.screen, pygame.Rect(310, 180, 660, 440))
         self._text("게임 방법", 360, 220, self.font_big, COLOR_WHITE)
         lines = [
             "01 빈 슬롯 선택: 100G로 사신 1종을 랜덤 소환합니다.",
             "02 사신 관리: 수호 준비 단계에서 강화, 이동, 판매합니다.",
-            "03 소동 시작: 악귀는 고정 경로, 사신은 자동 공격합니다.",
+            "03 수호 시작: 악귀는 고정 경로, 사신은 자동 공격합니다.",
             "04 결계 수호: 30번째 소동까지 해결하면 승리합니다.",
         ]
         for i, line in enumerate(lines):
@@ -488,7 +504,7 @@ class Renderer:
         desc = WaveManager().describe_stage(state.current_stage)
         self._text("다음 소동", PANEL_X + 24, 624, self.font_small, COLOR_GRAY)
         self._text(desc, PANEL_X + 24, 650, self.font_small, COLOR_WHITE)
-        buttons.append(Button(pygame.Rect(PANEL_X + 24, 682, 260, 40), f"{state.current_stage}번째 소동 시작", "START_WAVE"))
+        buttons.append(Button(pygame.Rect(PANEL_X + 24, 682, 260, 40), f"{state.current_stage}번째 수호 시작", "OPEN_START_CONFIRM"))
 
     def _render_result(self, state: GameState) -> None:
         if state.phase == GamePhase.GAME_OVER:
