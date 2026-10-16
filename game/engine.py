@@ -106,7 +106,7 @@ class Game:
         self._move_enemies(dt)
         if self.state.life <= 0:
             self.state.phase = GamePhase.GAME_OVER
-            self.state.message = "결계가 무너졌어요"
+            self.state.message = "소동 해결 실패"
             return
         self._update_towers(dt)
         self._collect_dead_enemies()
@@ -288,7 +288,7 @@ class Game:
             return
         if self.state.current_stage >= MAX_STAGES:
             self.state.phase = GamePhase.VICTORY
-            self.state.message = "도시를 지켜냈어요"
+            self.state.message = "결계를 지켜냈어요"
             return
         self.state.current_stage += 1
         self.state.actions_taken_this_wave = 0

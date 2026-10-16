@@ -77,8 +77,6 @@ class Renderer:
             self._render_title()
         elif state.phase == GamePhase.HELP:
             self._render_help()
-        elif state.phase in {GamePhase.GAME_OVER, GamePhase.VICTORY}:
-            self._render_result(state)
         else:
             self._render_game(state)
         if quit_confirm:
@@ -139,6 +137,8 @@ class Renderer:
             self._render_sell_popup(state)
         elif state.phase == GamePhase.SETTLEMENT:
             self._render_settlement_popup(state)
+        elif state.phase in {GamePhase.GAME_OVER, GamePhase.VICTORY}:
+            self._render_result(state)
         self.buttons.render(self.screen, self.font_small)
 
     def _render_settlement_popup(self, state: GameState) -> None:
@@ -194,11 +194,17 @@ class Renderer:
 
     def _render_hud(self, state: GameState) -> None:
         self._text("월하사신", 42, 34, self.font_big, COLOR_WHITE)
-        is_preparing = state.phase not in {GamePhase.WAVE_ACTIVE, GamePhase.SETTLEMENT}
+        is_preparing = state.phase not in {
+            GamePhase.WAVE_ACTIVE, GamePhase.SETTLEMENT, GamePhase.GAME_OVER, GamePhase.VICTORY
+        }
         if state.phase == GamePhase.WAVE_ACTIVE:
             phase = "소동 발생"
         elif state.phase == GamePhase.SETTLEMENT:
             phase = "정산"
+        elif state.phase == GamePhase.GAME_OVER:
+            phase = "패배"
+        elif state.phase == GamePhase.VICTORY:
+            phase = "승리"
         else:
             phase = "수호 준비"
         self._text(f"소동 {state.current_stage:02d} / 30", 250, 46, self.font_med, COLOR_WHITE)
@@ -358,6 +364,8 @@ class Renderer:
         elif state.phase == GamePhase.SETTLEMENT:
             self._text("정산 중", PANEL_X + 24, y, self.font_med, COLOR_WHITE)
             self._text("소동 해결 결과를 확인하세요", PANEL_X + 24, y + 34, self.font_small, COLOR_GRAY)
+        elif state.phase in {GamePhase.GAME_OVER, GamePhase.VICTORY}:
+            self._text("게임 종료", PANEL_X + 24, y, self.font_med, COLOR_WHITE)
         else:
             self._render_management_panel(state, buttons, y)
 
@@ -409,22 +417,31 @@ class Renderer:
 
     def _render_result(self, state: GameState) -> None:
         if state.phase == GamePhase.GAME_OVER:
-            title = "결계가 무너졌어요"
-            result = "패배"
+            title = "소동 해결 실패"
         else:
             title = "결계를 지켜냈어요"
-            result = "승리"
-        self._text(title, 470, 270, self.font_title, COLOR_WHITE)
-        self._text(result, 520, 340, self.font_big, COLOR_MOON)
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        self.screen.blit(overlay, (0, 0))
+
+        width, height = 560, 400
+        panel = pygame.Rect((SCREEN_WIDTH - width) // 2, (SCREEN_HEIGHT - height) // 2, width, height)
+        draw_panel(self.screen, panel)
+
+        title_surface = self.font_big.render(title, True, COLOR_RED)
+        self.screen.blit(title_surface, title_surface.get_rect(center=(panel.centerx, panel.y + 70)))
         if state.phase == GamePhase.GAME_OVER:
             fail_text = f"{state.current_stage}번째 소동에서 실패했어요"
-            fail_surface = self.font_med.render(fail_text, True, COLOR_RED)
-            self.screen.blit(fail_surface, fail_surface.get_rect(center=(SCREEN_WIDTH // 2, 420)))
+            fail_surface = self.font_med.render(fail_text, True, COLOR_WHITE)
+            self.screen.blit(fail_surface, fail_surface.get_rect(center=(panel.centerx, panel.y + 150)))
+            hint_surface = self.font_small.render("이런, 잡귀들을 막아내지 못했다… 다시 결계를 지켜볼까?", True, COLOR_MOON)
+            self.screen.blit(hint_surface, hint_surface.get_rect(center=(panel.centerx, panel.y + 205)))
+
+        button_y = panel.bottom - 80
         self.buttons.set_buttons([
-            Button(pygame.Rect(500, 492, 130, 44), "다시 시작", "RESTART"),
-            Button(pygame.Rect(650, 492, 130, 44), "타이틀로", "BACK_TO_TITLE"),
+            Button(pygame.Rect(panel.centerx - 184, button_y, 174, 46), "다시 도전하기", "RESTART"),
+            Button(pygame.Rect(panel.centerx + 10, button_y, 174, 46), "처음으로", "BACK_TO_TITLE"),
         ])
-        self.buttons.render(self.screen, self.font_med)
 
     def _text(self, value: str, x: int, y: int, font: pygame.font.Font, color) -> None:
         self.screen.blit(font.render(value, True, color), (x, y))
