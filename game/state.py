@@ -42,6 +42,9 @@ class GameState:
     life: int = INITIAL_LIFE
     towers: Dict[int, Dict[str, Any]] = field(default_factory=dict)
     tower_slots: List[bool] = field(default_factory=lambda: [False] * SLOT_COUNT)
+    # 실제 타워를 만들기 전, 벽화에서 배치 칸으로 이동 중인 달빛 연출입니다.
+    # tower_slots는 즉시 점유해 같은 칸에 중복 소환되는 것을 막습니다.
+    summons: List[Dict[str, Any]] = field(default_factory=list)
     enemies: List[Any] = field(default_factory=list)
     effects: List[Dict[str, Any]] = field(default_factory=list)
     enemies_killed: int = 0

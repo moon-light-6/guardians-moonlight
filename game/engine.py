@@ -9,6 +9,7 @@ from config import (
     KILL_GOLD,
     MAX_STAGES,
     SIMULATION_STEP,
+    SUMMON_TOTAL_SECONDS,
 )
 from game.actions import Action, ActionType
 from game.combat import Combat
@@ -84,7 +85,14 @@ class Game:
         return self.state
 
     def update(self, dt: float) -> None:
-        if self.state.phase != GamePhase.WAVE_ACTIVE or dt <= 0:
+        if dt <= 0:
+            return
+
+        # 준비/전투 여부와 무관하게 진행합니다. 소환 중에도 이벤트 루프와 화면은
+        # 멈추지 않으며, 완료 순간에만 실제 타워를 한 번 생성합니다.
+        self._update_summons(dt)
+
+        if self.state.phase != GamePhase.WAVE_ACTIVE:
             return
 
         # Keep every combat system on the same clock and avoid skipping range checks.
@@ -124,6 +132,22 @@ class Game:
     def get_state(self) -> GameState:
         return self.state
 
+    def _update_summons(self, dt: float) -> None:
+        pending = []
+        for summon in self.state.summons:
+            summon = {**summon, "elapsed": summon["elapsed"] + dt}
+            if summon["elapsed"] < SUMMON_TOTAL_SECONDS:
+                pending.append(summon)
+                continue
+
+            slot_id = summon["slot_id"]
+            # 타워는 구매 때 한 번만 만들고, 연출이 끝난 순간 전투/렌더링에 참여시킵니다.
+            tower = self.state.towers.get(slot_id)
+            if tower is not None:
+                tower.pop("summoning", None)
+                self.state.message = f"{Tower.display_name(tower['type'])} Lv.1 소환 완료"
+        self.state.summons = pending
+
     def _new_run(self) -> None:
         self.wave_manager.reset()
         self._simulation_accumulator = 0.0
@@ -149,10 +173,23 @@ class Game:
         tower_type = self.economy.buy_random_tower(self.rng)
         self.state.gold -= self.economy.TOWER_BUY_COST
         self.state.tower_slots[slot_id] = True
-        self.state.towers[slot_id] = {"type": tower_type, "level": 1, "slot_id": slot_id, "cooldown": 999.0}
+        # 게임 규칙상 타워는 즉시 한 번 생성하되, 3초 동안은 렌더링·공격에서 제외합니다.
+        # 따라서 연출용/실제 사신이 중복 생성되지 않습니다.
+        self.state.towers[slot_id] = {
+            "type": tower_type,
+            "level": 1,
+            "slot_id": slot_id,
+            "cooldown": 999.0,
+            "summoning": True,
+        }
+        self.state.summons.append({
+            "slot_id": slot_id,
+            "tower_type": tower_type,
+            "elapsed": 0.0,
+        })
         self.state.actions_taken_this_wave += 1
         self.state.selected_slot = slot_id
-        self.state.message = f"{Tower.display_name(tower_type)} Lv.1 소환"
+        self.state.message = f"{Tower.display_name(tower_type)} 벽화에서 소환 중"
 
     def _handle_upgrade(self, slot_id: Optional[int]) -> None:
         if not self.economy.can_upgrade(self.state, slot_id):
@@ -182,6 +219,9 @@ class Game:
         tower_type = self.state.towers[slot_id]["type"]
         self.state.gold += refund
         del self.state.towers[slot_id]
+        self.state.summons = [
+            summon for summon in self.state.summons if summon["slot_id"] != slot_id
+        ]
         self.state.tower_slots[slot_id] = False
         self.state.actions_taken_this_wave += 1
         self.state.phase = GamePhase.PREPARATION
@@ -203,6 +243,9 @@ class Game:
         tower = self.state.towers.pop(from_slot)
         tower["slot_id"] = to_slot
         self.state.towers[to_slot] = tower
+        for summon in self.state.summons:
+            if summon["slot_id"] == from_slot:
+                summon["slot_id"] = to_slot
         self.state.tower_slots[from_slot] = False
         self.state.tower_slots[to_slot] = True
         self.state.selected_slot = to_slot
