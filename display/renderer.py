@@ -361,6 +361,8 @@ class Renderer:
         else:
             self._render_management_panel(state, buttons, y)
 
+        if state.message and state.phase != GamePhase.SETTLEMENT:
+            self._text(state.message, PANEL_X + 24, 728, self.font_small, COLOR_MOON)
         self.buttons.set_buttons(buttons)
 
     def _render_tower_information(self, tower: dict, y: int) -> None:
