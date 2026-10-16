@@ -1,5 +1,4 @@
 
-import math
 from pathlib import Path
 from typing import List
 
@@ -30,7 +29,8 @@ from display.ui import Button, ButtonLayer, draw_panel
 from display.sprite_animation import TowerSpriteAnimator
 from display.effect_animation import AttackEffectAnimator
 from display.boss_animation import BossSpriteAnimator
-from display.render_sizes import NORMAL_ENEMY_RADIUS, TOWER_BOTTOM_OFFSET, TOWER_LEVEL_GAP
+from display.enemy_animation import EnemySpriteAnimator
+from display.render_sizes import TOWER_BOTTOM_OFFSET, TOWER_LEVEL_GAP
 from game.economy import Economy
 from game.map import GameMap
 from game.state import GamePhase, GameState
@@ -52,6 +52,7 @@ class Renderer:
         self.tower_animator = TowerSpriteAnimator()
         self.effect_animator = AttackEffectAnimator()
         self.boss_animator = BossSpriteAnimator()
+        self.enemy_animator = EnemySpriteAnimator()
 
     def _load_boss_portraits(self) -> dict:
         sheet = pygame.image.load(str(Path(__file__).resolve().parents[1] / "data" / "boss_roster.png"))
@@ -181,7 +182,11 @@ class Renderer:
             self._text(label, center[0] - 12, center[1] - 13, self.font_med, color)
 
         # 현무의 연속 장판 애니메이션을 유닛 아래에 한 번만 표시합니다.
-        for effect in state.effects:
+        target_positions = {enemy.enemy_id: enemy.get_current_position()
+                            for enemy in state.enemies if enemy.enemy_id is not None}
+        effects = [self.effect_animator.resolve_targets(effect, target_positions)
+                   for effect in state.effects]
+        for effect in effects:
             if effect["kind"] == "slow_field" and effect["age"] < effect["ttl"] - 1e-9:
                 self._draw_effect(effect)
 
@@ -205,11 +210,11 @@ class Renderer:
             self._draw_tower(
                 slot_id,
                 tower_data,
-                state.effects,
+                effects,
             )
         for enemy in state.enemies:
             self._draw_enemy(enemy, state.wave_elapsed)
-        for effect in state.effects:
+        for effect in effects:
             if effect["kind"] != "slow_field":
                 self._draw_effect(effect)
 
@@ -289,21 +294,12 @@ class Renderer:
 
     def _draw_enemy(self, enemy, animation_time: float = 0.0) -> None:
         pos = self.map.grid_to_pixel(enemy.get_current_position())
-        radius = NORMAL_ENEMY_RADIUS
         if enemy.is_boss:
             sprite_rect = self.boss_animator.draw(self.screen, enemy, pos, animation_time)
-        elif enemy.enemy_type.name == "FAST":
-            color = (154, 86, 183)
-        elif enemy.enemy_type.name == "TANK":
-            color = (69, 54, 92)
         else:
-            color = COLOR_PURPLE
-        if not enemy.is_boss:
-            pygame.draw.circle(self.screen, color, pos, radius)
-            # Keep the cap inside the circle's visual diameter, including its stroke.
-            pygame.draw.arc(self.screen, COLOR_BLACK, (pos[0] - radius + 1, pos[1] - radius - 6, radius * 2 - 2, 14), math.pi, math.tau, 2)
+            sprite_rect = self.enemy_animator.draw(self.screen, enemy, pos, animation_time)
         hp_ratio = max(0, enemy.health / enemy.max_health)
-        hp_top = sprite_rect.top - 14 if enemy.is_boss else pos[1] - radius - 14
+        hp_top = sprite_rect.top - 14
         pygame.draw.rect(self.screen, COLOR_RED, (pos[0] - 18, hp_top, 36, 4))
         pygame.draw.rect(self.screen, COLOR_GREEN, (pos[0] - 18, hp_top, int(36 * hp_ratio), 4))
 
