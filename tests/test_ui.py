@@ -226,7 +226,7 @@ class TestPygameUI(unittest.TestCase):
         with patch.object(self.renderer, "_text", wraps=self.renderer._text) as draw_text:
             self.render("settlement-rewards-integrated")
         values = [call.args[0] for call in draw_text.call_args_list]
-        for value in ("일반 악귀 처치 1마리", "보스 악귀 처치 1마리", "5 G", "100 G", "225 G", "330 G"):
+        for value in ("일반 악귀 1마리 처치 보상", "보스 악귀 1마리 처치 보상", "5 G", "100 G", "225 G", "330 G"):
             self.assertIn(value, values)
         self.assertEqual(state.gold, 530)
 
