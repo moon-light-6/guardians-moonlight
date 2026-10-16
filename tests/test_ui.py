@@ -57,6 +57,21 @@ class TestPygameUI(unittest.TestCase):
         self.assertIsNotNone(action)
         self.game.step(action)
 
+    def test_guardian_sprites_show_level_number_below_them(self):
+        position = self.game.map.grid_to_pixel(self.game.map.get_slot_position(0))
+        below_sprite = pygame.Rect(position[0] - 20, position[1] + 21, 40, 20)
+        for tower_type in self.renderer.tower_animator.SPRITE_CONFIG:
+            with self.subTest(tower_type=tower_type):
+                self.screen.fill((10, 20, 30))
+                background = pygame.image.tobytes(self.screen.subsurface(below_sprite), "RGB")
+                # 스프라이트 자체는 제외해 레벨 텍스트가 실제로 그려지는지 검사합니다.
+                with patch.object(self.renderer.tower_animator, "draw", return_value=True):
+                    with patch.object(self.renderer, "font_small", wraps=self.renderer.font_small) as font:
+                        self.renderer._draw_tower(0, {"type": tower_type, "level": 1}, [])
+                        self.assertEqual([call.args[0] for call in font.render.call_args_list], ["Lv.1", "Lv.1"])
+                pixels = pygame.image.tobytes(self.screen.subsurface(below_sprite), "RGB")
+                self.assertNotEqual(pixels, background)
+
     def test_sell_button_cancel_confirm_and_summon_again(self):
         position = self.game.map.grid_to_pixel(self.game.map.get_slot_position(0))
         self.render("preparation-empty")
@@ -230,17 +245,90 @@ class TestPygameUI(unittest.TestCase):
             self.assertIn(value, values)
         self.assertEqual(state.gold, 530)
 
-    def test_slow_field_color_is_visible_until_expiry(self):
-        from config import CELL_SIZE
-        field = {"kind": "slow_field", "cell": (10, 5), "factor": 0.7, "age": 1.9, "ttl": 2}
+    def test_ice_field_plays_twelve_frames_with_loop_then_disappears(self):
+        animator = self.renderer.effect_animator
+        frames = animator.frames["water"]
+        self.assertEqual(len(frames), 12)
+        field = {"kind": "slow_field", "cell": (10, 5), "factor": 0.7,
+                 "age": 0, "slow_ttl": 2, "ttl": 2}
+        center = self.game.map.grid_to_pixel(field["cell"])
+        # 생성 0~3, 유지 4~7 반복, 소멸 8~11. 각 프레임 0.1초, 총 2초.
+        timeline = ((0, 0), (0.099, 0), (0.1, 1), (0.2, 2), (0.3, 3),
+                    (0.4, 4), (0.499, 4), (0.5, 5), (0.599, 5),
+                    (0.6, 6), (0.7, 7), (0.8, 4), (0.9, 5),
+                    (1, 6), (1.1, 7), (1.2, 4), (1.3, 5),
+                    (1.4, 6), (1.5, 7), (1.599, 7), (1.6, 8), (1.7, 9),
+                    (1.8, 10), (1.9, 11), (1.999, 11),
+                    (2 - 1e-14, None), (2, None), (3, None))
+        for age, index in timeline:
+            with self.subTest(age=age, frame=index):
+                self.screen.fill((10, 20, 30))
+                expected = self.screen.copy()
+                if index is not None:
+                    image = frames[index].copy()
+                    image.set_alpha(255)
+                    expected.blit(image, (center[0] - animator.anchors["water"][0],
+                                          center[1] - animator.anchors["water"][1]))
+                field["age"] = age
+                with patch.object(animator, "_draw_field_energy"):
+                    animator.draw(self.screen, field, self.game.map)
+                self.assertTrue(pygame.image.tobytes(self.screen, "RGB") ==
+                                pygame.image.tobytes(expected, "RGB"))
+
+    def test_ice_field_is_drawn_once_without_attack_or_legacy_overlay(self):
+        field = {"kind": "slow_field", "cell": (10, 5), "factor": 0.7,
+                 "age": 0.2, "slow_ttl": 2, "ttl": 2}
+        water = {"kind": "water", "from": (2, 0), "to": (10.25, 5),
+                 "age": 0.2, "ttl": 0.6}
+        for age in (0.2, 1, 1.6, 1.999, 2):
+            with self.subTest(age=age):
+                field["age"] = age
+                self.game.state.effects = []
+                self.renderer.render(self.game.state)
+                expected = self.screen.copy()
+                self.renderer.effect_animator.draw(expected, field, self.game.map)
+                self.game.state.effects = [water, field]
+                with patch.object(self.renderer.effect_animator, "draw",
+                                  wraps=self.renderer.effect_animator.draw) as draw_png:
+                    self.renderer.render(self.game.state)
+                self.assertEqual(draw_png.call_count, int(age < 2))
+                if age < 2:
+                    self.assertIs(draw_png.call_args.args[1], field)
+                self.assertTrue(pygame.image.tobytes(self.screen, "RGB") ==
+                                pygame.image.tobytes(expected, "RGB"))
+        # 화면에서 숨긴 water 이벤트는 현무 본체의 공격 모션에 계속 사용됩니다.
+        self.assertIs(self.renderer.tower_animator._active_attack("ICE", (2, 0), [water, field]), water)
+
+    def test_missing_field_png_does_not_restore_legacy_overlay(self):
+        self.renderer.render(self.game.state)
+        background = pygame.image.tobytes(self.screen, "RGB")
+        field = {"kind": "slow_field", "cell": (10, 5), "factor": 0.7,
+                 "age": 1, "slow_ttl": 2, "ttl": 2}
         self.game.state.effects = [field]
-        cx, cy = self.game.map.grid_to_pixel(field["cell"])
-        point = (cx - CELL_SIZE // 2 + 10, cy - CELL_SIZE // 2 + 10)
-        self.renderer.render(self.game.state)
-        self.assertEqual(self.screen.get_at(point)[:3], (235, 147, 46))
-        field["age"] = 2
-        self.renderer.render(self.game.state)
-        self.assertEqual(self.screen.get_at(point)[:3], (48, 55, 78))
+        with patch.dict(self.renderer.effect_animator.frames, {"water": []}):
+            self.renderer.render(self.game.state)
+        self.assertTrue(pygame.image.tobytes(self.screen, "RGB") == background)
+
+    def test_effect_alignment_ignores_padding_and_plume_size(self):
+        animator = self.renderer.effect_animator
+        # 실제 원본의 모든 프레임도 같은 캔버스 크기로 정렬됩니다.
+        self.assertEqual(len({frame.get_size() for frame in animator.frames["water"]}), 1)
+        frames, points = [], []
+        for index in range(12):
+            frame = pygame.Surface((100, 120), pygame.SRCALPHA)
+            ring = pygame.Rect(15 + index, 60 + index * 2, 25, 12)
+            pygame.draw.line(frame, (255, 0, 0), (ring.centerx, 5 + index), ring.midtop, 3)
+            pygame.draw.ellipse(frame, (255, 255, 255), ring)
+            frames.append(frame)
+            points.append(ring.center)
+        aligned, anchor = animator._align_frames(frames, points, (100, 120))
+        self.assertEqual(len({frame.get_size() for frame in aligned}), 1)
+        for frame in aligned:
+            ring_pixels = pygame.mask.from_threshold(frame, (255, 255, 255, 255),
+                                                    (30, 30, 30, 255))
+            ring = ring_pixels.get_bounding_rects()[0]
+            self.assertEqual(ring.center, anchor)
+            self.assertEqual(ring.size, (25, 12))
 
 
 if __name__ == "__main__":

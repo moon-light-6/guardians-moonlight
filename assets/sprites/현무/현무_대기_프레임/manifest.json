@@ -1,0 +1,722 @@
+[
+  {
+    "name": "NW_1.png",
+    "row": 0,
+    "col": 0,
+    "cell_bounds": [
+      0,
+      0,
+      314,
+      314
+    ],
+    "crop_bbox": [
+      46,
+      47,
+      304,
+      293
+    ],
+    "sprite_size": [
+      258,
+      246
+    ],
+    "paste_xy": [
+      47,
+      78
+    ],
+    "canvas_size": [
+      352,
+      352
+    ],
+    "baseline_y": 324,
+    "alpha_threshold": 80,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 41946,
+        "bbox": [
+          49,
+          50,
+          252,
+          240
+        ],
+        "dist": 0.09609198223752667,
+        "score": 40985.08017762473
+      }
+    ]
+  },
+  {
+    "name": "NW_2.png",
+    "row": 0,
+    "col": 1,
+    "cell_bounds": [
+      314,
+      0,
+      627,
+      314
+    ],
+    "crop_bbox": [
+      45,
+      48,
+      303,
+      293
+    ],
+    "sprite_size": [
+      258,
+      245
+    ],
+    "paste_xy": [
+      47,
+      79
+    ],
+    "canvas_size": [
+      352,
+      352
+    ],
+    "baseline_y": 324,
+    "alpha_threshold": 80,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 41522,
+        "bbox": [
+          48,
+          51,
+          252,
+          239
+        ],
+        "dist": 0.09590006251774709,
+        "score": 40562.99937482253
+      }
+    ]
+  },
+  {
+    "name": "NW_3.png",
+    "row": 0,
+    "col": 2,
+    "cell_bounds": [
+      627,
+      0,
+      940,
+      314
+    ],
+    "crop_bbox": [
+      46,
+      44,
+      304,
+      293
+    ],
+    "sprite_size": [
+      258,
+      249
+    ],
+    "paste_xy": [
+      47,
+      75
+    ],
+    "canvas_size": [
+      352,
+      352
+    ],
+    "baseline_y": 324,
+    "alpha_threshold": 80,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 41687,
+        "bbox": [
+          49,
+          47,
+          252,
+          243
+        ],
+        "dist": 0.0951780291429819,
+        "score": 40735.21970857018
+      }
+    ]
+  },
+  {
+    "name": "NW_4.png",
+    "row": 0,
+    "col": 3,
+    "cell_bounds": [
+      940,
+      0,
+      1254,
+      314
+    ],
+    "crop_bbox": [
+      46,
+      46,
+      297,
+      293
+    ],
+    "sprite_size": [
+      251,
+      247
+    ],
+    "paste_xy": [
+      50,
+      77
+    ],
+    "canvas_size": [
+      352,
+      352
+    ],
+    "baseline_y": 324,
+    "alpha_threshold": 80,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 40618,
+        "bbox": [
+          49,
+          49,
+          245,
+          241
+        ],
+        "dist": 0.09176165497777915,
+        "score": 39700.38345022221
+      }
+    ]
+  },
+  {
+    "name": "NE_1.png",
+    "row": 1,
+    "col": 0,
+    "cell_bounds": [
+      0,
+      314,
+      314,
+      627
+    ],
+    "crop_bbox": [
+      32,
+      41,
+      290,
+      301
+    ],
+    "sprite_size": [
+      258,
+      260
+    ],
+    "paste_xy": [
+      47,
+      64
+    ],
+    "canvas_size": [
+      352,
+      352
+    ],
+    "baseline_y": 324,
+    "alpha_threshold": 80,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 44355,
+        "bbox": [
+          35,
+          44,
+          252,
+          254
+        ],
+        "dist": 0.10656529225857952,
+        "score": 43289.347077414204
+      }
+    ]
+  },
+  {
+    "name": "NE_2.png",
+    "row": 1,
+    "col": 1,
+    "cell_bounds": [
+      314,
+      314,
+      627,
+      627
+    ],
+    "crop_bbox": [
+      32,
+      41,
+      288,
+      299
+    ],
+    "sprite_size": [
+      256,
+      258
+    ],
+    "paste_xy": [
+      48,
+      66
+    ],
+    "canvas_size": [
+      352,
+      352
+    ],
+    "baseline_y": 324,
+    "alpha_threshold": 80,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 44646,
+        "bbox": [
+          35,
+          44,
+          250,
+          252
+        ],
+        "dist": 0.10384642662305991,
+        "score": 43607.5357337694
+      }
+    ]
+  },
+  {
+    "name": "NE_3.png",
+    "row": 1,
+    "col": 2,
+    "cell_bounds": [
+      627,
+      314,
+      940,
+      627
+    ],
+    "crop_bbox": [
+      29,
+      40,
+      289,
+      299
+    ],
+    "sprite_size": [
+      260,
+      259
+    ],
+    "paste_xy": [
+      46,
+      65
+    ],
+    "canvas_size": [
+      352,
+      352
+    ],
+    "baseline_y": 324,
+    "alpha_threshold": 80,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 44384,
+        "bbox": [
+          32,
+          43,
+          254,
+          253
+        ],
+        "dist": 0.10569163645576472,
+        "score": 43327.08363544235
+      }
+    ]
+  },
+  {
+    "name": "NE_4.png",
+    "row": 1,
+    "col": 3,
+    "cell_bounds": [
+      940,
+      314,
+      1254,
+      627
+    ],
+    "crop_bbox": [
+      30,
+      40,
+      289,
+      299
+    ],
+    "sprite_size": [
+      259,
+      259
+    ],
+    "paste_xy": [
+      46,
+      65
+    ],
+    "canvas_size": [
+      352,
+      352
+    ],
+    "baseline_y": 324,
+    "alpha_threshold": 80,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 44917,
+        "bbox": [
+          33,
+          43,
+          253,
+          253
+        ],
+        "dist": 0.10377096090151755,
+        "score": 43879.290390984825
+      }
+    ]
+  },
+  {
+    "name": "SW_1.png",
+    "row": 2,
+    "col": 0,
+    "cell_bounds": [
+      0,
+      627,
+      314,
+      940
+    ],
+    "crop_bbox": [
+      29,
+      51,
+      308,
+      280
+    ],
+    "sprite_size": [
+      279,
+      229
+    ],
+    "paste_xy": [
+      36,
+      95
+    ],
+    "canvas_size": [
+      352,
+      352
+    ],
+    "baseline_y": 324,
+    "alpha_threshold": 80,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 43641,
+        "bbox": [
+          32,
+          54,
+          273,
+          223
+        ],
+        "dist": 0.06304454340577262,
+        "score": 43010.55456594227
+      }
+    ]
+  },
+  {
+    "name": "SW_2.png",
+    "row": 2,
+    "col": 1,
+    "cell_bounds": [
+      314,
+      627,
+      627,
+      940
+    ],
+    "crop_bbox": [
+      24,
+      53,
+      305,
+      281
+    ],
+    "sprite_size": [
+      281,
+      228
+    ],
+    "paste_xy": [
+      35,
+      96
+    ],
+    "canvas_size": [
+      352,
+      352
+    ],
+    "baseline_y": 324,
+    "alpha_threshold": 80,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 43788,
+        "bbox": [
+          27,
+          56,
+          275,
+          222
+        ],
+        "dist": 0.060762587634934466,
+        "score": 43180.374123650654
+      }
+    ]
+  },
+  {
+    "name": "SW_3.png",
+    "row": 2,
+    "col": 2,
+    "cell_bounds": [
+      627,
+      627,
+      940,
+      940
+    ],
+    "crop_bbox": [
+      29,
+      45,
+      308,
+      279
+    ],
+    "sprite_size": [
+      279,
+      234
+    ],
+    "paste_xy": [
+      36,
+      90
+    ],
+    "canvas_size": [
+      352,
+      352
+    ],
+    "baseline_y": 324,
+    "alpha_threshold": 80,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 44076,
+        "bbox": [
+          32,
+          48,
+          273,
+          228
+        ],
+        "dist": 0.06045565174011278,
+        "score": 43471.44348259887
+      }
+    ]
+  },
+  {
+    "name": "SW_4.png",
+    "row": 2,
+    "col": 3,
+    "cell_bounds": [
+      940,
+      627,
+      1254,
+      940
+    ],
+    "crop_bbox": [
+      28,
+      58,
+      302,
+      281
+    ],
+    "sprite_size": [
+      274,
+      223
+    ],
+    "paste_xy": [
+      39,
+      101
+    ],
+    "canvas_size": [
+      352,
+      352
+    ],
+    "baseline_y": 324,
+    "alpha_threshold": 80,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 42606,
+        "bbox": [
+          31,
+          61,
+          268,
+          217
+        ],
+        "dist": 0.06505310965281857,
+        "score": 41955.46890347182
+      }
+    ]
+  },
+  {
+    "name": "SE_1.png",
+    "row": 3,
+    "col": 0,
+    "cell_bounds": [
+      0,
+      940,
+      314,
+      1254
+    ],
+    "crop_bbox": [
+      17,
+      29,
+      302,
+      261
+    ],
+    "sprite_size": [
+      285,
+      232
+    ],
+    "paste_xy": [
+      33,
+      92
+    ],
+    "canvas_size": [
+      352,
+      352
+    ],
+    "baseline_y": 324,
+    "alpha_threshold": 80,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 46048,
+        "bbox": [
+          20,
+          32,
+          279,
+          226
+        ],
+        "dist": 0.015282626053012584,
+        "score": 45895.17373946987
+      }
+    ]
+  },
+  {
+    "name": "SE_2.png",
+    "row": 3,
+    "col": 1,
+    "cell_bounds": [
+      314,
+      940,
+      627,
+      1254
+    ],
+    "crop_bbox": [
+      16,
+      29,
+      300,
+      261
+    ],
+    "sprite_size": [
+      284,
+      232
+    ],
+    "paste_xy": [
+      34,
+      92
+    ],
+    "canvas_size": [
+      352,
+      352
+    ],
+    "baseline_y": 324,
+    "alpha_threshold": 80,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 45414,
+        "bbox": [
+          19,
+          32,
+          278,
+          226
+        ],
+        "dist": 0.0180015124982923,
+        "score": 45233.98487501708
+      }
+    ]
+  },
+  {
+    "name": "SE_3.png",
+    "row": 3,
+    "col": 2,
+    "cell_bounds": [
+      627,
+      940,
+      940,
+      1254
+    ],
+    "crop_bbox": [
+      15,
+      29,
+      301,
+      261
+    ],
+    "sprite_size": [
+      286,
+      232
+    ],
+    "paste_xy": [
+      33,
+      92
+    ],
+    "canvas_size": [
+      352,
+      352
+    ],
+    "baseline_y": 324,
+    "alpha_threshold": 80,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 45296,
+        "bbox": [
+          18,
+          32,
+          280,
+          226
+        ],
+        "dist": 0.019848970858889023,
+        "score": 45097.51029141111
+      }
+    ]
+  },
+  {
+    "name": "SE_4.png",
+    "row": 3,
+    "col": 3,
+    "cell_bounds": [
+      940,
+      940,
+      1254,
+      1254
+    ],
+    "crop_bbox": [
+      21,
+      29,
+      300,
+      261
+    ],
+    "sprite_size": [
+      279,
+      232
+    ],
+    "paste_xy": [
+      36,
+      92
+    ],
+    "canvas_size": [
+      352,
+      352
+    ],
+    "baseline_y": 324,
+    "alpha_threshold": 80,
+    "candidates": [
+      {
+        "label": 1,
+        "area": 44943,
+        "bbox": [
+          24,
+          32,
+          273,
+          226
+        ],
+        "dist": 0.01792628110741759,
+        "score": 44763.73718892582
+      }
+    ]
+  }
+]

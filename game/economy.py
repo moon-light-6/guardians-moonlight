@@ -119,3 +119,4 @@ class Economy:
 
     def buy_random_tower(self, rng) -> str:
         return rng.choice(Tower.all_types())
+        # return rng.choice(["ICE", "ARCHER"])

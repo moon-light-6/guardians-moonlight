@@ -262,7 +262,7 @@ class Game:
             or not self.wave_manager.is_wave_complete(self.state.enemies)
         ):
             return
-        self.state.effects = [effect for effect in self.state.effects if effect["kind"] != "slow_field"]
+        self.state.effects = []
         stage = self.state.current_stage
         self.economy.on_stage_clear(self.state)
         clear_gold = self.state.wave_clear_gold
