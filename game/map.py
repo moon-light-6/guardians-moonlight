@@ -2,7 +2,16 @@ import json
 import os
 from typing import Dict, List, Tuple
 
-from config import CELL_SIZE, GRID_ORIGIN, MAP_HEIGHT, MAP_WIDTH, SLOT_COUNT
+from config import (
+    BOARD_BOTTOM_WIDTH,
+    BOARD_BOTTOM_Y,
+    BOARD_CENTER_X,
+    BOARD_TOP_WIDTH,
+    BOARD_TOP_Y,
+    MAP_HEIGHT,
+    MAP_WIDTH,
+    SLOT_COUNT,
+)
 
 
 class GameMap:
@@ -92,19 +101,62 @@ class GameMap:
     def get_path(self) -> List[Tuple[int, int]]:
         return list(self.path)
 
-    def grid_to_pixel(self, pos: Tuple[float, float]) -> Tuple[int, int]:
-        x, y = pos
+    def _project_corner(self, x: float, y: float) -> Tuple[float, float]:
+        """논리 격자 모서리를 화면의 2.5D 사다리꼴 보드로 투영합니다.
+
+        이 변환만 화면 좌표에 관여합니다. path/slots와 전투용 논리 좌표는
+        그대로여서, 화면 연출을 바꿔도 몬스터 이동·사거리 판정은 변하지 않습니다.
+        """
+        depth = y / self.map_height
+        width = BOARD_TOP_WIDTH + (BOARD_BOTTOM_WIDTH - BOARD_TOP_WIDTH) * depth
+        left = BOARD_CENTER_X - width / 2
         return (
-            int(GRID_ORIGIN[0] + x * CELL_SIZE + CELL_SIZE / 2),
-            int(GRID_ORIGIN[1] + y * CELL_SIZE + CELL_SIZE / 2),
+            left + (x / self.map_width) * width,
+            BOARD_TOP_Y + depth * (BOARD_BOTTOM_Y - BOARD_TOP_Y),
         )
 
+    def grid_to_pixel(self, pos: Tuple[float, float]) -> Tuple[int, int]:
+        """논리 격자 칸의 중심을 화면 좌표로 변환합니다."""
+        x, y = pos
+        px, py = self._project_corner(x + 0.5, y + 0.5)
+        return (round(px), round(py))
+
+    def cell_polygon(self, x: float, y: float, width: float = 1, height: float = 1) -> List[Tuple[int, int]]:
+        """렌더러와 클릭 판정이 공유하는 투영된 사각 칸입니다."""
+        corners = (
+            self._project_corner(x, y),
+            self._project_corner(x + width, y),
+            self._project_corner(x + width, y + height),
+            self._project_corner(x, y + height),
+        )
+        return [(round(px), round(py)) for px, py in corners]
+
+    def board_polygon(self) -> List[Tuple[int, int]]:
+        return self.cell_polygon(0, 0, self.map_width, self.map_height)
+
+    def slot_polygon(self, slot_id: int) -> List[Tuple[int, int]]:
+        x, y, width, height = self.get_slot_bounds(slot_id)
+        return self.cell_polygon(x, y, width, height)
+
+    @staticmethod
+    def _point_in_polygon(point: Tuple[int, int], polygon: List[Tuple[int, int]]) -> bool:
+        """외부 라이브러리 없이 볼록 사다리꼴 슬롯의 클릭 여부를 검사합니다."""
+        px, py = point
+        inside = False
+        previous = polygon[-1]
+        for current in polygon:
+            x1, y1 = current
+            x2, y2 = previous
+            if (y1 > py) != (y2 > py):
+                crossing_x = (x2 - x1) * (py - y1) / (y2 - y1) + x1
+                if px < crossing_x:
+                    inside = not inside
+            previous = current
+        return inside
+
     def pixel_to_slot(self, pos: Tuple[int, int]) -> int | None:
-        mx, my = pos
-        for slot_id, (x, y, width, height) in self.slots.items():
-            left = GRID_ORIGIN[0] + x * CELL_SIZE
-            top = GRID_ORIGIN[1] + y * CELL_SIZE
-            if left <= mx < left + width * CELL_SIZE and top <= my < top + height * CELL_SIZE:
+        for slot_id in self.slots:
+            if self._point_in_polygon(pos, self.slot_polygon(slot_id)):
                 return slot_id
         return None
 
