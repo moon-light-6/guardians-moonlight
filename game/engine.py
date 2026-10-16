@@ -112,7 +112,7 @@ class Game:
         self._update_effect_targets()
         if self.state.life <= 0:
             self.state.phase = GamePhase.GAME_OVER
-            self.state.message = "결계가 무너졌어요"
+            self.state.message = "소동 해결 실패"
             return
         self._update_towers(dt)
         self._collect_dead_enemies()
@@ -225,7 +225,7 @@ class Game:
         self._simulation_accumulator = 0.0
         self.state.enemies = []
         self.state.effects = []
-        self.state.message = "자동 전투 중"
+        self.state.message = "소동 해결 중"
         self.wave_manager.start_wave(self.state.current_stage)
 
     def _assign_enemy_ids(self) -> None:
@@ -319,17 +319,17 @@ class Game:
             boss_name=boss_name,
         )
         self.state.phase = GamePhase.SETTLEMENT
-        self.state.message = f"{stage}번째 웨이브 방어 성공"
+        self.state.message = f"{stage}번째 소동 해결!"
 
     def _continue_after_settlement(self) -> None:
         if self.state.phase != GamePhase.SETTLEMENT:
             return
         if self.state.current_stage >= MAX_STAGES:
             self.state.phase = GamePhase.VICTORY
-            self.state.message = "도시를 지켜냈어요"
+            self.state.message = "결계를 지켜냈어요"
             return
         self.state.current_stage += 1
         self.state.actions_taken_this_wave = 0
         self.state.selected_slot = None
         self.state.phase = GamePhase.PREPARATION
-        self.state.message = "다음 준비 단계"
+        self.state.message = "다음 수호 준비 단계"

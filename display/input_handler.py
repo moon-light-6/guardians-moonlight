@@ -12,6 +12,8 @@ class InputHandler:
     def __init__(self, buttons: ButtonLayer):
         self.buttons = buttons
         self.map = GameMap()
+        self.quit_confirm = False
+        self.should_quit = False
 
     def handle_event(self, event: pygame.event.Event, state: GameState) -> Optional[Action]:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -24,7 +26,13 @@ class InputHandler:
         action_name = self.buttons.handle_click(pos)
         if action_name:
             if action_name == "QUIT":
-                pygame.event.post(pygame.event.Event(pygame.QUIT))
+                self.quit_confirm = True
+                return None
+            if action_name == "QUIT_NO":
+                self.quit_confirm = False
+                return None
+            if action_name == "QUIT_YES":
+                self.should_quit = True
                 return None
             mapping = {
                 "START_GAME": Action(ActionType.START_GAME),
@@ -43,6 +51,8 @@ class InputHandler:
             }
             return mapping.get(action_name)
 
+        if self.quit_confirm:
+            return None
         slot_id = self.map.pixel_to_slot(pos)
         if slot_id is None:
             return None
@@ -56,10 +66,12 @@ class InputHandler:
 
     def _handle_key_down(self, key: int, state: GameState) -> Optional[Action]:
         if key == pygame.K_ESCAPE:
-            if state.phase == GamePhase.TITLE:
-                pygame.event.post(pygame.event.Event(pygame.QUIT))
+            if state.phase == GamePhase.TITLE or self.quit_confirm:
+                self.quit_confirm = not self.quit_confirm
                 return None
             return Action(ActionType.CANCEL if state.phase in {GamePhase.MOVING_TOWER, GamePhase.SELL_CONFIRM} else ActionType.BACK_TO_TITLE)
+        if self.quit_confirm:
+            return None
         if key == pygame.K_SPACE and state.phase == GamePhase.PREPARATION:
             return Action(ActionType.START_WAVE)
         if key == pygame.K_RETURN and state.phase == GamePhase.SETTLEMENT:
