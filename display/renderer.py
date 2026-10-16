@@ -194,14 +194,20 @@ class Renderer:
 
     def _render_hud(self, state: GameState) -> None:
         self._text("월하사신", 42, 34, self.font_big, COLOR_WHITE)
-        phase = "소동 발생" if state.phase == GamePhase.WAVE_ACTIVE else "수호 준비"
-        if state.phase == GamePhase.SETTLEMENT:
+        is_preparing = state.phase not in {GamePhase.WAVE_ACTIVE, GamePhase.SETTLEMENT}
+        if state.phase == GamePhase.WAVE_ACTIVE:
+            phase = "소동 발생"
+        elif state.phase == GamePhase.SETTLEMENT:
             phase = "정산"
+        else:
+            phase = "수호 준비"
         self._text(f"소동 {state.current_stage:02d} / 30", 250, 46, self.font_med, COLOR_WHITE)
         self._text(f"결계 {state.life}", 430, 46, self.font_med, COLOR_MINT)
         self._text(f"{state.gold} G", 548, 46, self.font_med, COLOR_GOLD)
         self._text(phase, 680, 46, self.font_med, COLOR_CYAN)
-        self._text(f"수호 준비 행동 {state.actions_taken_this_wave} / 20", 760, 46, self.font_small, COLOR_GRAY)
+        if is_preparing:
+            count_x = 680 + self.font_med.size(phase)[0] + 12
+            self._text(f"{state.actions_taken_this_wave} / 20", count_x, 50, self.font_small, COLOR_GRAY)
 
     def _render_board(self, state: GameState) -> None:
         board = pygame.Rect(GRID_ORIGIN[0], GRID_ORIGIN[1], 20 * CELL_SIZE, 15 * CELL_SIZE)
