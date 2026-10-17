@@ -5,11 +5,6 @@ from typing import List
 import pygame
 
 from config import (
-    BOARD_BOTTOM_WIDTH,
-    BOARD_BOTTOM_Y,
-    BOARD_TILE_DEPTH,
-    BOARD_TOP_WIDTH,
-    BOARD_TOP_Y,
     CELL_SIZE,
     COLOR_BLACK,
     COLOR_BLUE,
@@ -29,6 +24,7 @@ from config import (
     PANEL_X,
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
+    MAP_DEBUG_DEFAULT,
     MURAL_ORIGINS,
     SUMMON_CORE_COLOR,
     SUMMON_GATHER_SECONDS,
@@ -61,6 +57,9 @@ class Renderer:
         self.font_small = self._font(16)
         self.economy = Economy()
         self.background = self._load_background()
+        self.show_map_debug = MAP_DEBUG_DEFAULT
+        self.debug_show_slots = True
+        self.debug_show_route = True
         self.boss_portraits = self._load_boss_portraits()
         self.tower_animator = TowerSpriteAnimator()
         self.boss_animator = BossSpriteAnimator()
@@ -90,10 +89,21 @@ class Renderer:
         return portraits
 
     def _load_background(self) -> pygame.Surface:
-        """원본 달빛 뜰 배경을 게임 해상도에 맞춰 한 번만 준비합니다."""
-        path = Path(__file__).resolve().parents[1] / "assets" / "backgrounds" / "moonlit-courtyard.png"
+        """Load the painted map with the same uniform transform as GameMap."""
+        path = Path(__file__).resolve().parents[1] / "assets" / "backgrounds" / "map_background.png"
         image = pygame.image.load(str(path)).convert()
-        return pygame.transform.smoothscale(image, (SCREEN_WIDTH, SCREEN_HEIGHT))
+        if image.get_size() != (self.map.source_width, self.map.source_height):
+            raise ValueError(
+                f"map_background.png must be {self.map.source_width}×{self.map.source_height}, "
+                f"got {image.get_width()}×{image.get_height()}"
+            )
+        # This is one aspect-preserving scale, not independent x/y resizing.
+        size = (round(self.map.display_size[0]), round(self.map.display_size[1]))
+        return pygame.transform.smoothscale(image, size)
+
+    def toggle_map_debug(self) -> bool:
+        self.show_map_debug = not self.show_map_debug
+        return self.show_map_debug
 
     def _font(self, size: int) -> pygame.font.Font:
         # 한국어 글씨체 - 맥북 운영체제
@@ -122,8 +132,8 @@ class Renderer:
             self._render_quit_popup()
 
     def _draw_moonlit_background(self) -> None:
-        # 사신 벽화도 원본에 포함되어 있으므로 별도의 도형으로 덮어쓰지 않습니다.
-        self.screen.blit(self.background, (0, 0))
+        # The painted road, portal, and platforms are one source image.
+        self.screen.blit(self.background, (round(self.map.display_offset[0]), round(self.map.display_offset[1])))
 
     def _render_title(self) -> None:
         title = self.font_title.render("월하사신", True, COLOR_WHITE)
@@ -254,28 +264,11 @@ class Renderer:
             self._text(f"{state.actions_taken_this_wave} / 20", count_x, 50, self.font_small, COLOR_GRAY)
 
     def _render_board(self, state: GameState) -> None:
-        # map.path(87칸)와 map.slots(24칸)를 그대로 투영합니다. 이곳에서 좌표를
-        # 새로 만들지 않으므로, 보드 외형이 바뀌어도 이동/배치/판정 수는 유지됩니다.
-        board = self.map.board_polygon()
-        pygame.draw.polygon(self.screen, (4, 8, 17), self._offset_polygon(board, 10))
-        pygame.draw.polygon(self.screen, (13, 22, 39), board)
-        pygame.draw.polygon(self.screen, (62, 79, 108), board, 2)
+        # 길·포털·기본 사신 받침은 map_background.png에 완성돼 있습니다. 예전
+        # 격자, 길 타일, 커브/커넥터, 받침 본체는 여기에서 다시 그리지 않습니다.
 
-        # 희미한 줄눈으로 뜰의 깊이만 주고, 경로 타일은 별도로 명확히 구분합니다.
-        for row in range(1, self.map.map_height):
-            left = self.map.cell_polygon(0, row)[0]
-            right = self.map.cell_polygon(self.map.map_width - 1, row)[1]
-            pygame.draw.line(self.screen, (20, 34, 58), left, right, 1)
-
-        for cell in self.map.get_path():
-            self._draw_path_tile(cell)
-
-        for label, cell, color in (
-            ("S", self.map.get_start_position(), COLOR_MINT),
-            ("E", self.map.get_base_position(), COLOR_RED),
-        ):
-            center = self.map.grid_to_pixel(cell)
-            self._text(label, center[0] - 12, center[1] - 13, self.font_med, color)
+        if self.show_map_debug:
+            self._draw_map_debug()
 
         # 현무의 연속 장판 애니메이션을 유닛 아래에 한 번만 표시합니다.
         target_positions = {enemy.enemy_id: enemy.get_current_position()
@@ -288,14 +281,9 @@ class Renderer:
 
         pending_slots = {summon["slot_id"] for summon in state.summons}
         for slot_id in self.map.slots:
-            pos = self.map.grid_to_pixel(self.map.get_slot_position(slot_id))
-            occupied = state.has_tower(slot_id) or slot_id in pending_slots
             selected = state.selected_slot == slot_id
             moving = state.phase == GamePhase.MOVING_TOWER and state.is_slot_empty(slot_id)
-            self._draw_slot_tile(slot_id, selected, moving, occupied)
-            color = COLOR_MINT if moving else (COLOR_GOLD if selected else (123, 145, 180))
-            if not occupied:
-                self._text("+", pos[0] - 6, pos[1] - 12, self.font_med, color)
+            self._draw_slot_tile(slot_id, selected, moving)
 
         if (state.selected_slot is not None
                 and state.has_tower(state.selected_slot)
@@ -322,47 +310,48 @@ class Renderer:
             if effect["kind"] != "slow_field":
                 self._draw_effect(effect)
 
-    @staticmethod
-    def _offset_polygon(points, y_offset: int):
-        return [(x, y + y_offset) for x, y in points]
+    def _draw_slot_tile(self, slot_id: int, selected: bool, moving: bool) -> None:
+        """배경의 기본 받침을 덮지 않는 선택·이동 테두리 오버레이입니다."""
+        if not (selected or moving):
+            return
+        center = self.map.grid_to_pixel(self.map.get_slot_position(slot_id))
+        ring = pygame.Rect(center[0] - 28, center[1] - 14, 56, 28)
+        color = COLOR_MINT if moving else COLOR_GOLD
+        glow = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        pygame.draw.ellipse(glow, (*color, 68), ring.inflate(10, 6), 3)
+        self.screen.blit(glow, (0, 0))
+        pygame.draw.ellipse(self.screen, color, ring, 2)
 
-    def _draw_path_tile(self, cell) -> None:
-        """기존 경로의 한 칸을 두께 있는 돌 타일로 표현합니다."""
-        polygon = self.map.cell_polygon(cell[0] + 0.06, cell[1] + 0.08, 0.88, 0.82)
-        pygame.draw.polygon(self.screen, (22, 28, 43), self._offset_polygon(polygon, BOARD_TILE_DEPTH))
-        pygame.draw.polygon(self.screen, (72, 80, 105), polygon)
-        pygame.draw.polygon(self.screen, (124, 133, 157), polygon, 1)
+    def _draw_map_debug(self) -> None:
+        """Opt-in validation overlay using the exact source-image transform."""
+        if self.debug_show_route:
+            route = [self.map.source_to_pixel(point) for point in self.map.get_source_path()]
+            pygame.draw.lines(self.screen, (255, 225, 70), False, route, 3)
+            for point in route:
+                pygame.draw.circle(self.screen, (255, 225, 70), point, 4)
+            spawn = self.map.source_to_pixel(self.map.get_start_source_position())
+            base = self.map.source_to_pixel(self.map.get_base_source_position())
+            pygame.draw.circle(self.screen, (92, 255, 147), spawn, 9, 3)
+            pygame.draw.circle(self.screen, (255, 80, 170), base, 9, 3)
+            self._text("S", spawn[0] - 5, spawn[1] - 28, self.font_small, (92, 255, 147))
+            self._text("E", base[0] - 5, base[1] - 28, self.font_small, (255, 80, 170))
 
-    def _draw_slot_tile(self, slot_id: int, selected: bool, moving: bool, occupied: bool) -> None:
-        polygon = self.map.slot_polygon(slot_id)
-        if selected:
-            glow = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
-            pygame.draw.polygon(glow, (244, 210, 112, 70), polygon)
-            self.screen.blit(glow, (0, 0))
-        side_color = (38, 52, 77)
-        face_color = (57, 75, 108) if occupied else (47, 63, 92)
-        border = COLOR_MINT if moving else (COLOR_GOLD if selected else (118, 140, 174))
-        pygame.draw.polygon(self.screen, side_color, self._offset_polygon(polygon, BOARD_TILE_DEPTH))
-        pygame.draw.polygon(self.screen, face_color, polygon)
-        pygame.draw.polygon(self.screen, border, polygon, 2)
+        if self.debug_show_slots:
+            for slot_id in range(self.map.SLOT_COUNT):
+                point = self.map.source_to_pixel(self.map.get_slot_source_position(slot_id))
+                pygame.draw.line(self.screen, COLOR_CYAN, (point[0] - 7, point[1]), (point[0] + 7, point[1]), 2)
+                pygame.draw.line(self.screen, COLOR_CYAN, (point[0], point[1] - 7), (point[0], point[1] + 7), 2)
+                number = self.font_small.render(str(slot_id + 1), True, COLOR_CYAN)
+                self.screen.blit(number, (point[0] + 8, point[1] - 16))
 
     def _draw_projected_range(self, center, logical_range: float) -> None:
-        # 전투 판정은 논리 좌표에서 유지하고, 표시만 현 행의 사다리꼴 비율에 맞춘 타원으로 냅니다.
-        row_ratio = (center[1] - BOARD_TOP_Y) / (BOARD_BOTTOM_Y - BOARD_TOP_Y)
-        cell_width = (BOARD_TOP_WIDTH + (BOARD_BOTTOM_WIDTH - BOARD_TOP_WIDTH) * row_ratio) / self.map.map_width
-        cell_height = (BOARD_BOTTOM_Y - BOARD_TOP_Y) / self.map.map_height
-        rect = pygame.Rect(
-            round(center[0] - logical_range * cell_width),
-            round(center[1] - logical_range * cell_height),
-            round(logical_range * cell_width * 2),
-            round(logical_range * cell_height * 2),
-        )
-        pygame.draw.ellipse(self.screen, (97, 167, 213), rect, 1)
+        radius = round(self.map.units_to_pixels(logical_range))
+        pygame.draw.circle(self.screen, (97, 167, 213), center, radius, 1)
 
     def _draw_summon_effect(self, summon: dict) -> None:
         """벽화의 빛 → 달빛 덩어리 → 도착지 수렴. 캐릭터는 완료 전 보이지 않습니다."""
         elapsed = summon["elapsed"]
-        origin = pygame.Vector2(MURAL_ORIGINS[summon["tower_type"]])
+        origin = pygame.Vector2(self.map.source_to_pixel(MURAL_ORIGINS[summon["tower_type"]]))
         target = pygame.Vector2(self.map.grid_to_pixel(self.map.get_slot_position(summon["slot_id"])))
 
         if elapsed < SUMMON_WAKE_SECONDS:

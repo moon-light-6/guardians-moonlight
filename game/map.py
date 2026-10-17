@@ -1,197 +1,194 @@
+"""One source of truth for the painted map and its game coordinates.
+
+``data/map.json`` intentionally stores *source-image pixels*. Rendering,
+click hit-testing, route debugging, and gameplay positions all derive from
+those coordinates through this class; no code recreates the painted road or
+platforms from a grid.
+"""
+
 import json
+import math
 import os
 from typing import Dict, List, Tuple
 
-from config import (
-    BOARD_BOTTOM_WIDTH,
-    BOARD_BOTTOM_Y,
-    BOARD_CENTER_X,
-    BOARD_TOP_WIDTH,
-    BOARD_TOP_Y,
-    MAP_HEIGHT,
-    MAP_WIDTH,
-    SLOT_COUNT,
-)
+from config import MAP_COMBAT_PIXELS_PER_UNIT, SCREEN_HEIGHT, SCREEN_WIDTH, SLOT_COUNT
+
+
+Point = Tuple[float, float]
 
 
 class GameMap:
-    MAP_WIDTH = MAP_WIDTH
-    MAP_HEIGHT = MAP_HEIGHT
     SLOT_COUNT = SLOT_COUNT
 
     def __init__(self):
-        self.map_width = self.MAP_WIDTH
-        self.map_height = self.MAP_HEIGHT
-        self.path = self._initialize_path()
-        self.slots = self._initialize_slots()
+        self.source_width = 1548
+        self.source_height = 1016
+        self.combat_pixels_per_unit = MAP_COMBAT_PIXELS_PER_UNIT
+        self.combat_origin: Point = (0.0, 0.0)
+        self.source_path: List[Point] = []
+        self.source_slots: Dict[int, Point] = {}
+        self._load_from_json(os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "map.json"))
+        self._configure_transform()
         self._validate_map()
-        self.load_from_json(os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "map.json"))
 
-    def _initialize_path(self) -> List[Tuple[int, int]]:
-        # 4줄 왕복 경로. 둘째~넷째 타워 줄은 두 수평 경로 사이에 배치합니다.
-        cells = [(x, 1) for x in range(19, -1, -1)]
-        cells += [(0, y) for y in range(2, 6)]
-        cells += [(x, 5) for x in range(1, 19)]
-        cells += [(18, y) for y in range(6, 10)]
-        cells += [(x, 9) for x in range(17, -1, -1)]
-        cells += [(0, y) for y in range(10, 14)]
-        cells += [(x, 13) for x in range(1, 20)]
-        return cells
-
-    def _initialize_slots(self) -> Dict[int, Tuple[int, int, int, int]]:
-        coords = [
-            (2, 0), (5, 0), (8, 0), (11, 0), (14, 0), (18, 0),
-            (1, 3), (4, 3), (7, 3), (10, 3), (13, 3), (19, 3),
-            (1, 7), (7, 7), (10, 7), (13, 7), (16, 7), (19, 7),
-            (1, 11), (4, 11), (7, 11), (10, 11), (13, 11), (16, 11),
-        ]
-        return {index: (x, y, 1, 1) for index, (x, y) in enumerate(coords)}
-
-    def _validate_map(self) -> None:
-        """최신 정수 격자 좌표와 슬롯 경계 형식으로 맵을 검증합니다."""
-        if (type(self.map_width) is not int or type(self.map_height) is not int
-                or self.map_width != self.MAP_WIDTH or self.map_height != self.MAP_HEIGHT):
-            raise ValueError("Map dimensions must match configured dimensions")
-        if set(self.slots) != set(range(self.SLOT_COUNT)):
-            raise ValueError("Slot IDs must be 0 through SLOT_COUNT - 1")
-        if len(self.path) < 2:
-            raise ValueError("Path must contain at least two cells")
-        for point in self.path:
-            if len(point) != 2 or not all(type(value) is int for value in point):
-                raise ValueError("Path coordinates must be integer cell indices")
-            x, y = point
-            if not (0 <= x < self.map_width and 0 <= y < self.map_height):
-                raise ValueError("Path cell is outside map bounds")
-        if len(set(self.path)) != len(self.path):
-            raise ValueError("Path cells must not repeat")
-        for start, end in zip(self.path, self.path[1:]):
-            if abs(start[0] - end[0]) + abs(start[1] - end[1]) != 1:
-                raise ValueError("Path cells must be orthogonally adjacent")
-        bounds_list = []
-        for bounds in self.slots.values():
-            if len(bounds) != 4 or not all(type(value) is int for value in bounds):
-                raise ValueError("Slot bounds must contain four integer values")
-            x, y, width, height = bounds
-            if not (width > 0 and height > 0 and x >= 0 and y >= 0
-                    and x + width <= self.map_width and y + height <= self.map_height):
-                raise ValueError("Slot is outside map bounds")
-            for bx, by, bw, bh in bounds_list:
-                if x < bx + bw and bx < x + width and y < by + bh and by < y + height:
-                    raise ValueError("Slots must not overlap")
-            bounds_list.append(bounds)
-            if any(x <= px < x + width and y <= py < y + height for px, py in self.path):
-                raise ValueError("Slot overlaps a path cell")
-
-    def is_valid_slot(self, slot_id: int) -> bool:
-        return type(slot_id) is int and slot_id in self.slots
-
-    def get_slot_position(self, slot_id: int) -> Tuple[float, float]:
-        if not self.is_valid_slot(slot_id):
-            return (0.0, 0.0)
-        x, y, width, height = self.slots[slot_id]
-        # 경로와 동일한 칸 중심 좌표계: 정수 (x, y)가 해당 칸의 중심입니다.
-        # grid_to_pixel에서 반 칸을 더하므로 여기서는 중복 보정하지 않습니다.
-        return (x + (width - 1) / 2, y + (height - 1) / 2)
-
-    def get_slot_bounds(self, slot_id: int) -> Tuple[float, float, float, float]:
-        if not self.is_valid_slot(slot_id):
-            return (0.0, 0.0, 0.0, 0.0)
-        return self.slots[slot_id]
-
-    def get_path(self) -> List[Tuple[int, int]]:
-        return list(self.path)
-
-    def _project_corner(self, x: float, y: float) -> Tuple[float, float]:
-        """논리 격자 모서리를 화면의 2.5D 사다리꼴 보드로 투영합니다.
-
-        이 변환만 화면 좌표에 관여합니다. path/slots와 전투용 논리 좌표는
-        그대로여서, 화면 연출을 바꿔도 몬스터 이동·사거리 판정은 변하지 않습니다.
-        """
-        depth = y / self.map_height
-        width = BOARD_TOP_WIDTH + (BOARD_BOTTOM_WIDTH - BOARD_TOP_WIDTH) * depth
-        left = BOARD_CENTER_X - width / 2
-        return (
-            left + (x / self.map_width) * width,
-            BOARD_TOP_Y + depth * (BOARD_BOTTOM_Y - BOARD_TOP_Y),
+    def _configure_transform(self) -> None:
+        """Fit without cropping or independent x/y stretching."""
+        self.display_scale = min(SCREEN_WIDTH / self.source_width, SCREEN_HEIGHT / self.source_height)
+        self.display_size = (
+            self.source_width * self.display_scale,
+            self.source_height * self.display_scale,
+        )
+        self.display_offset = (
+            (SCREEN_WIDTH - self.display_size[0]) / 2,
+            (SCREEN_HEIGHT - self.display_size[1]) / 2,
         )
 
-    def grid_to_pixel(self, pos: Tuple[float, float]) -> Tuple[int, int]:
-        """논리 격자 칸의 중심을 화면 좌표로 변환합니다."""
-        x, y = pos
-        px, py = self._project_corner(x + 0.5, y + 0.5)
-        return (round(px), round(py))
-
-    def cell_polygon(self, x: float, y: float, width: float = 1, height: float = 1) -> List[Tuple[int, int]]:
-        """렌더러와 클릭 판정이 공유하는 투영된 사각 칸입니다."""
-        corners = (
-            self._project_corner(x, y),
-            self._project_corner(x + width, y),
-            self._project_corner(x + width, y + height),
-            self._project_corner(x, y + height),
-        )
-        return [(round(px), round(py)) for px, py in corners]
-
-    def board_polygon(self) -> List[Tuple[int, int]]:
-        return self.cell_polygon(0, 0, self.map_width, self.map_height)
-
-    def slot_polygon(self, slot_id: int) -> List[Tuple[int, int]]:
-        x, y, width, height = self.get_slot_bounds(slot_id)
-        return self.cell_polygon(x, y, width, height)
-
-    @staticmethod
-    def _point_in_polygon(point: Tuple[int, int], polygon: List[Tuple[int, int]]) -> bool:
-        """외부 라이브러리 없이 볼록 사다리꼴 슬롯의 클릭 여부를 검사합니다."""
-        px, py = point
-        inside = False
-        previous = polygon[-1]
-        for current in polygon:
-            x1, y1 = current
-            x2, y2 = previous
-            if (y1 > py) != (y2 > py):
-                crossing_x = (x2 - x1) * (py - y1) / (y2 - y1) + x1
-                if px < crossing_x:
-                    inside = not inside
-            previous = current
-        return inside
-
-    def pixel_to_slot(self, pos: Tuple[int, int]) -> int | None:
-        for slot_id in self.slots:
-            if self._point_in_polygon(pos, self.slot_polygon(slot_id)):
-                return slot_id
-        return None
-
-    def get_start_position(self) -> Tuple[float, float]:
-        return self.path[0]
-
-    def get_base_position(self) -> Tuple[float, float]:
-        return self.path[-1]
-
-    def load_from_json(self, json_file: str) -> None:
-        if not os.path.exists(json_file):
-            return
+    def _load_from_json(self, json_file: str) -> None:
         with open(json_file, "r", encoding="utf-8") as file:
             data = json.load(file)
-        # 검증이 실패하면 기존 맵을 유지합니다. 최신 부분 로딩 방식도 지원합니다.
+        size = data.get("image_size")
+        if not isinstance(size, list) or len(size) != 2:
+            raise ValueError("map.json requires image_size: [width, height]")
+        self.source_width, self.source_height = (int(size[0]), int(size[1]))
+        self.combat_pixels_per_unit = float(data.get("combat_pixels_per_unit", MAP_COMBAT_PIXELS_PER_UNIT))
+        origin = data.get("combat_origin", [0, 0])
+        if not isinstance(origin, list) or len(origin) != 2:
+            raise ValueError("combat_origin must be [x, y]")
+        self.combat_origin = tuple(map(float, origin))
+        self.source_path = [tuple(map(float, point)) for point in data.get("path", [])]
+        raw_slots = data.get("slots", {})
+        self.source_slots = {int(slot_id): tuple(map(float, point)) for slot_id, point in raw_slots.items()}
+
+    def load_from_json(self, json_file: str) -> None:
+        """Atomically replace map data only after parsing and validation pass."""
         candidate = object.__new__(GameMap)
-        candidate.map_width = data.get("width", self.map_width)
-        candidate.map_height = data.get("height", self.map_height)
-        candidate.path = [tuple(point) for point in data.get("path", self.path)]
-        slots = data.get("slots", self.slots)
-        candidate.slots = {int(slot_id): tuple(bounds) for slot_id, bounds in slots.items()}
-        if len(candidate.slots) != len(slots):
-            raise ValueError("Duplicate slot IDs after integer conversion")
+        candidate.source_width = self.source_width
+        candidate.source_height = self.source_height
+        candidate.combat_pixels_per_unit = self.combat_pixels_per_unit
+        candidate.combat_origin = self.combat_origin
+        candidate.source_path = []
+        candidate.source_slots = {}
+        candidate._load_from_json(json_file)
+        candidate._configure_transform()
         candidate._validate_map()
-        self.map_width, self.map_height = candidate.map_width, candidate.map_height
-        self.path, self.slots = candidate.path, candidate.slots
+        self.source_width = candidate.source_width
+        self.source_height = candidate.source_height
+        self.combat_pixels_per_unit = candidate.combat_pixels_per_unit
+        self.combat_origin = candidate.combat_origin
+        self.source_path = candidate.source_path
+        self.source_slots = candidate.source_slots
+        self._configure_transform()
+
+    def _validate_map(self) -> None:
+        if self.source_width <= 0 or self.source_height <= 0:
+            raise ValueError("Image dimensions must be positive")
+        if self.combat_pixels_per_unit <= 0:
+            raise ValueError("combat_pixels_per_unit must be positive")
+        if set(self.source_slots) != set(range(self.SLOT_COUNT)):
+            raise ValueError("Slot IDs must be 0 through SLOT_COUNT - 1")
+        if len(self.source_path) < 2:
+            raise ValueError("Path must contain at least two waypoints")
+        if any(not self._inside_source(point) for point in self.source_path):
+            raise ValueError("Path waypoint is outside source image bounds")
+        if any(not self._inside_source(point) for point in self.source_slots.values()):
+            raise ValueError("Slot is outside source image bounds")
+        if any(math.dist(start, end) < 0.001 for start, end in zip(self.source_path, self.source_path[1:])):
+            raise ValueError("Path must not contain repeated consecutive waypoints")
+
+    def _inside_source(self, point: Point) -> bool:
+        return 0 <= point[0] <= self.source_width and 0 <= point[1] <= self.source_height
+
+    @property
+    def path(self) -> List[Point]:
+        """Game-space route, retaining the old distance-based combat balance."""
+        return [self.source_to_game(point) for point in self.source_path]
+
+    @property
+    def slots(self) -> Dict[int, Point]:
+        """Game-space anchor points for combat, effects, and tower rendering."""
+        return {slot_id: self.source_to_game(point) for slot_id, point in self.source_slots.items()}
+
+    def source_to_game(self, point: Point) -> Point:
+        return (
+            (point[0] - self.combat_origin[0]) / self.combat_pixels_per_unit,
+            (point[1] - self.combat_origin[1]) / self.combat_pixels_per_unit,
+        )
+
+    def game_to_source(self, point: Point) -> Point:
+        return (
+            point[0] * self.combat_pixels_per_unit + self.combat_origin[0],
+            point[1] * self.combat_pixels_per_unit + self.combat_origin[1],
+        )
+
+    def source_to_pixel(self, point: Point) -> Tuple[int, int]:
+        return (
+            round(self.display_offset[0] + point[0] * self.display_scale),
+            round(self.display_offset[1] + point[1] * self.display_scale),
+        )
+
+    def pixel_to_source(self, point: Point) -> Point:
+        return (
+            (point[0] - self.display_offset[0]) / self.display_scale,
+            (point[1] - self.display_offset[1]) / self.display_scale,
+        )
+
+    def grid_to_pixel(self, pos: Point) -> Tuple[int, int]:
+        """Compatibility name: game-space position -> screen position."""
+        return self.source_to_pixel(self.game_to_source(pos))
+
+    def pixel_to_game(self, point: Point) -> Point:
+        return self.source_to_game(self.pixel_to_source(point))
+
+    def units_to_pixels(self, units: float) -> float:
+        return units * self.combat_pixels_per_unit * self.display_scale
+
+    def is_valid_slot(self, slot_id: int) -> bool:
+        return type(slot_id) is int and slot_id in self.source_slots
+
+    def get_slot_position(self, slot_id: int) -> Point:
+        return self.source_to_game(self.source_slots[slot_id]) if self.is_valid_slot(slot_id) else (0.0, 0.0)
+
+    def get_slot_source_position(self, slot_id: int) -> Point:
+        return self.source_slots[slot_id] if self.is_valid_slot(slot_id) else (0.0, 0.0)
+
+    def get_path(self) -> List[Point]:
+        return list(self.path)
+
+    def get_source_path(self) -> List[Point]:
+        return list(self.source_path)
+
+    def get_start_position(self) -> Point:
+        return self.path[0]
+
+    def get_base_position(self) -> Point:
+        return self.path[-1]
+
+    def get_start_source_position(self) -> Point:
+        return self.source_path[0]
+
+    def get_base_source_position(self) -> Point:
+        return self.source_path[-1]
+
+    def pixel_to_slot(self, pos: Tuple[int, int]) -> int | None:
+        """Inverse-transform the click, then use each painted platform's ellipse."""
+        x, y = self.pixel_to_source(pos)
+        candidates = []
+        for slot_id, (center_x, anchor_y) in self.source_slots.items():
+            # Source slots are the painted upper-face centres, shared by the
+            # sprite-foot anchor, selection ring, debug cross, and click area.
+            normalized = ((x - center_x) / 51) ** 2 + ((y - anchor_y) / 31) ** 2
+            if normalized <= 1:
+                candidates.append((normalized, slot_id))
+        return min(candidates)[1] if candidates else None
 
     def export_to_json(self, json_file: str) -> None:
         self._validate_map()
         data = {
-            "width": self.map_width,
-            "height": self.map_height,
-            "path": self.path,
-            "slots": {str(slot_id): list(bounds) for slot_id, bounds in self.slots.items()},
+            "image_size": [self.source_width, self.source_height],
+            "combat_pixels_per_unit": self.combat_pixels_per_unit,
+            "combat_origin": list(self.combat_origin),
+            "path": self.source_path,
+            "slots": {str(slot_id): list(point) for slot_id, point in self.source_slots.items()},
         }
-        os.makedirs(os.path.dirname(os.path.abspath(json_file)), exist_ok=True)
         with open(json_file, "w", encoding="utf-8") as file:
             json.dump(data, file, indent=2, ensure_ascii=False)

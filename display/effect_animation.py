@@ -40,7 +40,7 @@ class AttackEffectAnimator:
                         (179, 182), (179, 183), (177, 186), (181, 190)),
         },
     }
-    FIELD_ALPHA = 255
+    FIELD_ALPHA = 170
     FIELD_CREATE_SECONDS = 0.4
     FIELD_HOLD_SECONDS = 1.2
     FIELD_HOLD_FRAME_SECONDS = 0.1

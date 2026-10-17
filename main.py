@@ -24,6 +24,9 @@ def main():
             if event.type == pygame.QUIT:
                 input_handler.quit_confirm = True
                 continue
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_d:
+                renderer.toggle_map_debug()
+                continue
             action = input_handler.handle_event(event, state)
             if action:
                 state = game.step(action)

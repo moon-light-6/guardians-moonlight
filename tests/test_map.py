@@ -1,118 +1,75 @@
+import json
+import math
+import tempfile
 import unittest
+from pathlib import Path
 
 from game.map import GameMap
+from game.tower import Tower
 
 
-class TestMap(unittest.TestCase):
-    def test_map_shape_and_slots(self):
-        game_map = GameMap()
-        self.assertEqual(game_map.map_width, 20)
-        self.assertEqual(game_map.map_height, 15)
-        self.assertEqual(len(game_map.slots), 24)
+class TestPaintedMap(unittest.TestCase):
+    def setUp(self):
+        self.game_map = GameMap()
 
-    def test_slots_do_not_overlap_path(self):
-        game_map = GameMap()
-        path = set(game_map.get_path())
-        for x, y, _w, _h in game_map.slots.values():
-            self.assertNotIn((x, y), path)
+    def test_attached_image_dimensions_and_slots(self):
+        self.assertEqual((self.game_map.source_width, self.game_map.source_height), (1548, 1016))
+        self.assertEqual(len(self.game_map.source_slots), 24)
+        self.assertEqual(set(self.game_map.source_slots), set(range(24)))
+        rows = [list(self.game_map.source_slots.values())[start:start + 6] for start in range(0, 24, 6)]
+        self.assertEqual([len(row) for row in rows], [6, 6, 6, 6])
+        self.assertGreater(rows[2][1][0] - rows[2][0][0], 250)
 
+    def test_single_aspect_preserving_transform_round_trips(self):
+        self.assertAlmostEqual(self.game_map.display_size[1], 840)
+        self.assertAlmostEqual(
+            self.game_map.display_size[0] / self.game_map.source_width,
+            self.game_map.display_size[1] / self.game_map.source_height,
+        )
+        for source in self.game_map.source_slots.values():
+            screen = self.game_map.source_to_pixel(source)
+            restored = self.game_map.pixel_to_source(screen)
+            self.assertAlmostEqual(source[0], restored[0], delta=0.7)
+            self.assertAlmostEqual(source[1], restored[1], delta=0.7)
 
-class TestMapDataSafety(unittest.TestCase):
-    def test_json_roundtrip_and_atomic_load(self):
-        import json
-        import tempfile
-        from pathlib import Path
-        game_map = GameMap()
-        original = game_map.get_path()
-        with tempfile.TemporaryDirectory() as directory:
-            filename = str(Path(directory) / "map.json")
-            game_map.export_to_json(filename)
-            loaded = GameMap()
-            loaded.load_from_json(filename)
-            self.assertEqual(loaded.path, original)
-            self.assertEqual(loaded.slots, game_map.slots)
-            data = json.loads(Path(filename).read_text(encoding="utf-8"))
-            data["path"][0] = [20, 15]
-            Path(filename).write_text(json.dumps(data), encoding="utf-8")
-            with self.assertRaises(ValueError):
-                loaded.load_from_json(filename)
-            self.assertEqual(loaded.path, original)
+    def test_every_platform_anchor_clicks_its_own_slot(self):
+        for slot_id in range(24):
+            with self.subTest(slot_id=slot_id):
+                anchor = self.game_map.get_slot_source_position(slot_id)
+                self.assertEqual(self.game_map.pixel_to_slot(self.game_map.source_to_pixel(anchor)), slot_id)
 
-    def test_invalid_geometry(self):
-        for kind in ("disconnected", "overlap", "slot_ids", "bounds"):
-            game_map = GameMap()
-            if kind == "disconnected":
-                game_map.path.pop(1)
-            elif kind == "overlap":
-                game_map.slots[0] = (0, 1, 1, 1)
-            elif kind == "slot_ids":
-                game_map.slots[24] = game_map.slots.pop(0)
-            else:
-                game_map.slots[0] = (20, 0, 1, 1)
-            with self.subTest(kind=kind), self.assertRaises(ValueError):
-                game_map._validate_map()
+    def test_route_is_painted_serpentine_with_dense_turn_waypoints(self):
+        path = self.game_map.get_source_path()
+        self.assertEqual(path[0], (973.0, 479.0))
+        self.assertEqual(path[-1], (1018.0, 820.0))
+        self.assertGreaterEqual(len(path), 55)
+        self.assertGreaterEqual(sum(1 for x, _ in path if x < 110), 12)
+        self.assertGreaterEqual(sum(1 for x, _ in path if x > 1000), 7)
+        self.assertLess(max(math.dist(a, b) for a, b in zip(path, path[1:])), 115)
 
-    def test_latest_coordinates_and_pixel_conversion(self):
-        game_map = GameMap()
-        self.assertEqual(game_map.get_start_position(), (19, 1))
-        self.assertEqual(game_map.get_base_position(), (19, 13))
-        for slot_id, (x, y, _w, _h) in game_map.slots.items():
-            self.assertEqual(game_map.pixel_to_slot(game_map.grid_to_pixel((x, y))), slot_id)
-        game_map.get_path().clear()
-        self.assertGreater(len(game_map.path), 2)
-        for value in (None, "0", True, 1.5, -1, 24):
-            self.assertFalse(game_map.is_valid_slot(value))
-
-    def test_default_data_matches_latest_layout(self):
-        game_map = GameMap()
-        self.assertEqual(game_map.path, game_map._initialize_path())
-        self.assertEqual(game_map.slots, game_map._initialize_slots())
-
-
-class TestSerpentineLayout(unittest.TestCase):
-    def test_all_tower_centers_and_click_regions_match(self):
-        game_map = GameMap()
-        for slot_id, (x, y, width, height) in game_map.slots.items():
-            center = game_map.grid_to_pixel(game_map.get_slot_position(slot_id))
-            # 2.5D 사다리꼴 투영에서도 같은 슬롯의 중심을 클릭할 수 있어야 합니다.
-            self.assertEqual(game_map.pixel_to_slot(center), slot_id)
-            self.assertTrue(game_map._point_in_polygon(center, game_map.slot_polygon(slot_id)))
-
-    def test_every_tower_type_can_reach_path_from_every_slot(self):
-        import math
-        from game.tower import Tower
-        game_map = GameMap()
-        for slot_id in game_map.slots:
-            position = game_map.get_slot_position(slot_id)
-            distance = min(math.dist(position, cell) for cell in game_map.get_path())
+    def test_all_platforms_remain_in_combat_range(self):
+        path = self.game_map.get_path()
+        for slot_id in range(24):
+            position = self.game_map.get_slot_position(slot_id)
+            distance = min(math.dist(position, point) for point in path)
             for stats in Tower.BASE_STATS.values():
-                self.assertLessEqual(distance, stats["range"])
+                with self.subTest(slot_id=slot_id, stats=stats):
+                    self.assertLessEqual(distance, stats["range"])
 
-    def test_path_turns_and_continuity(self):
-        game_map = GameMap()
-        path = game_map.get_path()
-        for point in [(19, 1), (0, 1), (0, 5), (18, 5), (18, 9), (0, 9), (0, 13), (19, 13)]:
-            self.assertIn(point, path)
-        self.assertEqual(len(path), 87)
-        game_map._validate_map()
-
-
-class TestSharedLaneCoverage(unittest.TestCase):
-    def test_shifted_rows_reach_both_neighboring_lanes(self):
-        import math
-        from game.tower import Tower
-        game_map = GameMap()
-        for slot_id in range(6, 24):
-            position = game_map.get_slot_position(slot_id)
-            row = slot_id // 6
-            self.assertEqual(position[1], row * 4 - 1)
-            for lane_y in (row * 4 - 3, row * 4 + 1):
-                lane = [point for point in game_map.path if point[1] == lane_y]
-                distance = min(math.dist(position, point) for point in lane)
-                for stats in Tower.BASE_STATS.values():
-                    with self.subTest(slot_id=slot_id, lane_y=lane_y):
-                        self.assertLessEqual(distance, stats["range"])
-        self.assertTrue(all(game_map.slots[slot_id][1] == 0 for slot_id in range(6)))
+    def test_json_roundtrip_and_atomic_rejection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            filename = Path(directory) / "map.json"
+            self.game_map.export_to_json(str(filename))
+            loaded = GameMap()
+            loaded.load_from_json(str(filename))
+            self.assertEqual(loaded.source_path, self.game_map.source_path)
+            self.assertEqual(loaded.source_slots, self.game_map.source_slots)
+            data = json.loads(filename.read_text(encoding="utf-8"))
+            data["path"][0] = [-1, 0]
+            filename.write_text(json.dumps(data), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                loaded.load_from_json(str(filename))
+            self.assertEqual(loaded.source_path, self.game_map.source_path)
 
 
 if __name__ == "__main__":

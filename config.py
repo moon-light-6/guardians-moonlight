@@ -33,15 +33,10 @@ CELL_SIZE = 42
 PANEL_X = 930
 PANEL_WIDTH = 310
 
-# 화면 투영 전용 값입니다. data/map.json의 논리 좌표(path 87칸, slots 24칸)는
-# 바꾸지 않고 이 사다리꼴 위에만 그립니다.
-# 기존 우측 관리 패널(PANEL_X=930)을 가리지 않는 게임판 영역입니다.
-BOARD_CENTER_X = 465
-BOARD_TOP_Y = 365
-BOARD_BOTTOM_Y = 704
-BOARD_TOP_WIDTH = 700
-BOARD_BOTTOM_WIDTH = 840
-BOARD_TILE_DEPTH = 7
+# 맵은 data/map.json에 기록된 원본 이미지 픽셀을 기준으로 합니다. 전투 거리만
+# 기존 밸런스를 유지할 수 있도록 이 값으로 게임 단위로 환산합니다.
+MAP_COMBAT_PIXELS_PER_UNIT = 42.0
+MAP_DEBUG_DEFAULT = False
 
 # 벽화 → 배치 칸 소환 연출. 초 단위와 색상은 여기서 조절합니다.
 SUMMON_TOTAL_SECONDS = 3.0
@@ -51,11 +46,12 @@ SUMMON_GATHER_SECONDS = SUMMON_TOTAL_SECONDS - SUMMON_WAKE_SECONDS - SUMMON_TRAV
 SUMMON_CORE_COLOR = (255, 255, 248)
 SUMMON_GLOW_COLOR = (255, 229, 145)
 MURAL_ORIGINS = {
-    # 실제 배경 벽화의 위치: 현무 · 백호 · 청룡 · 주작 (왼쪽부터)
-    "ICE": (300, 302),
-    "ARCHER": (440, 302),
-    "LIGHTNING": (610, 302),
-    "CANNON": (790, 302),
+    # 맵 원본 픽셀: 벽화 속 각 수호신의 중심(현무 · 백호 · 청룡 · 주작).
+    # 길가 수풀이나 벽 하단이 아닌, 빛이 깨어나는 그림 본체에서 출발합니다.
+    "ICE": (282, 290),
+    "ARCHER": (480, 285),
+    "LIGHTNING": (705, 286),
+    "CANNON": (930, 285),
 }
 
 COLOR_BLACK = (7, 9, 18)

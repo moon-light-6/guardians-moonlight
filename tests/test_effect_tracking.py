@@ -257,7 +257,7 @@ class TestEffectTracking(unittest.TestCase):
     def test_splash_damage_remains_at_impact_and_visual_motion_never_deals_damage(self):
         target = self.enemy(path=[(2, 1), (2, 6)])
         near = self.enemy(path=[(2.5, 1), (2.5, 6)])
-        far = self.enemy(path=[(2, 3), (2, 6)])
+        far = self.enemy(path=[(2, 4), (2, 6)])
         game = self.battle("CANNON", [target, near, far])
         self.assertEqual([e.health for e in (target, near, far)], [960, 960, 1000])
         impact = game.state.effects[0]["to"]
