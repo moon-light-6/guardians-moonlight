@@ -37,6 +37,7 @@ from display.ui import Button, ButtonLayer, draw_panel
 from display.sprite_animation import TowerSpriteAnimator
 from display.boss_animation import BossSpriteAnimator
 from display.effect_animation import AttackEffectAnimator
+from display.map_projection import MapProjection
 from display.enemy_animation import EnemySpriteAnimator
 from display.render_sizes import TOWER_BOTTOM_OFFSET, TOWER_LEVEL_GAP
 from game.economy import Economy
@@ -50,6 +51,7 @@ class Renderer:
     def __init__(self, screen: pygame.Surface):
         self.screen = screen
         self.map = GameMap()
+        self.projection = MapProjection(self.map, screen.get_size())
         self.buttons = ButtonLayer()
         self.font_title = self._font(54)
         self.font_big = self._font(32)
@@ -89,7 +91,7 @@ class Renderer:
         return portraits
 
     def _load_background(self) -> pygame.Surface:
-        """Load the painted map with the same uniform transform as GameMap."""
+        """Load the painted map with the projection shared by input/rendering."""
         path = Path(__file__).resolve().parents[1] / "assets" / "backgrounds" / "map_background.png"
         image = pygame.image.load(str(path)).convert()
         if image.get_size() != (self.map.source_width, self.map.source_height):
@@ -98,7 +100,7 @@ class Renderer:
                 f"got {image.get_width()}×{image.get_height()}"
             )
         # This is one aspect-preserving scale, not independent x/y resizing.
-        size = (round(self.map.display_size[0]), round(self.map.display_size[1]))
+        size = (round(self.projection.display_size[0]), round(self.projection.display_size[1]))
         return pygame.transform.smoothscale(image, size)
 
     def toggle_map_debug(self) -> bool:
@@ -133,7 +135,7 @@ class Renderer:
 
     def _draw_moonlit_background(self) -> None:
         # The painted road, portal, and platforms are one source image.
-        self.screen.blit(self.background, (round(self.map.display_offset[0]), round(self.map.display_offset[1])))
+        self.screen.blit(self.background, (round(self.projection.display_offset[0]), round(self.projection.display_offset[1])))
 
     def _render_title(self) -> None:
         title = self.font_title.render("월하사신", True, COLOR_WHITE)
@@ -290,7 +292,7 @@ class Renderer:
                 and state.selected_slot not in pending_slots):
             tower_data = state.towers[state.selected_slot]
             stats = Tower.from_data(tower_data).get_stats()
-            center = self.map.grid_to_pixel(self.map.get_slot_position(state.selected_slot))
+            center = self.projection.game_to_pixel(self.map.get_slot_position(state.selected_slot))
             self._draw_projected_range(center, stats["range"])
 
         for summon in state.summons:
@@ -314,7 +316,7 @@ class Renderer:
         """배경의 기본 받침을 덮지 않는 선택·이동 테두리 오버레이입니다."""
         if not (selected or moving):
             return
-        center = self.map.grid_to_pixel(self.map.get_slot_position(slot_id))
+        center = self.projection.game_to_pixel(self.map.get_slot_position(slot_id))
         ring = pygame.Rect(center[0] - 28, center[1] - 14, 56, 28)
         color = COLOR_MINT if moving else COLOR_GOLD
         glow = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
@@ -325,12 +327,12 @@ class Renderer:
     def _draw_map_debug(self) -> None:
         """Opt-in validation overlay using the exact source-image transform."""
         if self.debug_show_route:
-            route = [self.map.source_to_pixel(point) for point in self.map.get_source_path()]
+            route = [self.projection.source_to_pixel(point) for point in self.map.get_source_path()]
             pygame.draw.lines(self.screen, (255, 225, 70), False, route, 3)
             for point in route:
                 pygame.draw.circle(self.screen, (255, 225, 70), point, 4)
-            spawn = self.map.source_to_pixel(self.map.get_start_source_position())
-            base = self.map.source_to_pixel(self.map.get_base_source_position())
+            spawn = self.projection.source_to_pixel(self.map.get_start_source_position())
+            base = self.projection.source_to_pixel(self.map.get_base_source_position())
             pygame.draw.circle(self.screen, (92, 255, 147), spawn, 9, 3)
             pygame.draw.circle(self.screen, (255, 80, 170), base, 9, 3)
             self._text("S", spawn[0] - 5, spawn[1] - 28, self.font_small, (92, 255, 147))
@@ -338,21 +340,21 @@ class Renderer:
 
         if self.debug_show_slots:
             for slot_id in range(self.map.SLOT_COUNT):
-                point = self.map.source_to_pixel(self.map.get_slot_source_position(slot_id))
+                point = self.projection.source_to_pixel(self.map.get_slot_source_position(slot_id))
                 pygame.draw.line(self.screen, COLOR_CYAN, (point[0] - 7, point[1]), (point[0] + 7, point[1]), 2)
                 pygame.draw.line(self.screen, COLOR_CYAN, (point[0], point[1] - 7), (point[0], point[1] + 7), 2)
                 number = self.font_small.render(str(slot_id + 1), True, COLOR_CYAN)
                 self.screen.blit(number, (point[0] + 8, point[1] - 16))
 
     def _draw_projected_range(self, center, logical_range: float) -> None:
-        radius = round(self.map.units_to_pixels(logical_range))
+        radius = round(self.projection.units_to_pixels(logical_range))
         pygame.draw.circle(self.screen, (97, 167, 213), center, radius, 1)
 
     def _draw_summon_effect(self, summon: dict) -> None:
         """벽화의 빛 → 달빛 덩어리 → 도착지 수렴. 캐릭터는 완료 전 보이지 않습니다."""
         elapsed = summon["elapsed"]
-        origin = pygame.Vector2(self.map.source_to_pixel(MURAL_ORIGINS[summon["tower_type"]]))
-        target = pygame.Vector2(self.map.grid_to_pixel(self.map.get_slot_position(summon["slot_id"])))
+        origin = pygame.Vector2(self.projection.source_to_pixel(MURAL_ORIGINS[summon["tower_type"]]))
+        target = pygame.Vector2(self.projection.game_to_pixel(self.map.get_slot_position(summon["slot_id"])))
 
         if elapsed < SUMMON_WAKE_SECONDS:
             progress = elapsed / SUMMON_WAKE_SECONDS
@@ -405,7 +407,7 @@ class Renderer:
         effects: list,
     ) -> None:
         tower_pos = self.map.get_slot_position(slot_id)
-        pos = self.map.grid_to_pixel(tower_pos)
+        pos = self.projection.game_to_pixel(tower_pos)
 
         tower_type = tower_data["type"]
 
@@ -473,7 +475,7 @@ class Renderer:
         )
 
     def _draw_enemy(self, enemy, animation_time: float = 0.0) -> None:
-        pos = self.map.grid_to_pixel(enemy.get_current_position())
+        pos = self.projection.game_to_pixel(enemy.get_current_position())
         if enemy.is_boss:
             sprite_rect = self.boss_animator.draw(self.screen, enemy, pos, animation_time)
         else:
@@ -488,7 +490,7 @@ class Renderer:
         if effect["kind"] == "water":
             return
         if effect["kind"] == "slow_field":
-            self.effect_animator.draw(self.screen, effect, self.map)
+            self.effect_animator.draw(self.screen, effect, self.projection)
             return
         alpha = 1.0 - effect["age"] / effect["ttl"]
 
@@ -501,21 +503,21 @@ class Renderer:
             if self.effect_animator.draw(
                 self.screen,
                 effect,
-                self.map,
+                self.projection,
             ):
                 return
         alpha = 1.0 - effect["age"] / effect["ttl"]
 
         if effect["kind"] == "lightning":
-            points = [self.map.grid_to_pixel(effect["from"])] + [self.map.grid_to_pixel(p) for p in effect["points"]]
+            points = [self.projection.game_to_pixel(effect["from"])] + [self.projection.game_to_pixel(p) for p in effect["points"]]
             if len(points) > 1:
                 pygame.draw.lines(self.screen, COLOR_CYAN, False, points, max(1, int(4 * alpha)))
         elif effect["kind"] == "fire":
-            end = self.map.grid_to_pixel(effect["to"])
+            end = self.projection.game_to_pixel(effect["to"])
             pygame.draw.circle(self.screen, (239, 101, 78), end, int(22 * alpha), 2)
         else:
-            start = self.map.grid_to_pixel(effect["from"])
-            end = self.map.grid_to_pixel(effect["to"])
+            start = self.projection.game_to_pixel(effect["from"])
+            end = self.projection.game_to_pixel(effect["to"])
             pygame.draw.line(self.screen, COLOR_GOLD, start, end, 4)
 
     def _render_bottom_panel(self, state: GameState) -> None:

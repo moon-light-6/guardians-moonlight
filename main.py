@@ -14,7 +14,7 @@ def main():
 
     game = Game()
     renderer = Renderer(screen)
-    input_handler = InputHandler(renderer.buttons)
+    input_handler = InputHandler(renderer.buttons, renderer.projection)
     state = game.reset(seed=42)
 
     running = True

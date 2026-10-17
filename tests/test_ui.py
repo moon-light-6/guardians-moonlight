@@ -33,7 +33,7 @@ class TestPygameUI(unittest.TestCase):
         self.game = Game()
         self.game.reset(seed=42, start_at_title=False)
         self.renderer = Renderer(self.screen)
-        self.input = InputHandler(self.renderer.buttons)
+        self.input = InputHandler(self.renderer.buttons, self.renderer.projection)
 
     def render(self, name=None):
         self.renderer.render(self.game.state)
@@ -58,7 +58,7 @@ class TestPygameUI(unittest.TestCase):
         self.game.step(action)
 
     def test_guardian_sprites_have_no_level_number_below_them(self):
-        position = self.game.map.grid_to_pixel(self.game.map.get_slot_position(0))
+        position = self.renderer.projection.game_to_pixel(self.game.map.get_slot_position(0))
         below_sprite = pygame.Rect(position[0] - 20, position[1] + 21, 40, 20)
         for tower_type in self.renderer.tower_animator.SPRITE_CONFIG:
             with self.subTest(tower_type=tower_type):
@@ -69,7 +69,7 @@ class TestPygameUI(unittest.TestCase):
                 self.assertEqual(pixels, background)
 
     def test_sell_button_cancel_confirm_and_summon_again(self):
-        position = self.game.map.grid_to_pixel(self.game.map.get_slot_position(0))
+        position = self.renderer.projection.game_to_pixel(self.game.map.get_slot_position(0))
         self.render("preparation-empty")
         event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=position)
         self.game.step(self.input.handle_event(event, self.game.state))
@@ -157,7 +157,7 @@ class TestPygameUI(unittest.TestCase):
         self.game.state.towers[0]["level"] = 3
         self.click("BEGIN_RELOCATE")
         self.render("move-tower")
-        position = self.game.map.grid_to_pixel(self.game.map.get_slot_position(1))
+        position = self.renderer.projection.game_to_pixel(self.game.map.get_slot_position(1))
         action = self.input.handle_event(
             pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=position), self.game.state)
         self.game.step(action)
@@ -173,7 +173,7 @@ class TestPygameUI(unittest.TestCase):
         state.actions_taken_this_wave = 20
         self.click("START_WAVE")
         self.render()
-        position = self.game.map.grid_to_pixel(self.game.map.get_slot_position(0))
+        position = self.renderer.projection.game_to_pixel(self.game.map.get_slot_position(0))
         event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=position)
         action = self.input.handle_event(event, state)
         self.assertEqual(action.action_type, ActionType.SELECT_SLOT)
@@ -193,7 +193,7 @@ class TestPygameUI(unittest.TestCase):
         self.game.update(1)
         self.assertGreater(state.wave_elapsed, 0)
         self.render("combat-tower-upgraded")
-        empty_pos = self.game.map.grid_to_pixel(self.game.map.get_slot_position(1))
+        empty_pos = self.renderer.projection.game_to_pixel(self.game.map.get_slot_position(1))
         self.assertIsNone(self.input.handle_event(
             pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=empty_pos), state))
         self.assertEqual(state.selected_slot, 0)
@@ -247,7 +247,7 @@ class TestPygameUI(unittest.TestCase):
         self.assertEqual(len(frames), 12)
         field = {"kind": "slow_field", "cell": (10, 5), "factor": 0.7,
                  "age": 0, "slow_ttl": 2, "ttl": 2}
-        center = self.game.map.grid_to_pixel(field["cell"])
+        center = self.renderer.projection.game_to_pixel(field["cell"])
         # 생성 0~3, 유지 4~7 반복, 소멸 8~11. 각 프레임 0.1초, 총 2초.
         timeline = ((0, 0), (0.099, 0), (0.1, 1), (0.2, 2), (0.3, 3),
                     (0.4, 4), (0.499, 4), (0.5, 5), (0.599, 5),
@@ -267,7 +267,7 @@ class TestPygameUI(unittest.TestCase):
                                           center[1] - animator.anchors["water"][1]))
                 field["age"] = age
                 with patch.object(animator, "_draw_field_energy"):
-                    animator.draw(self.screen, field, self.game.map)
+                    animator.draw(self.screen, field, self.renderer.projection)
                 self.assertTrue(pygame.image.tobytes(self.screen, "RGB") ==
                                 pygame.image.tobytes(expected, "RGB"))
 
@@ -282,7 +282,7 @@ class TestPygameUI(unittest.TestCase):
                 self.game.state.effects = []
                 self.renderer.render(self.game.state)
                 expected = self.screen.copy()
-                self.renderer.effect_animator.draw(expected, field, self.game.map)
+                self.renderer.effect_animator.draw(expected, field, self.renderer.projection)
                 self.game.state.effects = [water, field]
                 with patch.object(self.renderer.effect_animator, "draw",
                                   wraps=self.renderer.effect_animator.draw) as draw_png:

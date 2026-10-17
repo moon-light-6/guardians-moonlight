@@ -157,7 +157,7 @@ class TestEnemyAnimation(unittest.TestCase):
         self.assertEqual(self.animator.direction(enemy), "left")
         enemy.move(1 / enemy.speed)
         before = copy.deepcopy(vars(enemy))
-        pos = self.renderer.map.grid_to_pixel(enemy.get_current_position())
+        pos = self.renderer.projection.game_to_pixel(enemy.get_current_position())
         screen = Mock()
         rect = self.animator.draw(screen, enemy, pos, 0)
         self.assertEqual(rect.midbottom, pos)
@@ -168,7 +168,7 @@ class TestEnemyAnimation(unittest.TestCase):
         for kind in self.animator.ENEMY_FOLDERS:
             enemy = self.enemy(kind)
             enemy.health = 500
-            pos = self.renderer.map.grid_to_pixel(enemy.get_current_position())
+            pos = self.renderer.projection.game_to_pixel(enemy.get_current_position())
             for index in range(8):
                 self.screen.fill((0, 0, 0))
                 with patch.object(self.animator, "draw", wraps=self.animator.draw) as normal, \

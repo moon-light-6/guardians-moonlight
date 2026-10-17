@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from display.map_projection import MapProjection
 from game.map import GameMap
 from game.tower import Tower
 
@@ -11,6 +12,7 @@ from game.tower import Tower
 class TestPaintedMap(unittest.TestCase):
     def setUp(self):
         self.game_map = GameMap()
+        self.projection = MapProjection(self.game_map)
 
     def test_attached_image_dimensions_and_slots(self):
         self.assertEqual((self.game_map.source_width, self.game_map.source_height), (1548, 1016))
@@ -21,14 +23,14 @@ class TestPaintedMap(unittest.TestCase):
         self.assertGreater(rows[2][1][0] - rows[2][0][0], 250)
 
     def test_single_aspect_preserving_transform_round_trips(self):
-        self.assertAlmostEqual(self.game_map.display_size[1], 840)
+        self.assertAlmostEqual(self.projection.display_size[1], 840)
         self.assertAlmostEqual(
-            self.game_map.display_size[0] / self.game_map.source_width,
-            self.game_map.display_size[1] / self.game_map.source_height,
+            self.projection.display_size[0] / self.game_map.source_width,
+            self.projection.display_size[1] / self.game_map.source_height,
         )
         for source in self.game_map.source_slots.values():
-            screen = self.game_map.source_to_pixel(source)
-            restored = self.game_map.pixel_to_source(screen)
+            screen = self.projection.source_to_pixel(source)
+            restored = self.projection.pixel_to_source(screen)
             self.assertAlmostEqual(source[0], restored[0], delta=0.7)
             self.assertAlmostEqual(source[1], restored[1], delta=0.7)
 
@@ -36,7 +38,7 @@ class TestPaintedMap(unittest.TestCase):
         for slot_id in range(24):
             with self.subTest(slot_id=slot_id):
                 anchor = self.game_map.get_slot_source_position(slot_id)
-                self.assertEqual(self.game_map.pixel_to_slot(self.game_map.source_to_pixel(anchor)), slot_id)
+                self.assertEqual(self.projection.pixel_to_slot(self.projection.source_to_pixel(anchor)), slot_id)
 
     def test_route_is_painted_serpentine_with_dense_turn_waypoints(self):
         path = self.game_map.get_source_path()
