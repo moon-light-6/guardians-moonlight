@@ -75,6 +75,30 @@ class TestGameEngine(unittest.TestCase):
         self.game.step(Action(ActionType.START_GAME))
         self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
 
+    def test_boss_warning_appears_after_continuing_into_boss_stage(self):
+        for before_boss in (4, 9, 14, 19, 24, 29):
+            with self.subTest(stage=before_boss):
+                self.state.current_stage = before_boss
+                self.state.phase = GamePhase.SETTLEMENT
+                self.game.step(Action(ActionType.CONTINUE))
+                self.assertEqual(self.state.current_stage, before_boss + 1)
+                self.assertTrue(self.state.boss_warning)
+                self.game.step(Action(ActionType.DISMISS_BOSS_WARNING))
+                self.assertFalse(self.state.boss_warning)
+
+    def test_boss_warning_not_shown_for_normal_stages(self):
+        for before in (1, 2, 3, 5, 8, 10, 28):
+            with self.subTest(stage=before):
+                self.state.current_stage = before
+                self.state.phase = GamePhase.SETTLEMENT
+                self.game.step(Action(ActionType.CONTINUE))
+                self.assertFalse(self.state.boss_warning)
+
+    def test_boss_warning_is_cleared_on_new_run(self):
+        self.state.boss_warning = True
+        self.game.step(Action(ActionType.RESTART))
+        self.assertFalse(self.game.state.boss_warning)
+
     def test_stage_five_continues_and_preserves_resources(self):
         self.game.step(Action(ActionType.BUY, slot_id=0))
         self.state.towers[0]["level"] = 3

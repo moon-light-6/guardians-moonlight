@@ -126,6 +126,8 @@ class Renderer:
             self._render_game(state)
         if start_confirm and state.phase == GamePhase.PREPARATION:
             self._render_start_popup(state)
+        if state.boss_warning and state.phase == GamePhase.PREPARATION:
+            self._render_boss_warning_popup(state)
         if buy_confirm and state.phase == GamePhase.PREPARATION:
             self._render_buy_popup()
         if quit_confirm:
@@ -173,6 +175,27 @@ class Renderer:
         self.buttons.set_buttons([
             Button(pygame.Rect(454, 410, 174, 42), "아니요", "START_WAVE_NO"),
             Button(pygame.Rect(652, 410, 174, 42), "예", "START_WAVE_YES"),
+        ])
+        self.buttons.render(self.screen, self.font_med)
+
+    def _render_boss_warning_popup(self, state: GameState) -> None:
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        self.screen.blit(overlay, (0, 0))
+
+        width, height = 480, 280
+        panel = pygame.Rect((SCREEN_WIDTH - width) // 2, (SCREEN_HEIGHT - height) // 2, width, height)
+        draw_panel(self.screen, panel)
+
+        title = self.font_big.render("큰 소동 예고!", True, COLOR_RED)
+        self.screen.blit(title, title.get_rect(center=(panel.centerx, panel.y + 70)))
+        info = self.font_med.render("곧 강력한 보스 악귀가 나타납니다", True, COLOR_MOON)
+        self.screen.blit(info, info.get_rect(center=(panel.centerx, panel.y + 130)))
+        info2 = self.font_small.render("사신들을 점검하고 다음 소동에 대비할까요?", True, COLOR_GRAY)
+        self.screen.blit(info2, info2.get_rect(center=(panel.centerx, panel.y + 165)))
+
+        self.buttons.set_buttons([
+            Button(pygame.Rect(panel.centerx - 110, panel.bottom - 80, 220, 46), "수호 준비!", "DISMISS_BOSS_WARNING"),
         ])
         self.buttons.render(self.screen, self.font_med)
 
@@ -230,10 +253,6 @@ class Renderer:
 
         title = self.font_big.render(f"{result.stage}번째 소동 해결!", True, COLOR_WHITE)
         self.screen.blit(title, title.get_rect(center=(panel.centerx, panel.y + 48)))
-        if result.boss_name:
-            boss_result = "처치 성공" if result.boss_kills else "결계 도달"
-            boss_line = self.font_small.render(f"{result.boss_name} · {boss_result}", True, COLOR_MOON)
-            self.screen.blit(boss_line, boss_line.get_rect(center=(panel.centerx, panel.y + 92)))
 
         rows = [
             (f"일반 악귀 {result.normal_kills}마리 처치 보상", f"{result.kill_gold} G"),

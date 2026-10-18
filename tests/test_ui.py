@@ -232,6 +232,39 @@ class TestPygameUI(unittest.TestCase):
         self.assertEqual(self.game.state.phase, GamePhase.VICTORY)
         self.render("victory")
 
+    def go_to_boss_preparation(self, stage_before=4):
+        state = self.game.state
+        state.current_stage = stage_before
+        state.phase = GamePhase.SETTLEMENT
+        self.click("CONTINUE")
+
+    def test_boss_warning_popup_shows_and_blocks_input_until_dismissed(self):
+        self.go_to_boss_preparation()
+        state = self.game.state
+        self.assertTrue(state.boss_warning)
+        self.render("boss-warning")
+        actions = {button.action for button in self.renderer.buttons.buttons}
+        self.assertEqual(actions, {"DISMISS_BOSS_WARNING"})
+        position = self.game.map.grid_to_pixel(self.game.map.get_slot_position(0))
+        click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=position)
+        self.assertIsNone(self.input.handle_event(click, state))
+        for key in (pygame.K_SPACE, pygame.K_ESCAPE, pygame.K_RETURN):
+            self.assertIsNone(self.input.handle_event(pygame.event.Event(pygame.KEYDOWN, key=key), state))
+        self.assertEqual(state.phase, GamePhase.PREPARATION)
+        self.assertTrue(state.boss_warning)
+
+    def test_boss_warning_button_dismisses_popup(self):
+        self.go_to_boss_preparation()
+        self.click("DISMISS_BOSS_WARNING")
+        self.assertFalse(self.game.state.boss_warning)
+        self.render()
+        actions = {button.action for button in self.renderer.buttons.buttons}
+        self.assertIn("OPEN_START_CONFIRM", actions)
+
+    def test_no_boss_warning_before_normal_stage(self):
+        self.go_to_boss_preparation(stage_before=3)
+        self.assertFalse(self.game.state.boss_warning)
+
     def test_exhausted_preparation_actions_disable_sell(self):
         self.game.step(Action(ActionType.BUY, slot_id=0))
         self.game.state.actions_taken_this_wave = 20

@@ -62,6 +62,7 @@ class InputHandler:
                 "RESTART": Action(ActionType.RESTART),
                 "CANCEL": Action(ActionType.CANCEL),
                 "CYCLE_SPEED": Action(ActionType.CYCLE_SPEED),
+                "DISMISS_BOSS_WARNING": Action(ActionType.DISMISS_BOSS_WARNING),
                 "UPGRADE": Action(ActionType.UPGRADE, slot_id=state.selected_slot),
                 "SELL": Action(ActionType.SELL, slot_id=state.selected_slot),
                 "CONFIRM_SELL": Action(ActionType.CONFIRM_SELL, slot_id=state.pending_sell_slot),
@@ -69,7 +70,7 @@ class InputHandler:
             }
             return mapping.get(action_name)
 
-        if self.quit_confirm or self.start_confirm or self.buy_confirm:
+        if self.quit_confirm or self.start_confirm or self.buy_confirm or state.boss_warning:
             return None
         slot_id = self.map.pixel_to_slot(pos)
         if slot_id is None:
@@ -91,8 +92,10 @@ class InputHandler:
                 self.start_confirm = False
                 self.buy_confirm = False
                 return None
+            if state.boss_warning:
+                return None
             return Action(ActionType.CANCEL if state.phase in {GamePhase.MOVING_TOWER, GamePhase.SELL_CONFIRM} else ActionType.BACK_TO_TITLE)
-        if self.quit_confirm or self.start_confirm or self.buy_confirm:
+        if self.quit_confirm or self.start_confirm or self.buy_confirm or state.boss_warning:
             return None
         if key == pygame.K_SPACE and state.phase == GamePhase.PREPARATION:
             self.start_confirm = True
