@@ -1,5 +1,7 @@
 
 from pathlib import Path
+import math
+from time import perf_counter
 from typing import List
 
 import pygame
@@ -48,6 +50,8 @@ from game.wave import WaveManager
 
 
 class Renderer:
+    UPGRADE_EFFECT_SECONDS = 0.7
+
     def __init__(self, screen: pygame.Surface):
         self.screen = screen
         self.map = GameMap()
@@ -67,6 +71,8 @@ class Renderer:
         self.boss_animator = BossSpriteAnimator()
         self.effect_animator = AttackEffectAnimator()
         self.enemy_animator = EnemySpriteAnimator()
+        # Wall-clock, view-only events; never enter state.effects/combat time.
+        self._upgrade_effects = []
 
     def _load_boss_portraits(self) -> dict:
         sheet = pygame.image.load(str(Path(__file__).resolve().parents[1] / "data" / "boss_roster.png"))
@@ -122,6 +128,8 @@ class Renderer:
         return pygame.font.Font(None, size)
 
     def render(self, state: GameState, quit_confirm: bool = False) -> None:
+        if state.phase in {GamePhase.TITLE, GamePhase.HELP}:
+            self._upgrade_effects.clear()
         self.screen.fill(COLOR_BLACK)
         self._draw_moonlit_background()
         if state.phase == GamePhase.TITLE:
@@ -179,8 +187,8 @@ class Renderer:
         self.buttons.render(self.screen, self.font_med)
 
     def _render_game(self, state: GameState) -> None:
-        self._render_hud(state)
         self._render_board(state)
+        self._render_hud(state)
         # 기존 관리 패널의 코드와 동작을 그대로 유지합니다.
         self._render_side_panel(state)
         if state.phase == GamePhase.SELL_CONFIRM:
@@ -272,18 +280,15 @@ class Renderer:
         if self.show_map_debug:
             self._draw_map_debug()
 
-        # 현무의 연속 장판 애니메이션을 유닛 아래에 한 번만 표시합니다.
+        # Resolve moving targets once; retain logical coordinates for attack poses.
         target_positions = {enemy.enemy_id: enemy.get_current_position()
                             for enemy in state.enemies if enemy.enemy_id is not None}
         effects = [self.effect_animator.resolve_targets(effect, target_positions)
                    for effect in state.effects]
-        for effect in effects:
-            if effect["kind"] == "slow_field" and effect["age"] < effect["ttl"] - 1e-9:
-                self._draw_effect(effect)
-
         pending_slots = {summon["slot_id"] for summon in state.summons}
         for slot_id in self.map.slots:
-            selected = state.selected_slot == slot_id
+            # Occupied selections use the actual range ring, without a second ring.
+            selected = state.selected_slot == slot_id and not state.has_tower(slot_id)
             moving = state.phase == GamePhase.MOVING_TOWER and state.is_slot_empty(slot_id)
             self._draw_slot_tile(slot_id, selected, moving)
 
@@ -295,22 +300,18 @@ class Renderer:
             center = self.projection.game_to_pixel(self.map.get_slot_position(state.selected_slot))
             self._draw_projected_range(center, stats["range"])
 
-        for summon in state.summons:
-            self._draw_summon_effect(summon)
-
-        for slot_id, tower_data in state.towers.items():
-            if slot_id in pending_slots:
-                continue
-            self._draw_tower(
-                slot_id,
-                tower_data,
-                effects,
-            )
+        # Back to front: board/range -> enemies -> effects -> towers -> HUD.
         for enemy in state.enemies:
             self._draw_enemy(enemy, state.wave_elapsed)
         for effect in effects:
-            if effect["kind"] != "slow_field":
+            if effect["age"] < effect["ttl"] - 1e-9:
                 self._draw_effect(effect)
+        for summon in state.summons:
+            self._draw_summon_effect(summon)
+        self._draw_upgrade_effects(state)
+        for slot_id, tower_data in state.towers.items():
+            if slot_id not in pending_slots:
+                self._draw_tower(slot_id, tower_data, effects)
 
     def _draw_slot_tile(self, slot_id: int, selected: bool, moving: bool) -> None:
         """배경의 기본 받침을 덮지 않는 선택·이동 테두리 오버레이입니다."""
@@ -348,7 +349,72 @@ class Renderer:
 
     def _draw_projected_range(self, center, logical_range: float) -> None:
         radius = round(self.projection.units_to_pixels(logical_range))
-        pygame.draw.circle(self.screen, (97, 167, 213), center, radius, 1)
+        padding = radius + 6
+        glow = pygame.Surface((padding * 2, padding * 2), pygame.SRCALPHA)
+        pygame.draw.circle(glow, (*COLOR_GOLD, 50), (padding, padding), radius, 6)
+        pygame.draw.circle(glow, COLOR_GOLD, (padding, padding), radius, 2)
+        self.screen.blit(glow, (center[0] - padding, center[1] - padding))
+
+    def _tower_pixel_position(self, slot_id, tower_type):
+        """Visual anchor only; ranges and targeting keep the map's slot position."""
+        pos = self.projection.game_to_pixel(self.map.get_slot_position(slot_id))
+        return (pos[0], pos[1] + TOWER_Y_OFFSETS.get(tower_type, 0))
+
+    def play_upgrade_effect(self, state: GameState, slot_id: int) -> None:
+        """Called once by the input loop after a successful engine upgrade."""
+        tower = state.towers.get(slot_id)
+        if tower is not None:
+            self._upgrade_effects.append({
+                "state": state, "tower": tower, "started_at": perf_counter(),
+            })
+
+    def _draw_upgrade_effects(self, state: GameState) -> None:
+        now = perf_counter()
+        slots = {id(tower): slot for slot, tower in state.towers.items()}
+        active = []
+        for effect in self._upgrade_effects:
+            age = now - effect["started_at"]
+            slot = slots.get(id(effect["tower"]))
+            if (effect["state"] is not state or slot is None
+                    or age >= self.UPGRADE_EFFECT_SECONDS):
+                continue
+            active.append(effect)
+            pos = self._tower_pixel_position(slot, effect["tower"]["type"])
+            feet = (pos[0], pos[1] + TOWER_BOTTOM_OFFSET)
+            self._draw_upgrade_glow(feet, max(0.0, age) / self.UPGRADE_EFFECT_SECONDS)
+        self._upgrade_effects = active
+
+    def _draw_upgrade_glow(self, feet, progress: float) -> None:
+        """Soft golden rising rays and deterministic sparkles, behind the sprite."""
+        glow = pygame.Surface((128, 160), pygame.SRCALPHA)
+        cx, cy = 64, 136
+        fade = min(1.0, progress / 0.08) * (1.0 - progress) ** 0.8
+        rise = 1.0 - (1.0 - min(1.0, progress / 0.45)) ** 3
+        for radius in range(32, 0, -1):
+            alpha = round(65 * fade * (1 - radius / 33))
+            pygame.draw.ellipse(glow, (255, 195, 65, alpha),
+                                (cx - radius, cy - radius // 3, radius * 2, max(2, radius * 2 // 3)))
+        pygame.draw.ellipse(glow, (255, 221, 105, round(120 * fade)),
+                            (cx - 39, cy - 10, 78, 20), 2)
+        for x in (-38, -25, -12, 0, 12, 25, 38):
+            height = round((122 - abs(x) * 0.4) * rise)
+            for y in range(height):
+                remaining = 1 - y / max(1, height)
+                alpha = round(125 * fade * (0.35 + 0.65 * remaining) * min(1, remaining * 8))
+                width = max(1, round(3 * remaining))
+                pygame.draw.line(glow, (255, 220, 95, alpha),
+                                 (cx + x - width, cy - y), (cx + x + width, cy - y))
+        for index in range(16):
+            delay = (index % 4) * 0.035
+            t = max(0.0, (progress - delay) / (1 - delay))
+            angle = index * 2.399963
+            x = round(cx + math.cos(angle) * (30 + 24 * t))
+            y = round(cy - 105 * t + math.sin(angle) * 9 * t)
+            alpha = round(210 * fade * math.sin(math.pi * t))
+            size = 2 if index % 3 else 3
+            pygame.draw.line(glow, (255, 239, 155, alpha), (x - size, y), (x + size, y))
+            pygame.draw.line(glow, (255, 239, 155, alpha), (x, y - size), (x, y + size))
+        self.screen.blit(glow, (feet[0] - cx, feet[1] - cy))
 
     def _draw_summon_effect(self, summon: dict) -> None:
         """벽화의 빛 → 달빛 덩어리 → 도착지 수렴. 캐릭터는 완료 전 보이지 않습니다."""
@@ -407,12 +473,10 @@ class Renderer:
         effects: list,
     ) -> None:
         tower_pos = self.map.get_slot_position(slot_id)
-        pos = self.projection.game_to_pixel(tower_pos)
-
         tower_type = tower_data["type"]
         # 대기/공격 스프라이트와 레벨 표시가 공유하는 화면상 기준 좌표만 이동
         # 애니메이션과 레벨 표시는 각각 TOWER_BOTTOM_OFFSET을 한 번씩 적용
-        pos = (pos[0], pos[1] + TOWER_Y_OFFSETS.get(tower_type, 0))
+        pos = self._tower_pixel_position(slot_id, tower_type)
 
         # PNG 프레임 애니메이션 출력
         animated = self.tower_animator.draw(
