@@ -109,7 +109,13 @@ class Renderer:
 
         return pygame.font.Font(None, size)
 
-    def render(self, state: GameState, quit_confirm: bool = False, start_confirm: bool = False) -> None:
+    def render(
+        self,
+        state: GameState,
+        quit_confirm: bool = False,
+        start_confirm: bool = False,
+        buy_confirm: bool = False,
+    ) -> None:
         self.screen.fill(COLOR_BLACK)
         self._draw_moonlit_background()
         if state.phase == GamePhase.TITLE:
@@ -120,6 +126,8 @@ class Renderer:
             self._render_game(state)
         if start_confirm and state.phase == GamePhase.PREPARATION:
             self._render_start_popup(state)
+        if buy_confirm and state.phase == GamePhase.PREPARATION:
+            self._render_buy_popup()
         if quit_confirm:
             self._render_quit_popup()
 
@@ -165,6 +173,20 @@ class Renderer:
         self.buttons.set_buttons([
             Button(pygame.Rect(454, 410, 174, 42), "아니요", "START_WAVE_NO"),
             Button(pygame.Rect(652, 410, 174, 42), "예", "START_WAVE_YES"),
+        ])
+        self.buttons.render(self.screen, self.font_med)
+
+    def _render_buy_popup(self) -> None:
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        self.screen.blit(overlay, (0, 0))
+        panel = pygame.Rect(430, 280, 420, 200)
+        draw_panel(self.screen, panel)
+        message = self.font_med.render("랜덤 사신을 소환하시겠습니까?", True, COLOR_WHITE)
+        self.screen.blit(message, message.get_rect(center=(panel.centerx, panel.y + 66)))
+        self.buttons.set_buttons([
+            Button(pygame.Rect(454, 410, 174, 42), "아니요", "BUY_NO"),
+            Button(pygame.Rect(652, 410, 174, 42), "예", "BUY_YES"),
         ])
         self.buttons.render(self.screen, self.font_med)
 
@@ -593,7 +615,7 @@ class Renderer:
             self._text("빈 돌판을 선택해 벽화 속 사신을 소환하세요", 66, 744, self.font_med, COLOR_WHITE)
             self._text("청룡 · 백호 · 주작 · 현무 중 하나가 달빛을 타고 도착합니다", 66, 779, self.font_small, COLOR_GRAY)
             buttons.extend([
-                Button(pygame.Rect(570, 765, 222, 38), "랜덤 사신 소환 100 G", "BUY", selected is not None and self.economy.can_buy(state, selected)),
+                Button(pygame.Rect(570, 765, 222, 38), "랜덤 사신 소환 100 G", "OPEN_BUY_CONFIRM", selected is not None and self.economy.can_buy(state, selected)),
                 Button(pygame.Rect(1022, 765, 188, 38), f"{state.current_stage}번째 웨이브 시작", "START_WAVE"),
             ])
 
@@ -633,7 +655,7 @@ class Renderer:
             buttons.extend([
                 Button(pygame.Rect(PANEL_X + 24, 558, 126, 40), "이동", "BEGIN_RELOCATE", False),
                 Button(pygame.Rect(PANEL_X + 158, 558, 126, 40), "판매", "SELL", False),
-                Button(pygame.Rect(PANEL_X + 24, 606, 260, 40), "랜덤 사신 소환 100 G", "BUY", False),
+                Button(pygame.Rect(PANEL_X + 24, 606, 260, 40), "랜덤 사신 소환 100 G", "OPEN_BUY_CONFIRM", False),
             ])
             buttons.append(Button(pygame.Rect(PANEL_X + 24, 672, 260, 42), f"배속 ×{state.combat_speed:g}", "CYCLE_SPEED"))
         elif state.phase == GamePhase.SETTLEMENT:
@@ -673,7 +695,7 @@ class Renderer:
         self._text("사신 소환", PANEL_X + 24, y, self.font_med, COLOR_WHITE)
         self._text("빈 슬롯 선택 후 랜덤 소환", PANEL_X + 24, y + 34, self.font_small, COLOR_GRAY)
         self._text("청룡 · 백호 · 주작 · 현무 각 25%", PANEL_X + 24, y + 66, self.font_small, COLOR_MOON)
-        buttons.append(Button(pygame.Rect(PANEL_X + 24, y + 102, 260, 40), "랜덤 사신 소환 100 G", "BUY", selected is not None and self.economy.can_buy(state, selected)))
+        buttons.append(Button(pygame.Rect(PANEL_X + 24, y + 102, 260, 40), "랜덤 사신 소환 100 G", "OPEN_BUY_CONFIRM", selected is not None and self.economy.can_buy(state, selected)))
 
         if selected is not None and state.has_tower(selected):
             tower = state.towers[selected]

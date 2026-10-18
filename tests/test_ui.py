@@ -36,7 +36,11 @@ class TestPygameUI(unittest.TestCase):
         self.input = InputHandler(self.renderer.buttons)
 
     def render(self, name=None):
-        self.renderer.render(self.game.state, start_confirm=self.input.start_confirm)
+        self.renderer.render(
+            self.game.state,
+            start_confirm=self.input.start_confirm,
+            buy_confirm=self.input.buy_confirm,
+        )
         bounds = self.screen.get_rect()
         for button in self.renderer.buttons.buttons:
             self.assertTrue(bounds.contains(button.rect))
@@ -60,9 +64,56 @@ class TestPygameUI(unittest.TestCase):
             # 소동 시작 버튼은 확인 팝업을 한 번 거친 뒤 "예"를 눌러야 시작된다.
             self.assertIsNone(self.press("OPEN_START_CONFIRM"))
             action_name = "START_WAVE_YES"
+        elif action_name == "BUY":
+            # 랜덤 소환 버튼도 확인 팝업에서 "예"를 눌러야 소환된다.
+            self.assertIsNone(self.press("OPEN_BUY_CONFIRM"))
+            action_name = "BUY_YES"
         action = self.press(action_name)
         self.assertIsNotNone(action)
         self.game.step(action)
+
+    def select_empty_slot(self, slot_id=0):
+        self.game.step(Action(ActionType.SELECT_SLOT, slot_id=slot_id))
+
+    def test_buy_asks_for_confirmation_first(self):
+        self.select_empty_slot()
+        gold = self.game.state.gold
+        self.assertIsNone(self.press("OPEN_BUY_CONFIRM"))
+        self.assertTrue(self.input.buy_confirm)
+        self.assertEqual(self.game.state.gold, gold)
+        self.assertFalse(self.game.state.towers)
+        self.render("buy-confirm")
+        actions = {button.action for button in self.renderer.buttons.buttons}
+        self.assertEqual(actions, {"BUY_NO", "BUY_YES"})
+
+    def test_buy_confirm_no_closes_popup_without_summoning(self):
+        self.select_empty_slot()
+        gold = self.game.state.gold
+        self.press("OPEN_BUY_CONFIRM")
+        self.assertIsNone(self.press("BUY_NO"))
+        self.assertFalse(self.input.buy_confirm)
+        self.assertEqual(self.game.state.gold, gold)
+        self.assertFalse(self.game.state.towers)
+
+    def test_buy_confirm_yes_summons_tower_in_selected_slot(self):
+        self.select_empty_slot(2)
+        gold = self.game.state.gold
+        self.press("OPEN_BUY_CONFIRM")
+        action = self.press("BUY_YES")
+        self.assertEqual(action.action_type, ActionType.BUY)
+        self.assertEqual(action.slot_id, 2)
+        self.assertFalse(self.input.buy_confirm)
+        self.game.step(action)
+        self.assertIn(2, self.game.state.towers)
+        self.assertEqual(self.game.state.gold, gold - 100)
+
+    def test_escape_closes_buy_confirmation(self):
+        self.select_empty_slot()
+        self.press("OPEN_BUY_CONFIRM")
+        escape = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE)
+        self.assertIsNone(self.input.handle_event(escape, self.game.state))
+        self.assertFalse(self.input.buy_confirm)
+        self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
 
     def test_start_wave_asks_for_confirmation_first(self):
         self.assertIsNone(self.press("OPEN_START_CONFIRM"))
@@ -218,7 +269,7 @@ class TestPygameUI(unittest.TestCase):
         self.game.step(action)
         self.assertEqual(state.selected_slot, 0)
         self.render("combat-tower-selected")
-        for name in ("BUY", "BEGIN_RELOCATE", "SELL"):
+        for name in ("OPEN_BUY_CONFIRM", "BEGIN_RELOCATE", "SELL"):
             button = next(b for b in self.renderer.buttons.buttons if b.action == name)
             self.assertFalse(button.enabled)
             self.assertIsNone(self.input.handle_event(
