@@ -39,7 +39,7 @@ from display.boss_animation import BossSpriteAnimator
 from display.effect_animation import AttackEffectAnimator
 from display.map_projection import MapProjection
 from display.enemy_animation import EnemySpriteAnimator
-from display.render_sizes import TOWER_BOTTOM_OFFSET, TOWER_LEVEL_GAP
+from display.render_sizes import TOWER_BOTTOM_OFFSET, TOWER_LEVEL_GAP, TOWER_Y_OFFSETS
 from game.economy import Economy
 from game.map import GameMap
 from game.state import GamePhase, GameState
@@ -410,6 +410,9 @@ class Renderer:
         pos = self.projection.game_to_pixel(tower_pos)
 
         tower_type = tower_data["type"]
+        # 대기/공격 스프라이트와 레벨 표시가 공유하는 화면상 기준 좌표만 이동
+        # 애니메이션과 레벨 표시는 각각 TOWER_BOTTOM_OFFSET을 한 번씩 적용
+        pos = (pos[0], pos[1] + TOWER_Y_OFFSETS.get(tower_type, 0))
 
         # PNG 프레임 애니메이션 출력
         animated = self.tower_animator.draw(
