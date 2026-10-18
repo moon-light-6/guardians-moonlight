@@ -762,8 +762,7 @@ class Renderer:
 
         button_y = panel.bottom - 80
         self.buttons.set_buttons([
-            Button(pygame.Rect(panel.centerx - 184, button_y, 174, 46), "다시 도전하기", "RESTART"),
-            Button(pygame.Rect(panel.centerx + 10, button_y, 174, 46), "처음으로", "BACK_TO_TITLE"),
+            Button(pygame.Rect(panel.centerx - 87, button_y, 174, 46), "처음으로", "BACK_TO_TITLE"),
         ])
 
     def _text(self, value: str, x: int, y: int, font: pygame.font.Font, color) -> None:

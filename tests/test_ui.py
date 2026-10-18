@@ -182,7 +182,7 @@ class TestPygameUI(unittest.TestCase):
         self.click("BUY")
         self.assertTrue(self.game.state.has_tower(0))
 
-    def test_speed_button_cycle_and_restart(self):
+    def test_speed_button_cycle_and_back_to_title(self):
         self.click("START_WAVE")
         for index, speed in enumerate((1, 1.5, 2, 5, 1)):
             self.render(f"combat-speed-{index}")
@@ -192,7 +192,7 @@ class TestPygameUI(unittest.TestCase):
             self.click("CYCLE_SPEED")
         self.game.state.phase = GamePhase.GAME_OVER
         self.render("defeat")
-        self.click("RESTART")
+        self.click("BACK_TO_TITLE")
         self.assertEqual(self.game.state.combat_speed, 1)
 
     def test_six_boss_screens_use_distinct_artwork(self):
