@@ -14,7 +14,7 @@ def main():
 
     game = Game()
     renderer = Renderer(screen)
-    input_handler = InputHandler(renderer.buttons)
+    input_handler = InputHandler(renderer.buttons, renderer.projection)
     state = game.reset(seed=42)
 
     running = True
@@ -23,6 +23,9 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 input_handler.quit_confirm = True
+                continue
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_d:
+                renderer.toggle_map_debug()
                 continue
             action = input_handler.handle_event(event, state)
             if action:

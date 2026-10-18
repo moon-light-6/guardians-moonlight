@@ -136,8 +136,8 @@ class TestEffectTracking(unittest.TestCase):
                     screen = Mock()
                     with patch.object(self.animator, "_draw_claw_motion"), \
                             patch.object(self.animator, "_draw_fire_wave"):
-                        self.animator.draw(screen, target, self.renderer.map)
-                    pixel = self.renderer.map.grid_to_pixel(enemy.get_current_position())
+                        self.animator.draw(screen, target, self.renderer.projection)
+                    pixel = self.renderer.projection.game_to_pixel(enemy.get_current_position())
                     anchor = self.animator.anchors[effect_kind]
                     self.assertEqual(screen.blit.call_args.args[1],
                                      (pixel[0] - anchor[0], pixel[1] - anchor[1]))
@@ -177,9 +177,9 @@ class TestEffectTracking(unittest.TestCase):
         self.assertAlmostEqual(effect["ttl"], 1.24)
         with patch.object(self.animator, "_draw_chain_link") as link:
             screen = Mock()
-            self.animator.draw(screen, visual, self.renderer.map)
-        pixels = [self.renderer.map.grid_to_pixel(point) for point in points]
-        origin = self.renderer.map.grid_to_pixel(effect["from"])
+            self.animator.draw(screen, visual, self.renderer.projection)
+        pixels = [self.renderer.projection.game_to_pixel(point) for point in points]
+        origin = self.renderer.projection.game_to_pixel(effect["from"])
         self.assertEqual([(call.args[1], call.args[2]) for call in link.call_args_list],
                          list(zip([origin] + pixels[:-1], pixels)))
         anchor = self.animator.anchors["lightning"]
@@ -257,7 +257,7 @@ class TestEffectTracking(unittest.TestCase):
     def test_splash_damage_remains_at_impact_and_visual_motion_never_deals_damage(self):
         target = self.enemy(path=[(2, 1), (2, 6)])
         near = self.enemy(path=[(2.5, 1), (2.5, 6)])
-        far = self.enemy(path=[(2, 3), (2, 6)])
+        far = self.enemy(path=[(2, 4), (2, 6)])
         game = self.battle("CANNON", [target, near, far])
         self.assertEqual([e.health for e in (target, near, far)], [960, 960, 1000])
         impact = game.state.effects[0]["to"]
@@ -286,8 +286,8 @@ class TestEffectTracking(unittest.TestCase):
         current = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
         previous = current.copy()
         expected = {**original[1], "age": field["age"]}
-        self.animator.draw(current, field, self.renderer.map)
-        self.animator.draw(previous, expected, self.renderer.map)
+        self.animator.draw(current, field, self.renderer.projection)
+        self.animator.draw(previous, expected, self.renderer.projection)
         self.assertEqual(pygame.image.tobytes(current, "RGBA"), pygame.image.tobytes(previous, "RGBA"))
         self.assertEqual((field["ttl"], field["slow_ttl"]), (2, 2))
         self.assertEqual(Combat.get_field_speed_modifier(field["cell"], [field]), 0.7)

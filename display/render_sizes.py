@@ -6,8 +6,9 @@ from config import CELL_SIZE
 TOWER_BASE_SIZE = (58, 58)
 TOWER_SCALE = 1.2
 TOWER_SIZE = tuple(round(side * TOWER_SCALE) for side in TOWER_BASE_SIZE)
-# Preserve the previous 58px sprite's bottom (center was 8px above the slot).
-TOWER_BOTTOM_OFFSET = TOWER_BASE_SIZE[1] // 2 - 8
+# Map anchors are the painted platform's upper-face centres. Anchor sprite feet
+# there directly; centering the sprite would sink it into the platform.
+TOWER_BOTTOM_OFFSET = 0
 TOWER_LEVEL_GAP = 2
 
 NORMAL_ENEMY_TILE_RATIO = 1

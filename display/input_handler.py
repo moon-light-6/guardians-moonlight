@@ -3,15 +3,15 @@ from typing import Optional
 import pygame
 
 from display.ui import ButtonLayer
+from display.map_projection import MapProjection
 from game.actions import Action, ActionType
-from game.map import GameMap
 from game.state import GamePhase, GameState
 
 
 class InputHandler:
-    def __init__(self, buttons: ButtonLayer):
+    def __init__(self, buttons: ButtonLayer, projection: MapProjection):
         self.buttons = buttons
-        self.map = GameMap()
+        self.projection = projection
         self.quit_confirm = False
         self.should_quit = False
 
@@ -53,7 +53,7 @@ class InputHandler:
 
         if self.quit_confirm:
             return None
-        slot_id = self.map.pixel_to_slot(pos)
+        slot_id = self.projection.pixel_to_slot(pos)
         if slot_id is None:
             return None
         if state.phase == GamePhase.MOVING_TOWER:

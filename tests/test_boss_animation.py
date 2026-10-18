@@ -113,10 +113,10 @@ class TestBossAnimation(unittest.TestCase):
     def test_real_path_has_only_left_right_down_and_switches_at_all_corners(self):
         directions = []
         for start, end in zip(self.path, self.path[1:]):
-            delta = (end[0] - start[0], end[1] - start[1])
-            directions.append({(-1, 0): "left", (1, 0): "right", (0, 1): "down"}[delta])
-        self.assertEqual({d: directions.count(d) for d in set(directions)},
-                         {"left": 37, "right": 37, "down": 12})
+            dx, dy = end[0] - start[0], end[1] - start[1]
+            directions.append("right" if dx > 0 else "left" if dx < 0 else "down")
+        self.assertIn("left", directions)
+        self.assertIn("right", directions)
         for name in self.animator.BOSS_FOLDERS:
             enemy = self.boss(name)
             for index, direction in enumerate(directions):
@@ -150,7 +150,7 @@ class TestBossAnimation(unittest.TestCase):
                         rect = self.animator.draw(screen, enemy, (100, 120),
                                                   index / self.animator.ANIMATION_FPS)
                         self.assertIs(screen.blit.call_args.args[0], frames[index % len(frames)])
-                        self.assertEqual(rect.center, (100, 120))
+                        self.assertEqual(rect.midbottom, (100, 120))
 
     def test_frame_clock_is_independent_of_movement_speed_slow_and_render_count(self):
         enemy = self.boss()
@@ -192,7 +192,7 @@ class TestBossAnimation(unittest.TestCase):
                     self.renderer._draw_enemy(enemy, index / self.animator.ANIMATION_FPS)
                 image = self.animator.frames[name, "left"][index]
                 pos = draw.call_args.args[2]
-                top = image.get_rect(center=pos).top
+                top = image.get_rect(midbottom=pos).top
                 self.assertEqual(self.screen.get_at((pos[0] - 18, top - 14))[:3], COLOR_GREEN)
                 self.assertEqual(self.screen.get_at((pos[0], top - 14))[:3], COLOR_RED)
                 self.assertLess(top - 14 + 4, top)

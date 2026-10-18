@@ -103,6 +103,8 @@ class BossSpriteAnimator:
         # but enemy speed, slows, distance and render frequency do not set FPS.
         index = int(max(0.0, animation_time) * self.ANIMATION_FPS) % len(frames)
         image = frames[index]
-        rect = image.get_rect(center=pixel_pos)
+        # The route describes the contact point on the ground, including for
+        # larger bosses, so sprites share the normal enemy foot anchor.
+        rect = image.get_rect(midbottom=pixel_pos)
         screen.blit(image, rect)
         return rect
