@@ -58,7 +58,7 @@ class WaveManager:
         boss = self.BOSSES.get(stage)
         if boss:
             return f"일반 악귀 {count}마리 · 보스 악귀 {boss['name']}"
-        return f"일반 악귀 {count}마리 · 보스 악귀 없음"
+        return f"일반 악귀 {count}마리"
 
     def _build_spawn_queue(self, stage: int) -> List[Dict[str, Any]]:
         hp = self.STAGE_HP.get(stage, self.STAGE_HP[30])

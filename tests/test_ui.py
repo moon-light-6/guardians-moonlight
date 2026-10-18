@@ -9,7 +9,7 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 
 import pygame
 
-from config import SCREEN_HEIGHT, SCREEN_WIDTH
+from config import PANEL_X, SCREEN_HEIGHT, SCREEN_WIDTH
 from display.input_handler import InputHandler
 from display.renderer import Renderer
 from game.actions import Action, ActionType
@@ -344,6 +344,45 @@ class TestPygameUI(unittest.TestCase):
         for index, button in enumerate(buttons):
             for other in buttons[index + 1:]:
                 self.assertFalse(button.rect.colliderect(other.rect))
+
+    def test_clicking_background_in_combat_deselects_tower_and_shows_boss(self):
+        self.game.step(Action(ActionType.BUY, slot_id=0))
+        self.game.state.current_stage = 10
+        self.click("START_WAVE")
+        boss = Enemy.create(EnemyType.BOSS, self.game.map.get_path(), 2160, "철갓장군")
+        self.game.state.enemies = [boss]
+        state = self.game.state
+        self.assertEqual(state.selected_slot, 0)  # 사신을 소환하면 그 슬롯이 선택된 상태다
+        self.render("combat-tower-info")
+        self.assertIn("UPGRADE", {b.action for b in self.renderer.buttons.buttons})
+
+        # 사신이 없는 배경(판 바깥쪽 위쪽 모서리)을 누르면 선택이 풀리고 보스 정보가 나온다.
+        background = (5, 400)
+        self.assertIsNone(self.game.map.pixel_to_slot(background))
+        action = self.input.handle_event(
+            pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=background), state)
+        self.assertEqual(action.action_type, ActionType.SELECT_SLOT)
+        self.assertIsNone(action.slot_id)
+        self.game.step(action)
+        self.assertIsNone(state.selected_slot)
+        self.render("combat-boss-info")
+        self.assertNotIn("UPGRADE", {b.action for b in self.renderer.buttons.buttons})
+
+        # 사신을 다시 누르면 사신 정보가 그대로 보인다.
+        position = self.game.map.grid_to_pixel(self.game.map.get_slot_position(0))
+        action = self.input.handle_event(
+            pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=position), state)
+        self.game.step(action)
+        self.assertEqual(state.selected_slot, 0)
+
+    def test_clicking_side_panel_background_in_combat_keeps_selected_tower(self):
+        self.game.step(Action(ActionType.BUY, slot_id=0))
+        self.click("START_WAVE")
+        self.render()
+        panel_background = (PANEL_X + 150, 450)
+        action = self.input.handle_event(
+            pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=panel_background), self.game.state)
+        self.assertIsNone(action)
 
     def test_settlement_shows_callback_kill_counts_and_gold(self):
         state = self.game.state

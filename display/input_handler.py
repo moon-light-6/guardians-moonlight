@@ -2,6 +2,7 @@ from typing import Optional
 
 import pygame
 
+from config import PANEL_X
 from display.ui import ButtonLayer
 from game.actions import Action, ActionType
 from game.map import GameMap
@@ -73,6 +74,9 @@ class InputHandler:
         if self.quit_confirm or self.start_confirm or self.buy_confirm or state.boss_warning:
             return None
         slot_id = self.map.pixel_to_slot(pos)
+        if state.phase == GamePhase.WAVE_ACTIVE and slot_id is None:
+            # 전투 중 어떤 돌판도 아닌 배경(오른쪽 패널 제외)을 누르면 선택을 해제한다.
+            return Action(ActionType.SELECT_SLOT, slot_id=None) if pos[0] < PANEL_X else None
         if slot_id is None:
             return None
         if state.phase == GamePhase.MOVING_TOWER:

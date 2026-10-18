@@ -158,6 +158,10 @@ class Game:
         self.state.message = "빈 슬롯을 선택해 사신을 소환하세요"
 
     def _select_slot(self, slot_id: Optional[int]) -> None:
+        if self.state.phase == GamePhase.WAVE_ACTIVE and slot_id is None:
+            # 전투 중 사신이 없는 곳을 누르면 선택을 해제해 보스 정보가 다시 보이게 한다.
+            self.state.selected_slot = None
+            return
         if self.state.phase not in {GamePhase.PREPARATION, GamePhase.MOVING_TOWER, GamePhase.WAVE_ACTIVE}:
             return
         if not self.state.is_valid_slot(slot_id):
