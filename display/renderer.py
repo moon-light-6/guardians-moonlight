@@ -755,7 +755,7 @@ class Renderer:
             hint_surface = self.font_small.render("이런, 잡귀들을 막아내지 못했다… 다시 결계를 지켜볼까?", True, COLOR_MOON)
             self.screen.blit(hint_surface, hint_surface.get_rect(center=(panel.centerx, panel.y + 205)))
         else:
-            success_text1 = self.font_med.render("모든 소동을 해결했다!", True, COLOR_MOON)
+            success_text1 = self.font_med.render("모든 소동을 해결했다!", True, COLOR_WHITE)
             self.screen.blit(success_text1, success_text1.get_rect(center=(panel.centerx, panel.y + 150)))
             success_text2 = self.font_small.render("사신들과 함께 궁궐의 평화를 지켜냈다!", True, COLOR_GRAY)
             self.screen.blit(success_text2, success_text2.get_rect(center=(panel.centerx, panel.y + 205)))
