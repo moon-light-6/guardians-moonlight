@@ -284,7 +284,7 @@ class Renderer:
         self._text(f"환급 {refund} G", 454, 388, self.font_med, COLOR_GOLD)
         self.buttons.set_buttons([
             Button(pygame.Rect(454, 460, 174, 42), "취소", "CANCEL"),
-            Button(pygame.Rect(652, 460, 174, 42), "판매 확정", "CONFIRM_SELL", self.economy.can_confirm_sell(state, selected)),
+            Button(pygame.Rect(652, 460, 174, 42), "판매", "CONFIRM_SELL", self.economy.can_confirm_sell(state, selected)),
         ])
 
     def _render_hud(self, state: GameState) -> None:
