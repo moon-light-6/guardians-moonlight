@@ -737,7 +737,7 @@ class Renderer:
             title_color = COLOR_RED
         else:
             title = "결계 수호 성공!"
-            title_color = COLOR_GOLD
+            title_color = COLOR_MOON
         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 150))
         self.screen.blit(overlay, (0, 0))
