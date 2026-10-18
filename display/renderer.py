@@ -734,8 +734,10 @@ class Renderer:
     def _render_result(self, state: GameState) -> None:
         if state.phase == GamePhase.GAME_OVER:
             title = "소동 해결 실패"
+            title_color = COLOR_RED
         else:
-            title = "결계를 지켜냈어요"
+            title = "결계 수호 성공!"
+            title_color = COLOR_GOLD
         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 150))
         self.screen.blit(overlay, (0, 0))
@@ -744,7 +746,7 @@ class Renderer:
         panel = pygame.Rect((SCREEN_WIDTH - width) // 2, (SCREEN_HEIGHT - height) // 2, width, height)
         draw_panel(self.screen, panel)
 
-        title_surface = self.font_big.render(title, True, COLOR_RED)
+        title_surface = self.font_big.render(title, True, title_color)
         self.screen.blit(title_surface, title_surface.get_rect(center=(panel.centerx, panel.y + 70)))
         if state.phase == GamePhase.GAME_OVER:
             fail_text = f"{state.current_stage}번째 소동에서 실패했어요"
@@ -752,6 +754,11 @@ class Renderer:
             self.screen.blit(fail_surface, fail_surface.get_rect(center=(panel.centerx, panel.y + 150)))
             hint_surface = self.font_small.render("이런, 잡귀들을 막아내지 못했다… 다시 결계를 지켜볼까?", True, COLOR_MOON)
             self.screen.blit(hint_surface, hint_surface.get_rect(center=(panel.centerx, panel.y + 205)))
+        else:
+            success_text1 = self.font_med.render("모든 소동을 해결했다!", True, COLOR_MOON)
+            self.screen.blit(success_text1, success_text1.get_rect(center=(panel.centerx, panel.y + 150)))
+            success_text2 = self.font_small.render("사신들과 함께 궁궐의 평화를 지켜냈다!", True, COLOR_GRAY)
+            self.screen.blit(success_text2, success_text2.get_rect(center=(panel.centerx, panel.y + 205)))
 
         button_y = panel.bottom - 80
         self.buttons.set_buttons([
