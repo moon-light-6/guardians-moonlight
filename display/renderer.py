@@ -1,15 +1,12 @@
 
 from pathlib import Path
+import math
+from time import perf_counter
 from typing import List
 
 import pygame
 
 from config import (
-    BOARD_BOTTOM_WIDTH,
-    BOARD_BOTTOM_Y,
-    BOARD_TILE_DEPTH,
-    BOARD_TOP_WIDTH,
-    BOARD_TOP_Y,
     CELL_SIZE,
     COLOR_BLACK,
     COLOR_BLUE,
@@ -29,6 +26,7 @@ from config import (
     PANEL_X,
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
+    MAP_DEBUG_DEFAULT,
     MURAL_ORIGINS,
     SUMMON_CORE_COLOR,
     SUMMON_GATHER_SECONDS,
@@ -41,8 +39,9 @@ from display.ui import Button, ButtonLayer, draw_panel
 from display.sprite_animation import TowerSpriteAnimator
 from display.boss_animation import BossSpriteAnimator
 from display.effect_animation import AttackEffectAnimator
+from display.map_projection import MapProjection
 from display.enemy_animation import EnemySpriteAnimator
-from display.render_sizes import TOWER_BOTTOM_OFFSET, TOWER_LEVEL_GAP
+from display.render_sizes import TOWER_BOTTOM_OFFSET, TOWER_LEVEL_GAP, TOWER_Y_OFFSETS
 from game.economy import Economy
 from game.map import GameMap
 from game.state import GamePhase, GameState
@@ -51,9 +50,12 @@ from game.wave import WaveManager
 
 
 class Renderer:
+    UPGRADE_EFFECT_SECONDS = 0.7
+
     def __init__(self, screen: pygame.Surface):
         self.screen = screen
         self.map = GameMap()
+        self.projection = MapProjection(self.map, screen.get_size())
         self.buttons = ButtonLayer()
         self.font_title = self._font(54)
         self.font_big = self._font(32)
@@ -61,11 +63,16 @@ class Renderer:
         self.font_small = self._font(16)
         self.economy = Economy()
         self.background = self._load_background()
+        self.show_map_debug = MAP_DEBUG_DEFAULT
+        self.debug_show_slots = True
+        self.debug_show_route = True
         self.boss_portraits = self._load_boss_portraits()
         self.tower_animator = TowerSpriteAnimator()
         self.boss_animator = BossSpriteAnimator()
         self.effect_animator = AttackEffectAnimator()
         self.enemy_animator = EnemySpriteAnimator()
+        # Wall-clock, view-only events; never enter state.effects/combat time.
+        self._upgrade_effects = []
 
     def _load_boss_portraits(self) -> dict:
         sheet = pygame.image.load(str(Path(__file__).resolve().parents[1] / "data" / "boss_roster.png"))
@@ -90,10 +97,21 @@ class Renderer:
         return portraits
 
     def _load_background(self) -> pygame.Surface:
-        """원본 달빛 뜰 배경을 게임 해상도에 맞춰 한 번만 준비합니다."""
-        path = Path(__file__).resolve().parents[1] / "assets" / "backgrounds" / "moonlit-courtyard.png"
+        """Load the painted map with the projection shared by input/rendering."""
+        path = Path(__file__).resolve().parents[1] / "assets" / "backgrounds" / "map_background.png"
         image = pygame.image.load(str(path)).convert()
-        return pygame.transform.smoothscale(image, (SCREEN_WIDTH, SCREEN_HEIGHT))
+        if image.get_size() != (self.map.source_width, self.map.source_height):
+            raise ValueError(
+                f"map_background.png must be {self.map.source_width}×{self.map.source_height}, "
+                f"got {image.get_width()}×{image.get_height()}"
+            )
+        # This is one aspect-preserving scale, not independent x/y resizing.
+        size = (round(self.projection.display_size[0]), round(self.projection.display_size[1]))
+        return pygame.transform.smoothscale(image, size)
+
+    def toggle_map_debug(self) -> bool:
+        self.show_map_debug = not self.show_map_debug
+        return self.show_map_debug
 
     def _font(self, size: int) -> pygame.font.Font:
         # 한국어 글씨체 - 맥북 운영체제
@@ -109,7 +127,17 @@ class Renderer:
 
         return pygame.font.Font(None, size)
 
-    def render(self, state: GameState, quit_confirm: bool = False) -> None:
+    def render(
+        self,
+        state: GameState,
+        quit_confirm: bool = False,
+        start_confirm: bool = False,
+        buy_confirm: bool = False,
+        no_tower_warning: bool = False,
+        boss_warning: bool = False,
+    ) -> None:
+        if state.phase in {GamePhase.TITLE, GamePhase.HELP}:
+            self._upgrade_effects.clear()
         self.screen.fill(COLOR_BLACK)
         self._draw_moonlit_background()
         if state.phase == GamePhase.TITLE:
@@ -118,12 +146,20 @@ class Renderer:
             self._render_help()
         else:
             self._render_game(state)
+        if start_confirm and state.phase == GamePhase.PREPARATION:
+            self._render_start_popup(state)
+        if boss_warning and state.phase == GamePhase.PREPARATION:
+            self._render_boss_warning_popup()
+        if buy_confirm and state.phase == GamePhase.PREPARATION:
+            self._render_buy_popup()
+        if no_tower_warning and state.phase == GamePhase.PREPARATION:
+            self._render_no_tower_popup()
         if quit_confirm:
             self._render_quit_popup()
 
     def _draw_moonlit_background(self) -> None:
-        # 사신 벽화도 원본에 포함되어 있으므로 별도의 도형으로 덮어쓰지 않습니다.
-        self.screen.blit(self.background, (0, 0))
+        # The painted road, portal, and platforms are one source image.
+        self.screen.blit(self.background, (round(self.projection.display_offset[0]), round(self.projection.display_offset[1])))
 
     def _render_title(self) -> None:
         title = self.font_title.render("월하사신", True, COLOR_WHITE)
@@ -152,13 +188,81 @@ class Renderer:
         ])
         self.buttons.render(self.screen, self.font_med)
 
+    def _render_start_popup(self, state: GameState) -> None:
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        self.screen.blit(overlay, (0, 0))
+        panel = pygame.Rect(430, 280, 420, 200)
+        draw_panel(self.screen, panel)
+        message = self.font_med.render(f"{state.current_stage}번째 수호를 시작할까요?", True, COLOR_WHITE)
+        self.screen.blit(message, message.get_rect(center=(panel.centerx, panel.y + 66)))
+        self.buttons.set_buttons([
+            Button(pygame.Rect(454, 410, 174, 42), "아니요", "START_WAVE_NO"),
+            Button(pygame.Rect(652, 410, 174, 42), "예", "START_WAVE_YES"),
+        ])
+        self.buttons.render(self.screen, self.font_med)
+
+    def _render_boss_warning_popup(self) -> None:
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        self.screen.blit(overlay, (0, 0))
+
+        width, height = 480, 280
+        panel = pygame.Rect((SCREEN_WIDTH - width) // 2, (SCREEN_HEIGHT - height) // 2, width, height)
+        draw_panel(self.screen, panel)
+
+        title = self.font_big.render("큰 소동 예고!", True, COLOR_RED)
+        self.screen.blit(title, title.get_rect(center=(panel.centerx, panel.y + 70)))
+        info = self.font_med.render("곧 강력한 보스 악귀가 나타납니다", True, COLOR_MOON)
+        self.screen.blit(info, info.get_rect(center=(panel.centerx, panel.y + 130)))
+        info2 = self.font_small.render("사신들을 점검하고 다음 소동에 대비할까요?", True, COLOR_GRAY)
+        self.screen.blit(info2, info2.get_rect(center=(panel.centerx, panel.y + 165)))
+
+        self.buttons.set_buttons([
+            Button(pygame.Rect(panel.centerx - 110, panel.bottom - 80, 220, 46), "수호 준비!", "CLOSE_BOSS_WARNING"),
+        ])
+        self.buttons.render(self.screen, self.font_med)
+
+    def _render_no_tower_popup(self) -> None:
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        self.screen.blit(overlay, (0, 0))
+
+        width, height = 480, 260
+        panel = pygame.Rect((SCREEN_WIDTH - width) // 2, (SCREEN_HEIGHT - height) // 2, width, height)
+        draw_panel(self.screen, panel)
+
+        title = self.font_big.render("앗, 사신이 없어!", True, COLOR_GOLD)
+        self.screen.blit(title, title.get_rect(center=(panel.centerx, panel.y + 70)))
+        body = self.font_med.render("결계를 지켜줄 사신을 먼저 소환해줘", True, COLOR_WHITE)
+        self.screen.blit(body, body.get_rect(center=(panel.centerx, panel.y + 130)))
+
+        self.buttons.set_buttons([
+            Button(pygame.Rect(panel.centerx - 110, panel.bottom - 76, 220, 46), "알겠어!", "CLOSE_NO_TOWER_WARNING"),
+        ])
+        self.buttons.render(self.screen, self.font_med)
+
+    def _render_buy_popup(self) -> None:
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        self.screen.blit(overlay, (0, 0))
+        panel = pygame.Rect(430, 280, 420, 200)
+        draw_panel(self.screen, panel)
+        message = self.font_med.render("랜덤 사신을 소환하시겠습니까?", True, COLOR_WHITE)
+        self.screen.blit(message, message.get_rect(center=(panel.centerx, panel.y + 66)))
+        self.buttons.set_buttons([
+            Button(pygame.Rect(454, 410, 174, 42), "아니요", "BUY_NO"),
+            Button(pygame.Rect(652, 410, 174, 42), "예", "BUY_YES"),
+        ])
+        self.buttons.render(self.screen, self.font_med)
+
     def _render_help(self) -> None:
         draw_panel(self.screen, pygame.Rect(310, 180, 660, 440))
         self._text("게임 방법", 360, 220, self.font_big, COLOR_WHITE)
         lines = [
             "01 빈 슬롯 선택: 100G로 사신 1종을 랜덤 소환합니다.",
             "02 사신 관리: 수호 준비 단계에서 강화, 이동, 판매합니다.",
-            "03 소동 시작: 악귀는 고정 경로, 사신은 자동 공격합니다.",
+            "03 수호 시작: 악귀는 고정 경로, 사신은 자동 공격합니다.",
             "04 결계 수호: 30번째 소동까지 해결하면 승리합니다.",
         ]
         for i, line in enumerate(lines):
@@ -167,8 +271,8 @@ class Renderer:
         self.buttons.render(self.screen, self.font_med)
 
     def _render_game(self, state: GameState) -> None:
-        self._render_hud(state)
         self._render_board(state)
+        self._render_hud(state)
         # 기존 관리 패널의 코드와 동작을 그대로 유지합니다.
         self._render_side_panel(state)
         if state.phase == GamePhase.SELL_CONFIRM:
@@ -192,10 +296,6 @@ class Renderer:
 
         title = self.font_big.render(f"{result.stage}번째 소동 해결!", True, COLOR_WHITE)
         self.screen.blit(title, title.get_rect(center=(panel.centerx, panel.y + 48)))
-        if result.boss_name:
-            boss_result = "처치 성공" if result.boss_kills else "결계 도달"
-            boss_line = self.font_small.render(f"{result.boss_name} · {boss_result}", True, COLOR_MOON)
-            self.screen.blit(boss_line, boss_line.get_rect(center=(panel.centerx, panel.y + 92)))
 
         rows = [
             (f"일반 악귀 {result.normal_kills}마리 처치 보상", f"{result.kill_gold} G"),
@@ -227,7 +327,7 @@ class Renderer:
         self._text(f"환급 {refund} G", 454, 388, self.font_med, COLOR_GOLD)
         self.buttons.set_buttons([
             Button(pygame.Rect(454, 460, 174, 42), "취소", "CANCEL"),
-            Button(pygame.Rect(652, 460, 174, 42), "판매 확정", "CONFIRM_SELL", self.economy.can_confirm_sell(state, selected)),
+            Button(pygame.Rect(652, 460, 174, 42), "판매", "CONFIRM_SELL", self.economy.can_confirm_sell(state, selected)),
         ])
 
     def _render_hud(self, state: GameState) -> None:
@@ -254,116 +354,153 @@ class Renderer:
             self._text(f"{state.actions_taken_this_wave} / 20", count_x, 50, self.font_small, COLOR_GRAY)
 
     def _render_board(self, state: GameState) -> None:
-        # map.path(87칸)와 map.slots(24칸)를 그대로 투영합니다. 이곳에서 좌표를
-        # 새로 만들지 않으므로, 보드 외형이 바뀌어도 이동/배치/판정 수는 유지됩니다.
-        board = self.map.board_polygon()
-        pygame.draw.polygon(self.screen, (4, 8, 17), self._offset_polygon(board, 10))
-        pygame.draw.polygon(self.screen, (13, 22, 39), board)
-        pygame.draw.polygon(self.screen, (62, 79, 108), board, 2)
+        # 길·포털·기본 사신 받침은 map_background.png에 완성돼 있습니다. 예전
+        # 격자, 길 타일, 커브/커넥터, 받침 본체는 여기에서 다시 그리지 않습니다.
 
-        # 희미한 줄눈으로 뜰의 깊이만 주고, 경로 타일은 별도로 명확히 구분합니다.
-        for row in range(1, self.map.map_height):
-            left = self.map.cell_polygon(0, row)[0]
-            right = self.map.cell_polygon(self.map.map_width - 1, row)[1]
-            pygame.draw.line(self.screen, (20, 34, 58), left, right, 1)
+        if self.show_map_debug:
+            self._draw_map_debug()
 
-        for cell in self.map.get_path():
-            self._draw_path_tile(cell)
-
-        for label, cell, color in (
-            ("S", self.map.get_start_position(), COLOR_MINT),
-            ("E", self.map.get_base_position(), COLOR_RED),
-        ):
-            center = self.map.grid_to_pixel(cell)
-            self._text(label, center[0] - 12, center[1] - 13, self.font_med, color)
-
-        # 현무의 연속 장판 애니메이션을 유닛 아래에 한 번만 표시합니다.
+        # Resolve moving targets once; retain logical coordinates for attack poses.
         target_positions = {enemy.enemy_id: enemy.get_current_position()
                             for enemy in state.enemies if enemy.enemy_id is not None}
         effects = [self.effect_animator.resolve_targets(effect, target_positions)
                    for effect in state.effects]
-        for effect in effects:
-            if effect["kind"] == "slow_field" and effect["age"] < effect["ttl"] - 1e-9:
-                self._draw_effect(effect)
-
         pending_slots = {summon["slot_id"] for summon in state.summons}
         for slot_id in self.map.slots:
-            pos = self.map.grid_to_pixel(self.map.get_slot_position(slot_id))
-            occupied = state.has_tower(slot_id) or slot_id in pending_slots
-            selected = state.selected_slot == slot_id
+            # Occupied selections use the actual range ring, without a second ring.
+            selected = state.selected_slot == slot_id and not state.has_tower(slot_id)
             moving = state.phase == GamePhase.MOVING_TOWER and state.is_slot_empty(slot_id)
-            self._draw_slot_tile(slot_id, selected, moving, occupied)
-            color = COLOR_MINT if moving else (COLOR_GOLD if selected else (123, 145, 180))
-            if not occupied:
-                self._text("+", pos[0] - 6, pos[1] - 12, self.font_med, color)
+            self._draw_slot_tile(slot_id, selected, moving)
 
         if (state.selected_slot is not None
                 and state.has_tower(state.selected_slot)
                 and state.selected_slot not in pending_slots):
             tower_data = state.towers[state.selected_slot]
             stats = Tower.from_data(tower_data).get_stats()
-            center = self.map.grid_to_pixel(self.map.get_slot_position(state.selected_slot))
+            center = self.projection.game_to_pixel(self.map.get_slot_position(state.selected_slot))
             self._draw_projected_range(center, stats["range"])
 
-        for summon in state.summons:
-            self._draw_summon_effect(summon)
-
-        for slot_id, tower_data in state.towers.items():
-            if slot_id in pending_slots:
-                continue
-            self._draw_tower(
-                slot_id,
-                tower_data,
-                effects,
-            )
+        # Back to front: board/range -> enemies -> effects -> towers -> HUD.
         for enemy in state.enemies:
             self._draw_enemy(enemy, state.wave_elapsed)
         for effect in effects:
-            if effect["kind"] != "slow_field":
+            if effect["age"] < effect["ttl"] - 1e-9:
                 self._draw_effect(effect)
+        for summon in state.summons:
+            self._draw_summon_effect(summon)
+        self._draw_upgrade_effects(state)
+        for slot_id, tower_data in state.towers.items():
+            if slot_id not in pending_slots:
+                self._draw_tower(slot_id, tower_data, effects)
 
-    @staticmethod
-    def _offset_polygon(points, y_offset: int):
-        return [(x, y + y_offset) for x, y in points]
+    def _draw_slot_tile(self, slot_id: int, selected: bool, moving: bool) -> None:
+        """배경의 기본 받침을 덮지 않는 선택·이동 테두리 오버레이입니다."""
+        if not (selected or moving):
+            return
+        center = self.projection.game_to_pixel(self.map.get_slot_position(slot_id))
+        ring = pygame.Rect(center[0] - 28, center[1] - 14, 56, 28)
+        color = COLOR_MINT if moving else COLOR_GOLD
+        glow = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        pygame.draw.ellipse(glow, (*color, 68), ring.inflate(10, 6), 3)
+        self.screen.blit(glow, (0, 0))
+        pygame.draw.ellipse(self.screen, color, ring, 2)
 
-    def _draw_path_tile(self, cell) -> None:
-        """기존 경로의 한 칸을 두께 있는 돌 타일로 표현합니다."""
-        polygon = self.map.cell_polygon(cell[0] + 0.06, cell[1] + 0.08, 0.88, 0.82)
-        pygame.draw.polygon(self.screen, (22, 28, 43), self._offset_polygon(polygon, BOARD_TILE_DEPTH))
-        pygame.draw.polygon(self.screen, (72, 80, 105), polygon)
-        pygame.draw.polygon(self.screen, (124, 133, 157), polygon, 1)
+    def _draw_map_debug(self) -> None:
+        """Opt-in validation overlay using the exact source-image transform."""
+        if self.debug_show_route:
+            route = [self.projection.source_to_pixel(point) for point in self.map.get_source_path()]
+            pygame.draw.lines(self.screen, (255, 225, 70), False, route, 3)
+            for point in route:
+                pygame.draw.circle(self.screen, (255, 225, 70), point, 4)
+            spawn = self.projection.source_to_pixel(self.map.get_start_source_position())
+            base = self.projection.source_to_pixel(self.map.get_base_source_position())
+            pygame.draw.circle(self.screen, (92, 255, 147), spawn, 9, 3)
+            pygame.draw.circle(self.screen, (255, 80, 170), base, 9, 3)
+            self._text("S", spawn[0] - 5, spawn[1] - 28, self.font_small, (92, 255, 147))
+            self._text("E", base[0] - 5, base[1] - 28, self.font_small, (255, 80, 170))
 
-    def _draw_slot_tile(self, slot_id: int, selected: bool, moving: bool, occupied: bool) -> None:
-        polygon = self.map.slot_polygon(slot_id)
-        if selected:
-            glow = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
-            pygame.draw.polygon(glow, (244, 210, 112, 70), polygon)
-            self.screen.blit(glow, (0, 0))
-        side_color = (38, 52, 77)
-        face_color = (57, 75, 108) if occupied else (47, 63, 92)
-        border = COLOR_MINT if moving else (COLOR_GOLD if selected else (118, 140, 174))
-        pygame.draw.polygon(self.screen, side_color, self._offset_polygon(polygon, BOARD_TILE_DEPTH))
-        pygame.draw.polygon(self.screen, face_color, polygon)
-        pygame.draw.polygon(self.screen, border, polygon, 2)
+        if self.debug_show_slots:
+            for slot_id in range(self.map.SLOT_COUNT):
+                point = self.projection.source_to_pixel(self.map.get_slot_source_position(slot_id))
+                pygame.draw.line(self.screen, COLOR_CYAN, (point[0] - 7, point[1]), (point[0] + 7, point[1]), 2)
+                pygame.draw.line(self.screen, COLOR_CYAN, (point[0], point[1] - 7), (point[0], point[1] + 7), 2)
+                number = self.font_small.render(str(slot_id + 1), True, COLOR_CYAN)
+                self.screen.blit(number, (point[0] + 8, point[1] - 16))
 
     def _draw_projected_range(self, center, logical_range: float) -> None:
-        # 전투 판정은 논리 좌표에서 유지하고, 표시만 현 행의 사다리꼴 비율에 맞춘 타원으로 냅니다.
-        row_ratio = (center[1] - BOARD_TOP_Y) / (BOARD_BOTTOM_Y - BOARD_TOP_Y)
-        cell_width = (BOARD_TOP_WIDTH + (BOARD_BOTTOM_WIDTH - BOARD_TOP_WIDTH) * row_ratio) / self.map.map_width
-        cell_height = (BOARD_BOTTOM_Y - BOARD_TOP_Y) / self.map.map_height
-        rect = pygame.Rect(
-            round(center[0] - logical_range * cell_width),
-            round(center[1] - logical_range * cell_height),
-            round(logical_range * cell_width * 2),
-            round(logical_range * cell_height * 2),
-        )
-        pygame.draw.ellipse(self.screen, (97, 167, 213), rect, 1)
+        radius = round(self.projection.units_to_pixels(logical_range))
+        padding = radius + 6
+        glow = pygame.Surface((padding * 2, padding * 2), pygame.SRCALPHA)
+        pygame.draw.circle(glow, (*COLOR_GOLD, 50), (padding, padding), radius, 6)
+        pygame.draw.circle(glow, COLOR_GOLD, (padding, padding), radius, 2)
+        self.screen.blit(glow, (center[0] - padding, center[1] - padding))
+
+    def _tower_pixel_position(self, slot_id, tower_type):
+        """Visual anchor only; ranges and targeting keep the map's slot position."""
+        pos = self.projection.game_to_pixel(self.map.get_slot_position(slot_id))
+        return (pos[0], pos[1] + TOWER_Y_OFFSETS.get(tower_type, 0))
+
+    def play_upgrade_effect(self, state: GameState, slot_id: int) -> None:
+        """Called once by the input loop after a successful engine upgrade."""
+        tower = state.towers.get(slot_id)
+        if tower is not None:
+            self._upgrade_effects.append({
+                "state": state, "tower": tower, "started_at": perf_counter(),
+            })
+
+    def _draw_upgrade_effects(self, state: GameState) -> None:
+        now = perf_counter()
+        slots = {id(tower): slot for slot, tower in state.towers.items()}
+        active = []
+        for effect in self._upgrade_effects:
+            age = now - effect["started_at"]
+            slot = slots.get(id(effect["tower"]))
+            if (effect["state"] is not state or slot is None
+                    or age >= self.UPGRADE_EFFECT_SECONDS):
+                continue
+            active.append(effect)
+            pos = self._tower_pixel_position(slot, effect["tower"]["type"])
+            feet = (pos[0], pos[1] + TOWER_BOTTOM_OFFSET)
+            self._draw_upgrade_glow(feet, max(0.0, age) / self.UPGRADE_EFFECT_SECONDS)
+        self._upgrade_effects = active
+
+    def _draw_upgrade_glow(self, feet, progress: float) -> None:
+        """Soft golden rising rays and deterministic sparkles, behind the sprite."""
+        glow = pygame.Surface((128, 160), pygame.SRCALPHA)
+        cx, cy = 64, 136
+        fade = min(1.0, progress / 0.08) * (1.0 - progress) ** 0.8
+        rise = 1.0 - (1.0 - min(1.0, progress / 0.45)) ** 3
+        for radius in range(32, 0, -1):
+            alpha = round(65 * fade * (1 - radius / 33))
+            pygame.draw.ellipse(glow, (255, 195, 65, alpha),
+                                (cx - radius, cy - radius // 3, radius * 2, max(2, radius * 2 // 3)))
+        pygame.draw.ellipse(glow, (255, 221, 105, round(120 * fade)),
+                            (cx - 39, cy - 10, 78, 20), 2)
+        for x in (-38, -25, -12, 0, 12, 25, 38):
+            height = round((122 - abs(x) * 0.4) * rise)
+            for y in range(height):
+                remaining = 1 - y / max(1, height)
+                alpha = round(125 * fade * (0.35 + 0.65 * remaining) * min(1, remaining * 8))
+                width = max(1, round(3 * remaining))
+                pygame.draw.line(glow, (255, 220, 95, alpha),
+                                 (cx + x - width, cy - y), (cx + x + width, cy - y))
+        for index in range(16):
+            delay = (index % 4) * 0.035
+            t = max(0.0, (progress - delay) / (1 - delay))
+            angle = index * 2.399963
+            x = round(cx + math.cos(angle) * (30 + 24 * t))
+            y = round(cy - 105 * t + math.sin(angle) * 9 * t)
+            alpha = round(210 * fade * math.sin(math.pi * t))
+            size = 2 if index % 3 else 3
+            pygame.draw.line(glow, (255, 239, 155, alpha), (x - size, y), (x + size, y))
+            pygame.draw.line(glow, (255, 239, 155, alpha), (x, y - size), (x, y + size))
+        self.screen.blit(glow, (feet[0] - cx, feet[1] - cy))
 
     def _draw_summon_effect(self, summon: dict) -> None:
         """벽화의 빛 → 달빛 덩어리 → 도착지 수렴. 캐릭터는 완료 전 보이지 않습니다."""
         elapsed = summon["elapsed"]
-        origin = pygame.Vector2(MURAL_ORIGINS[summon["tower_type"]])
-        target = pygame.Vector2(self.map.grid_to_pixel(self.map.get_slot_position(summon["slot_id"])))
+        origin = pygame.Vector2(self.projection.source_to_pixel(MURAL_ORIGINS[summon["tower_type"]]))
+        target = pygame.Vector2(self.projection.game_to_pixel(self.map.get_slot_position(summon["slot_id"])))
 
         if elapsed < SUMMON_WAKE_SECONDS:
             progress = elapsed / SUMMON_WAKE_SECONDS
@@ -416,9 +553,10 @@ class Renderer:
         effects: list,
     ) -> None:
         tower_pos = self.map.get_slot_position(slot_id)
-        pos = self.map.grid_to_pixel(tower_pos)
-
         tower_type = tower_data["type"]
+        # 대기/공격 스프라이트와 레벨 표시가 공유하는 화면상 기준 좌표만 이동
+        # 애니메이션과 레벨 표시는 각각 TOWER_BOTTOM_OFFSET을 한 번씩 적용
+        pos = self._tower_pixel_position(slot_id, tower_type)
 
         # PNG 프레임 애니메이션 출력
         animated = self.tower_animator.draw(
@@ -484,7 +622,7 @@ class Renderer:
         )
 
     def _draw_enemy(self, enemy, animation_time: float = 0.0) -> None:
-        pos = self.map.grid_to_pixel(enemy.get_current_position())
+        pos = self.projection.game_to_pixel(enemy.get_current_position())
         if enemy.is_boss:
             sprite_rect = self.boss_animator.draw(self.screen, enemy, pos, animation_time)
         else:
@@ -499,7 +637,7 @@ class Renderer:
         if effect["kind"] == "water":
             return
         if effect["kind"] == "slow_field":
-            self.effect_animator.draw(self.screen, effect, self.map)
+            self.effect_animator.draw(self.screen, effect, self.projection)
             return
         alpha = 1.0 - effect["age"] / effect["ttl"]
 
@@ -512,21 +650,21 @@ class Renderer:
             if self.effect_animator.draw(
                 self.screen,
                 effect,
-                self.map,
+                self.projection,
             ):
                 return
         alpha = 1.0 - effect["age"] / effect["ttl"]
 
         if effect["kind"] == "lightning":
-            points = [self.map.grid_to_pixel(effect["from"])] + [self.map.grid_to_pixel(p) for p in effect["points"]]
+            points = [self.projection.game_to_pixel(effect["from"])] + [self.projection.game_to_pixel(p) for p in effect["points"]]
             if len(points) > 1:
                 pygame.draw.lines(self.screen, COLOR_CYAN, False, points, max(1, int(4 * alpha)))
         elif effect["kind"] == "fire":
-            end = self.map.grid_to_pixel(effect["to"])
+            end = self.projection.game_to_pixel(effect["to"])
             pygame.draw.circle(self.screen, (239, 101, 78), end, int(22 * alpha), 2)
         else:
-            start = self.map.grid_to_pixel(effect["from"])
-            end = self.map.grid_to_pixel(effect["to"])
+            start = self.projection.game_to_pixel(effect["from"])
+            end = self.projection.game_to_pixel(effect["to"])
             pygame.draw.line(self.screen, COLOR_GOLD, start, end, 4)
 
     def _render_bottom_panel(self, state: GameState) -> None:
@@ -577,7 +715,7 @@ class Renderer:
             self._text("빈 돌판을 선택해 벽화 속 사신을 소환하세요", 66, 744, self.font_med, COLOR_WHITE)
             self._text("청룡 · 백호 · 주작 · 현무 중 하나가 달빛을 타고 도착합니다", 66, 779, self.font_small, COLOR_GRAY)
             buttons.extend([
-                Button(pygame.Rect(570, 765, 222, 38), "랜덤 사신 소환 100 G", "BUY", selected is not None and self.economy.can_buy(state, selected)),
+                Button(pygame.Rect(570, 765, 222, 38), "랜덤 사신 소환 100 G", "OPEN_BUY_CONFIRM", selected is not None and self.economy.can_buy(state, selected)),
                 Button(pygame.Rect(1022, 765, 188, 38), f"{state.current_stage}번째 웨이브 시작", "START_WAVE"),
             ])
 
@@ -617,7 +755,7 @@ class Renderer:
             buttons.extend([
                 Button(pygame.Rect(PANEL_X + 24, 558, 126, 40), "이동", "BEGIN_RELOCATE", False),
                 Button(pygame.Rect(PANEL_X + 158, 558, 126, 40), "판매", "SELL", False),
-                Button(pygame.Rect(PANEL_X + 24, 606, 260, 40), "랜덤 사신 소환 100 G", "BUY", False),
+                Button(pygame.Rect(PANEL_X + 24, 606, 260, 40), "랜덤 사신 소환 100 G", "OPEN_BUY_CONFIRM", False),
             ])
             buttons.append(Button(pygame.Rect(PANEL_X + 24, 672, 260, 42), f"배속 ×{state.combat_speed:g}", "CYCLE_SPEED"))
         elif state.phase == GamePhase.SETTLEMENT:
@@ -657,7 +795,7 @@ class Renderer:
         self._text("사신 소환", PANEL_X + 24, y, self.font_med, COLOR_WHITE)
         self._text("빈 슬롯 선택 후 랜덤 소환", PANEL_X + 24, y + 34, self.font_small, COLOR_GRAY)
         self._text("청룡 · 백호 · 주작 · 현무 각 25%", PANEL_X + 24, y + 66, self.font_small, COLOR_MOON)
-        buttons.append(Button(pygame.Rect(PANEL_X + 24, y + 102, 260, 40), "랜덤 사신 소환 100 G", "BUY", selected is not None and self.economy.can_buy(state, selected)))
+        buttons.append(Button(pygame.Rect(PANEL_X + 24, y + 102, 260, 40), "랜덤 사신 소환 100 G", "OPEN_BUY_CONFIRM", selected is not None and self.economy.can_buy(state, selected)))
 
         if selected is not None and state.has_tower(selected):
             tower = state.towers[selected]
@@ -672,13 +810,15 @@ class Renderer:
         desc = WaveManager().describe_stage(state.current_stage)
         self._text("다음 소동", PANEL_X + 24, 624, self.font_small, COLOR_GRAY)
         self._text(desc, PANEL_X + 24, 650, self.font_small, COLOR_WHITE)
-        buttons.append(Button(pygame.Rect(PANEL_X + 24, 682, 260, 40), f"{state.current_stage}번째 소동 시작", "START_WAVE"))
+        buttons.append(Button(pygame.Rect(PANEL_X + 24, 682, 260, 40), f"{state.current_stage}번째 수호 시작", "OPEN_START_CONFIRM"))
 
     def _render_result(self, state: GameState) -> None:
         if state.phase == GamePhase.GAME_OVER:
             title = "소동 해결 실패"
+            title_color = COLOR_RED
         else:
-            title = "결계를 지켜냈어요"
+            title = "결계 수호 성공!"
+            title_color = COLOR_MOON
         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 150))
         self.screen.blit(overlay, (0, 0))
@@ -687,7 +827,7 @@ class Renderer:
         panel = pygame.Rect((SCREEN_WIDTH - width) // 2, (SCREEN_HEIGHT - height) // 2, width, height)
         draw_panel(self.screen, panel)
 
-        title_surface = self.font_big.render(title, True, COLOR_RED)
+        title_surface = self.font_big.render(title, True, title_color)
         self.screen.blit(title_surface, title_surface.get_rect(center=(panel.centerx, panel.y + 70)))
         if state.phase == GamePhase.GAME_OVER:
             fail_text = f"{state.current_stage}번째 소동에서 실패했어요"
@@ -695,11 +835,15 @@ class Renderer:
             self.screen.blit(fail_surface, fail_surface.get_rect(center=(panel.centerx, panel.y + 150)))
             hint_surface = self.font_small.render("이런, 잡귀들을 막아내지 못했다… 다시 결계를 지켜볼까?", True, COLOR_MOON)
             self.screen.blit(hint_surface, hint_surface.get_rect(center=(panel.centerx, panel.y + 205)))
+        else:
+            success_text1 = self.font_med.render("모든 소동을 해결했다!", True, COLOR_WHITE)
+            self.screen.blit(success_text1, success_text1.get_rect(center=(panel.centerx, panel.y + 150)))
+            success_text2 = self.font_small.render("사신들과 함께 궁궐의 평화를 지켜냈다!", True, COLOR_GRAY)
+            self.screen.blit(success_text2, success_text2.get_rect(center=(panel.centerx, panel.y + 205)))
 
         button_y = panel.bottom - 80
         self.buttons.set_buttons([
-            Button(pygame.Rect(panel.centerx - 184, button_y, 174, 46), "다시 도전하기", "RESTART"),
-            Button(pygame.Rect(panel.centerx + 10, button_y, 174, 46), "처음으로", "BACK_TO_TITLE"),
+            Button(pygame.Rect(panel.centerx - 87, button_y, 174, 46), "처음으로", "BACK_TO_TITLE"),
         ])
 
     def _text(self, value: str, x: int, y: int, font: pygame.font.Font, color) -> None:

@@ -40,7 +40,7 @@ class AttackEffectAnimator:
                         (179, 182), (179, 183), (177, 186), (181, 190)),
         },
     }
-    FIELD_ALPHA = 255
+    FIELD_ALPHA = 170
     FIELD_CREATE_SECONDS = 0.4
     FIELD_HOLD_SECONDS = 1.2
     FIELD_HOLD_FRAME_SECONDS = 0.1
@@ -123,10 +123,10 @@ class AttackEffectAnimator:
             self.frames[kind], self.anchors[kind] = self._align_frames(source, config["anchors"], config["size"])
             print(f"[Effect] {kind}: {sheet.get_width()}x{sheet.get_height()}, {cols}x{rows}, {len(self.frames[kind])} frames")
 
-    def _draw_claw_motion(self, screen, effect, game_map, frame_index):
+    def _draw_claw_motion(self, screen, effect, projection, frame_index):
         """타겟 방향으로 짧게 뻗는 발톱 궤적, 발바닥 잔상과 타격 섬광."""
-        target = pygame.Vector2(game_map.grid_to_pixel(effect["to"]))
-        origin = pygame.Vector2(game_map.grid_to_pixel(effect.get("from", effect["to"])))
+        target = pygame.Vector2(projection.game_to_pixel(effect["to"]))
+        origin = pygame.Vector2(projection.game_to_pixel(effect.get("from", effect["to"])))
         direction = target - origin
         direction = direction.normalize() if direction.length_squared() else pygame.Vector2(1, 0)
         normal = pygame.Vector2(-direction.y, direction.x)
@@ -161,7 +161,7 @@ class AttackEffectAnimator:
         screen.blit(glow, (round(target.x) - 88, round(target.y) - 88))
 
     @staticmethod
-    def _draw_fire_wave(screen, effect, game_map):
+    def _draw_fire_wave(screen, effect, projection):
         """불씨의 중심 수렴 후 바깥으로 퍼지는 화염 파동과 방사형 불꽃."""
         progress = effect["age"] / effect["ttl"]
         radius = max(24, round(effect.get("radius", 1.0) * CELL_SIZE))
@@ -198,7 +198,7 @@ class AttackEffectAnimator:
                 alpha = int(220 * (1 - burst))
                 pygame.draw.line(glow, (255, 90, 25, alpha), tail, point, 3)
                 pygame.draw.circle(glow, (255, 235, 140, alpha), point, 2)
-        pos = game_map.grid_to_pixel(effect["to"])
+        pos = projection.game_to_pixel(effect["to"])
         screen.blit(glow, (pos[0] - padding, pos[1] - padding))
 
     @staticmethod
@@ -269,13 +269,13 @@ class AttackEffectAnimator:
             pygame.draw.lines(glow, color, False, points, thickness)
         screen.blit(glow, (left, top))
 
-    def _draw_lightning_chain(self, screen, effect, game_map):
+    def _draw_lightning_chain(self, screen, effect, projection):
         age = effect["age"]
         hit_ttl = effect.get("hit_ttl", effect["ttl"])
         stagger = effect.get("hit_stagger", 0.0)
-        targets = [game_map.grid_to_pixel(point) for point in effect.get("points", [])]
+        targets = [projection.game_to_pixel(point) for point in effect.get("points", [])]
         origin = effect.get("from")
-        previous = game_map.grid_to_pixel(origin) if origin is not None else None
+        previous = projection.game_to_pixel(origin) if origin is not None else None
         # 연결선을 먼저 그려 타겟의 마법진/번개 PNG 뒤에 놓습니다.
         for index, target in enumerate(targets):
             local_age = age - index * stagger
@@ -317,7 +317,7 @@ class AttackEffectAnimator:
             ]}
         return effect
 
-    def draw(self, screen, effect, game_map):
+    def draw(self, screen, effect, projection):
         kind = effect.get("kind")
         age = effect.get("age", 0.0)
         ttl = effect.get("ttl", 0.0)
@@ -348,7 +348,7 @@ class AttackEffectAnimator:
                 index = phase[min(step, len(phase) - 1)]
             image = frames[index].copy()
             image.set_alpha(self.FIELD_ALPHA)
-            pos = game_map.grid_to_pixel(cell)
+            pos = projection.game_to_pixel(cell)
             anchor = self.anchors["water"]
             screen.blit(image, (pos[0] - anchor[0], pos[1] - anchor[1]))
             self._draw_field_energy(screen, pos, age, ttl)
@@ -357,7 +357,7 @@ class AttackEffectAnimator:
         if kind not in self.frames:
             return False
         if kind == "lightning":
-            return self._draw_lightning_chain(screen, effect, game_map)
+            return self._draw_lightning_chain(screen, effect, projection)
         frames = self.frames[kind]
         # 원본 12프레임 전체에 ttl을 균등 배분하며 마지막 프레임도 한 구간 재생합니다.
         index = max(0, min(int(age / ttl * len(frames) + 1e-9), len(frames) - 1))
@@ -366,10 +366,10 @@ class AttackEffectAnimator:
         targets = [target] if target is not None else []
         anchor = self.anchors[kind]
         for target in targets:
-            pixel = game_map.grid_to_pixel(target)
+            pixel = projection.game_to_pixel(target)
             screen.blit(image, (pixel[0] - anchor[0], pixel[1] - anchor[1]))
             if kind == "claw":
-                self._draw_claw_motion(screen, effect, game_map, index)
+                self._draw_claw_motion(screen, effect, projection, index)
             elif kind == "fire":
-                self._draw_fire_wave(screen, effect, game_map)
+                self._draw_fire_wave(screen, effect, projection)
         return True

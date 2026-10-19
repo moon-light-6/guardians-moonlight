@@ -75,6 +75,21 @@ class TestGameEngine(unittest.TestCase):
         self.game.step(Action(ActionType.START_GAME))
         self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
 
+    def test_is_boss_stage_only_for_boss_stages(self):
+        for stage in range(1, 31):
+            with self.subTest(stage=stage):
+                self.assertEqual(WaveManager.is_boss_stage(stage), stage % 5 == 0)
+        self.assertFalse(WaveManager.is_boss_stage(31))
+
+    def test_continue_moves_to_next_stage_without_any_popup_state(self):
+        # 큰 소동 예고 팝업은 화면(입력 핸들러) 상태라서 엔진 상태에는 흔적이 없어야 한다.
+        self.state.current_stage = 4
+        self.state.phase = GamePhase.SETTLEMENT
+        self.game.step(Action(ActionType.CONTINUE))
+        self.assertEqual(self.state.current_stage, 5)
+        self.assertEqual(self.state.phase, GamePhase.PREPARATION)
+        self.assertFalse(hasattr(self.state, "boss_warning"))
+
     def test_stage_five_continues_and_preserves_resources(self):
         self.game.step(Action(ActionType.BUY, slot_id=0))
         self.state.towers[0]["level"] = 3
