@@ -22,7 +22,7 @@ class TestCombat(unittest.TestCase):
 
         # 맵 경로 변경과 무관하게 두 적을 모두 사거리 안에 두고 진행도를 비교합니다.
         tower_pos = (enemy_a.x, enemy_a.y - 1)
-        target = Combat().get_target(tower_pos, 5.0, [enemy_a, enemy_b])
+        target = Combat().get_target(tower_pos, 10.0, [enemy_a, enemy_b])
         self.assertIs(target, enemy_b)
 
     def test_ice_slow_reduces_speed_temporarily(self):

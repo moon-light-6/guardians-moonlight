@@ -51,8 +51,8 @@ class TestEffectAnimation(unittest.TestCase):
             self.assertEqual(tuple(frame.get_at((frame.get_width() - 1, frame.get_height() - 1))), color)
 
     def test_attack_effects_play_every_frame_at_fixed_targets_until_expiry(self):
-        game_map = Mock()
-        game_map.grid_to_pixel.return_value = (100, 120)
+        projection = Mock()
+        projection.game_to_pixel.return_value = (100, 120)
         for kind in ("claw", "fire", "lightning"):
             ttl = Combat.EFFECT_TTL[kind]
             effect = {"kind": kind, "age": 0, "ttl": ttl, "to": (3, 4), "points": [(3, 4)]}
@@ -61,7 +61,7 @@ class TestEffectAnimation(unittest.TestCase):
                     screen = Mock()
                     effect["age"] = ttl * (index + 0.5) / 12
                     with patch.object(self.animator, "_draw_claw_motion"), patch.object(self.animator, "_draw_fire_wave"):
-                        self.animator.draw(screen, effect, game_map)
+                        self.animator.draw(screen, effect, projection)
                     self.assertEqual(screen.blit.call_count, 1)
                     for call in screen.blit.call_args_list:
                         self.assertIs(call.args[0], self.animator.frames[kind][index])
@@ -69,12 +69,12 @@ class TestEffectAnimation(unittest.TestCase):
                         self.assertEqual(call.args[1], (100 - anchor[0], 120 - anchor[1]))
             effect["age"] = ttl
             screen = Mock()
-            self.animator.draw(screen, effect, game_map)
+            self.animator.draw(screen, effect, projection)
             screen.blit.assert_not_called()
 
     def test_chain_targets_start_in_order_and_each_plays_all_twelve_frames(self):
-        game_map = Mock()
-        game_map.grid_to_pixel.side_effect = lambda point: point
+        projection = Mock()
+        projection.game_to_pixel.side_effect = lambda point: point
         effect = {"kind": "lightning", "age": 0, "ttl": 1.24,
                   "from": (40, 210), "points": [(200, 210), (360, 210), (520, 210)],
                   "hit_ttl": 1.0, "hit_stagger": 0.12}
@@ -85,35 +85,35 @@ class TestEffectAnimation(unittest.TestCase):
                 with self.subTest(age=age):
                     effect["age"] = age
                     screen = Mock()
-                    self.animator.draw(screen, effect, game_map)
+                    self.animator.draw(screen, effect, projection)
                     self.assertEqual(screen.blit.call_count, count)
             # 각 타겟은 자신의 시작 시각부터 0~11을 끝까지 재생합니다.
             for target_index, point in enumerate(effect["points"]):
                 for frame in range(12):
                     effect["age"] = target_index * 0.12 + (frame + 0.5) / 12
                     screen = Mock()
-                    self.animator.draw(screen, effect, game_map)
+                    self.animator.draw(screen, effect, projection)
                     destination = (point[0] - anchor[0], point[1] - anchor[1])
                     hits = [call for call in screen.blit.call_args_list if call.args[1] == destination]
                     self.assertEqual(len(hits), 1)
                     self.assertIs(hits[0].args[0], self.animator.frames["lightning"][frame])
             effect["age"] = 0.24
             link.reset_mock()
-            self.animator.draw(Mock(), effect, game_map)
+            self.animator.draw(Mock(), effect, projection)
             edges = [(call.args[1], call.args[2]) for call in link.call_args_list]
             self.assertEqual(edges, [((40, 210), (200, 210)), ((200, 210), (360, 210)),
                                      ((360, 210), (520, 210))])
 
     def test_claw_afterimage_follows_target_direction(self):
-        game_map = Mock()
-        game_map.grid_to_pixel.side_effect = lambda point: point
+        projection = Mock()
+        projection.game_to_pixel.side_effect = lambda point: point
         effect = {"kind": "claw", "to": (180, 160), "age": 0.1, "ttl": 0.4}
         centers = []
         for origin in ((40, 160), (320, 160)):
             screen = pygame.Surface((360, 300))
             screen.fill((7, 9, 18))
             effect["from"] = origin
-            self.animator._draw_claw_motion(screen, effect, game_map, 3)
+            self.animator._draw_claw_motion(screen, effect, projection, 3)
             changed = pygame.mask.from_threshold(screen, (7, 9, 18, 255), (1, 1, 1, 255))
             changed.invert()
             centers.append(changed.centroid()[0])
@@ -121,15 +121,15 @@ class TestEffectAnimation(unittest.TestCase):
         self.assertGreater(centers[1], 180)
 
     def test_fire_embers_gather_before_expanding_outward(self):
-        game_map = Mock()
-        game_map.grid_to_pixel.side_effect = lambda point: point
+        projection = Mock()
+        projection.game_to_pixel.side_effect = lambda point: point
         effect = {"kind": "fire", "to": (180, 160), "age": 0, "ttl": 0.65, "radius": 1.0}
         widths = []
         for age in (0.03, 0.13, 0.5):
             screen = pygame.Surface((360, 300))
             screen.fill((7, 9, 18))
             effect["age"] = age
-            self.animator._draw_fire_wave(screen, effect, game_map)
+            self.animator._draw_fire_wave(screen, effect, projection)
             changed = pygame.mask.from_threshold(screen, (7, 9, 18, 255), (1, 1, 1, 255))
             changed.invert()
             bounds = changed.get_bounding_rects()
@@ -156,8 +156,8 @@ class TestEffectAnimation(unittest.TestCase):
         self.assertNotEqual(snapshots[2], snapshots[3])
 
     def test_motion_accents_do_not_mutate_events_or_outlive_their_effects(self):
-        game_map = Mock()
-        game_map.grid_to_pixel.side_effect = lambda point: point
+        projection = Mock()
+        projection.game_to_pixel.side_effect = lambda point: point
         for kind, ttl in (("claw", 0.4), ("fire", 0.65), ("slow_field", 2.0)):
             with self.subTest(kind=kind):
                 effect = {"kind": kind, "from": (40, 160), "to": (180, 160), "cell": (180, 160),
@@ -165,18 +165,18 @@ class TestEffectAnimation(unittest.TestCase):
                 before = dict(effect)
                 screen = pygame.Surface((360, 300))
                 screen.fill((7, 9, 18))
-                self.animator.draw(screen, effect, game_map)
+                self.animator.draw(screen, effect, projection)
                 self.assertEqual(effect, before)
                 for age in (ttl - 1e-14, ttl, ttl + 1):
                     screen.fill((7, 9, 18))
                     background = pygame.image.tobytes(screen, "RGB")
                     effect["age"] = age
-                    self.animator.draw(screen, effect, game_map)
+                    self.animator.draw(screen, effect, projection)
                     self.assertTrue(pygame.image.tobytes(screen, "RGB") == background)
 
     def test_chain_connection_pixels_appear_sequentially_between_targets(self):
-        game_map = Mock()
-        game_map.grid_to_pixel.side_effect = lambda point: point
+        projection = Mock()
+        projection.game_to_pixel.side_effect = lambda point: point
         effect = {"kind": "lightning", "age": 0, "ttl": 1.24,
                   "from": (40, 210), "points": [(200, 210), (360, 210), (520, 210)],
                   "hit_ttl": 1.0, "hit_stagger": 0.12}
@@ -191,7 +191,7 @@ class TestEffectAnimation(unittest.TestCase):
             with self.subTest(age=age):
                 screen.fill((7, 9, 18))
                 effect["age"] = age
-                self.animator.draw(screen, effect, game_map)
+                self.animator.draw(screen, effect, projection)
                 visible = tuple(pygame.image.tobytes(screen.subsurface(region), "RGB") != background
                                 for region in regions)
                 self.assertEqual(visible, expected)

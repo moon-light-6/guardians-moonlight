@@ -2,17 +2,25 @@ from typing import Optional
 
 import pygame
 
+from config import PANEL_X
 from display.ui import HELP_PAGE_COUNT, ButtonLayer
+from display.map_projection import MapProjection
 from game.actions import Action, ActionType
-from game.map import GameMap
+from game.economy import Economy
 from game.state import GamePhase, GameState
+from game.wave import WaveManager
 
 
 class InputHandler:
-    def __init__(self, buttons: ButtonLayer):
+    def __init__(self, buttons: ButtonLayer, projection: MapProjection):
         self.buttons = buttons
-        self.map = GameMap()
+        self.economy = Economy()
+        self.projection = projection
         self.quit_confirm = False
+        self.start_confirm = False
+        self.buy_confirm = False
+        self.no_tower_warning = False
+        self.boss_warning = False
         self.should_quit = False
         # 게임 방법 화면의 현재 페이지(화면 전용 상태라 게임 상태에 넣지 않습니다)
         self.help_page = 0
@@ -41,16 +49,39 @@ class InputHandler:
                 return None
             if action_name == "SHOW_HELP":
                 self.help_page = 0
+            if action_name == "OPEN_START_CONFIRM":
+                self._open_start_flow(state)
+                return None
+            if action_name == "CLOSE_NO_TOWER_WARNING":
+                self.no_tower_warning = False
+                return None
+            if action_name == "CLOSE_BOSS_WARNING":
+                self.boss_warning = False
+                return None
+            if action_name == "CONTINUE":
+                return self._continue_action(state)
+            if action_name == "START_WAVE_NO":
+                self.start_confirm = False
+                return None
+            if action_name == "START_WAVE_YES":
+                self.start_confirm = False
+                return Action(ActionType.START_WAVE)
+            if action_name == "OPEN_BUY_CONFIRM":
+                self.buy_confirm = state.phase == GamePhase.PREPARATION and state.selected_slot is not None
+                return None
+            if action_name == "BUY_NO":
+                self.buy_confirm = False
+                return None
+            if action_name == "BUY_YES":
+                self.buy_confirm = False
+                return Action(ActionType.BUY, slot_id=state.selected_slot)
             mapping = {
                 "START_GAME": Action(ActionType.START_GAME),
                 "SHOW_HELP": Action(ActionType.SHOW_HELP),
                 "BACK_TO_TITLE": Action(ActionType.BACK_TO_TITLE),
-                "CONTINUE": Action(ActionType.CONTINUE),
                 "RESTART": Action(ActionType.RESTART),
                 "CANCEL": Action(ActionType.CANCEL),
-                "START_WAVE": Action(ActionType.START_WAVE),
                 "CYCLE_SPEED": Action(ActionType.CYCLE_SPEED),
-                "BUY": Action(ActionType.BUY, slot_id=state.selected_slot),
                 "UPGRADE": Action(ActionType.UPGRADE, slot_id=state.selected_slot),
                 "SELL": Action(ActionType.SELL, slot_id=state.selected_slot),
                 "CONFIRM_SELL": Action(ActionType.CONFIRM_SELL, slot_id=state.pending_sell_slot),
@@ -58,9 +89,12 @@ class InputHandler:
             }
             return mapping.get(action_name)
 
-        if self.quit_confirm:
+        if self._popup_open(state):
             return None
-        slot_id = self.map.pixel_to_slot(pos)
+        slot_id = self.projection.pixel_to_slot(pos)
+        if state.phase == GamePhase.WAVE_ACTIVE and slot_id is None:
+            # 전투 중 어떤 돌판도 아닌 배경(오른쪽 패널 제외)을 누르면 선택을 해제한다.
+            return Action(ActionType.SELECT_SLOT, slot_id=None) if pos[0] < PANEL_X else None
         if slot_id is None:
             return None
         if state.phase == GamePhase.MOVING_TOWER:
@@ -76,17 +110,46 @@ class InputHandler:
             if state.phase == GamePhase.TITLE or self.quit_confirm:
                 self.quit_confirm = not self.quit_confirm
                 return None
+            if self.start_confirm or self.buy_confirm or self.no_tower_warning:
+                self.start_confirm = False
+                self.buy_confirm = False
+                self.no_tower_warning = False
+                return None
+            if self.boss_warning:
+                return None
             return Action(ActionType.CANCEL if state.phase in {GamePhase.MOVING_TOWER, GamePhase.SELL_CONFIRM} else ActionType.BACK_TO_TITLE)
-        if self.quit_confirm:
+        if self._popup_open(state):
             return None
         if state.phase == GamePhase.HELP and key in {pygame.K_LEFT, pygame.K_RIGHT}:
             self._turn_help_page(-1 if key == pygame.K_LEFT else 1)
             return None
         if key == pygame.K_SPACE and state.phase == GamePhase.PREPARATION:
-            return Action(ActionType.START_WAVE)
+            self._open_start_flow(state)
+            return None
         if key == pygame.K_RETURN and state.phase == GamePhase.SETTLEMENT:
-            return Action(ActionType.CONTINUE)
+            return self._continue_action(state)
         return None
+
+    def _popup_open(self, state: GameState) -> bool:
+        return (
+            self.quit_confirm or self.start_confirm or self.buy_confirm
+            or self.no_tower_warning or self.boss_warning
+        )
+
+    def _continue_action(self, state: GameState) -> Action:
+        """정산에서 계속하기: 다음 소동이 보스 소동이면 넘어간 뒤 큰 소동 예고 팝업을 연다."""
+        if state.phase == GamePhase.SETTLEMENT and WaveManager.is_boss_stage(state.current_stage + 1):
+            self.boss_warning = True
+        return Action(ActionType.CONTINUE)
+
+    def _open_start_flow(self, state: GameState) -> None:
+        """시작 버튼: 사신이 없으면 경고, 있으면 시작 확인 팝업을 연다(규칙 판단은 Economy)."""
+        if state.phase != GamePhase.PREPARATION:
+            return
+        if self.economy.has_defender(state):
+            self.start_confirm = True
+        else:
+            self.no_tower_warning = True
 
     def _turn_help_page(self, step: int) -> None:
         self.help_page = max(0, min(HELP_PAGE_COUNT - 1, self.help_page + step))

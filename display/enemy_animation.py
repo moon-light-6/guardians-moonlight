@@ -95,6 +95,8 @@ class EnemySpriteAnimator:
         # individual enemy movement speeds do not control animation FPS.
         index = int(max(0.0, animation_time) * self.ANIMATION_FPS) % len(frames)
         image = frames[index]
-        rect = image.get_rect(center=pixel_pos)
+        # ``pixel_pos`` is the map-path point. Keep the sprite's feet on it,
+        # rather than placing the image centre on the road centreline.
+        rect = image.get_rect(midbottom=pixel_pos)
         screen.blit(image, rect)
         return rect
