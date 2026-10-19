@@ -442,8 +442,35 @@ class TestPygameUI(unittest.TestCase):
             self.click("CYCLE_SPEED")
         self.game.state.phase = GamePhase.GAME_OVER
         self.render("defeat")
-        self.click("BACK_TO_TITLE")
+        self.click_anywhere((640, 420))
+        self.assertEqual(self.game.state.phase, GamePhase.TITLE)
         self.assertEqual(self.game.state.combat_speed, 1)
+
+    def click_anywhere(self, pos):
+        event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=pos)
+        action = self.input.handle_event(event, self.game.state)
+        self.assertIsNotNone(action)
+        _apply_action(self.game, self.renderer, action)
+
+    def test_result_screens_show_image_and_any_click_returns_to_title(self):
+        for phase, name in ((GamePhase.GAME_OVER, "defeat-image"), (GamePhase.VICTORY, "victory-image")):
+            for pos in ((640, 340), (10, 10), (1200, 800)):
+                with self.subTest(phase=phase, pos=pos):
+                    self.game.reset(start_at_title=False)
+                    self.game.state.phase = phase
+                    with patch.object(self.renderer, "_blit_center", wraps=self.renderer._blit_center) as blit:
+                        self.render(name)
+                    self.assertIs(blit.call_args_list[0].args[0], self.renderer.result_images[phase])
+                    self.assertEqual(self.renderer.buttons.buttons, [])
+                    self.click_anywhere(pos)
+                    self.assertEqual(self.game.state.phase, GamePhase.TITLE)
+
+    def test_result_screen_click_is_ignored_while_quit_popup_is_open(self):
+        self.game.state.phase = GamePhase.GAME_OVER
+        self.input.quit_confirm = True
+        event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(100, 100))
+        self.assertIsNone(self.input.handle_event(event, self.game.state))
+        self.assertEqual(self.game.state.phase, GamePhase.GAME_OVER)
 
     def test_six_boss_screens_use_distinct_artwork(self):
         for stage in WaveManager.BOSSES:

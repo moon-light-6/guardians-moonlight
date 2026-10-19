@@ -100,6 +100,9 @@ class InputHandler:
 
         if self._popup_open(state):
             return None
+        if state.phase in {GamePhase.GAME_OVER, GamePhase.VICTORY}:
+            # 성공/실패 화면은 버튼 없이 아무 곳이나 누르면 시작 화면으로 돌아갑니다.
+            return Action(ActionType.BACK_TO_TITLE)
         slot_id = self.projection.pixel_to_slot(pos)
         if state.phase == GamePhase.WAVE_ACTIVE and slot_id is None:
             # 전투 중 어떤 돌판도 아닌 배경(오른쪽 패널 제외)을 누르면 선택을 해제한다.

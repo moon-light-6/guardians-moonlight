@@ -95,6 +95,10 @@ class Renderer:
             "life": self._load_ui_image("life.png", 20),
         }
         self.font_hud = self._font(16)
+        self.result_images = {
+            GamePhase.VICTORY: self._load_ui_image("성공.png", 450),
+            GamePhase.GAME_OVER: self._load_ui_image("실패.png", 390),
+        }
         self.show_map_debug = MAP_DEBUG_DEFAULT
         self.debug_show_slots = True
         self.debug_show_route = True
@@ -1097,38 +1101,14 @@ class Renderer:
         buttons.append(Button(pygame.Rect(PANEL_INNER_X, 682, PANEL_INNER_W, 40), f"{state.current_stage}번째 수호 시작", "OPEN_START_CONFIRM"))
 
     def _render_result(self, state: GameState) -> None:
-        if state.phase == GamePhase.GAME_OVER:
-            title = "소동 해결 실패"
-            title_color = COLOR_RED
-        else:
-            title = "결계 수호 성공!"
-            title_color = COLOR_MOON
+        """패배/승리 화면: 성공·실패 이미지만 띄우고, 화면 아무 곳이나 누르면 시작 화면으로 갑니다(input_handler)."""
         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 150))
+        overlay.fill((0, 0, 0, 170))
         self.screen.blit(overlay, (0, 0))
 
-        width, height = 560, 400
-        panel = pygame.Rect((SCREEN_WIDTH - width) // 2, (SCREEN_HEIGHT - height) // 2, width, height)
-        draw_panel(self.screen, panel)
-
-        title_surface = self.font_big.render(title, True, title_color)
-        self.screen.blit(title_surface, title_surface.get_rect(center=(panel.centerx, panel.y + 70)))
-        if state.phase == GamePhase.GAME_OVER:
-            fail_text = f"{state.current_stage}번째 소동에서 실패했어요"
-            fail_surface = self.font_med.render(fail_text, True, COLOR_WHITE)
-            self.screen.blit(fail_surface, fail_surface.get_rect(center=(panel.centerx, panel.y + 150)))
-            hint_surface = self.font_small.render("이런, 잡귀들을 막아내지 못했다… 다시 결계를 지켜볼까?", True, COLOR_MOON)
-            self.screen.blit(hint_surface, hint_surface.get_rect(center=(panel.centerx, panel.y + 205)))
-        else:
-            success_text1 = self.font_med.render("모든 소동을 해결했다!", True, COLOR_WHITE)
-            self.screen.blit(success_text1, success_text1.get_rect(center=(panel.centerx, panel.y + 150)))
-            success_text2 = self.font_small.render("사신들과 함께 궁궐의 평화를 지켜냈다!", True, COLOR_GRAY)
-            self.screen.blit(success_text2, success_text2.get_rect(center=(panel.centerx, panel.y + 205)))
-
-        button_y = panel.bottom - 80
-        self.buttons.set_buttons([
-            Button(pygame.Rect(panel.centerx - 87, button_y, 174, 46), "처음으로", "BACK_TO_TITLE"),
-        ])
+        # 성공·실패 이미지에 결과 문구와 "화면을 누르면…" 안내가 함께 그려져 있어 이미지만 띄웁니다.
+        self._blit_center(self.result_images[state.phase], (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+        self.buttons.set_buttons([])
 
     def _text(self, value: str, x: int, y: int, font: pygame.font.Font, color) -> None:
         self.screen.blit(font.render(value, True, color), (x, y))
