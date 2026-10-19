@@ -4,18 +4,18 @@ import pygame
 
 from config import PANEL_X
 from display.ui import ButtonLayer
+from display.map_projection import MapProjection
 from game.actions import Action, ActionType
 from game.economy import Economy
-from game.map import GameMap
 from game.state import GamePhase, GameState
 from game.wave import WaveManager
 
 
 class InputHandler:
-    def __init__(self, buttons: ButtonLayer):
+    def __init__(self, buttons: ButtonLayer, projection: MapProjection):
         self.buttons = buttons
-        self.map = GameMap()
         self.economy = Economy()
+        self.projection = projection
         self.quit_confirm = False
         self.start_confirm = False
         self.buy_confirm = False
@@ -84,7 +84,7 @@ class InputHandler:
 
         if self._popup_open(state):
             return None
-        slot_id = self.map.pixel_to_slot(pos)
+        slot_id = self.projection.pixel_to_slot(pos)
         if state.phase == GamePhase.WAVE_ACTIVE and slot_id is None:
             # 전투 중 어떤 돌판도 아닌 배경(오른쪽 패널 제외)을 누르면 선택을 해제한다.
             return Action(ActionType.SELECT_SLOT, slot_id=None) if pos[0] < PANEL_X else None

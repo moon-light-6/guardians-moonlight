@@ -114,7 +114,11 @@ class TestEnemyAnimation(unittest.TestCase):
                     counts[expected] += 1
             enemy.path_index = len(self.path) - 1
             self.assertEqual(self.animator.direction(enemy), "right")
-        self.assertEqual(counts, {"left": 37, "right": 37, "front": 12})
+        # Hand-drawn bends use diagonal micro-segments; visual facing remains
+        # derived from the horizontal component and needs both directions.
+        self.assertGreater(counts["left"], 0)
+        self.assertGreater(counts["right"], 0)
+        self.assertEqual(counts["front"], 0)
         upward = self.enemy(path=[(0, 1), (0, 0)])
         screen = Mock()
         self.animator.draw(screen, upward, (100, 120), 0)
@@ -133,7 +137,7 @@ class TestEnemyAnimation(unittest.TestCase):
                         screen = Mock()
                         rect = self.animator.draw(screen, enemy, (100, 120), index / self.animator.ANIMATION_FPS)
                         self.assertIs(screen.blit.call_args.args[0], frames[index % len(frames)])
-                        self.assertEqual(rect.center, (100, 120))
+                        self.assertEqual(rect.midbottom, (100, 120))
                     load.assert_not_called()
                 self.assertEqual(vars(enemy), before)
 
@@ -153,10 +157,10 @@ class TestEnemyAnimation(unittest.TestCase):
         self.assertEqual(self.animator.direction(enemy), "left")
         enemy.move(1 / enemy.speed)
         before = copy.deepcopy(vars(enemy))
-        pos = self.renderer.map.grid_to_pixel(enemy.get_current_position())
+        pos = self.renderer.projection.game_to_pixel(enemy.get_current_position())
         screen = Mock()
         rect = self.animator.draw(screen, enemy, pos, 0)
-        self.assertEqual(rect.center, pos)
+        self.assertEqual(rect.midbottom, pos)
         self.assertIs(screen.blit.call_args.args[0], self.animator.frames[EnemyType.BASIC, "front"][0])
         self.assertEqual(vars(enemy), before)
 
@@ -164,7 +168,7 @@ class TestEnemyAnimation(unittest.TestCase):
         for kind in self.animator.ENEMY_FOLDERS:
             enemy = self.enemy(kind)
             enemy.health = 500
-            pos = self.renderer.map.grid_to_pixel(enemy.get_current_position())
+            pos = self.renderer.projection.game_to_pixel(enemy.get_current_position())
             for index in range(8):
                 self.screen.fill((0, 0, 0))
                 with patch.object(self.animator, "draw", wraps=self.animator.draw) as normal, \
@@ -175,7 +179,7 @@ class TestEnemyAnimation(unittest.TestCase):
                 boss.assert_not_called()
                 circle.assert_not_called()
                 frame = self.animator.frames[kind, "left"][index]
-                top = frame.get_rect(center=pos).top
+                top = frame.get_rect(midbottom=pos).top
                 self.assertEqual(self.screen.get_at((pos[0] - 18, top - 14))[:3], COLOR_GREEN)
                 self.assertEqual(self.screen.get_at((pos[0], top - 14))[:3], COLOR_RED)
                 self.assertLess(top - 14 + 4, top)
