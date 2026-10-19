@@ -12,12 +12,15 @@ class Button:
     text: str
     action: str
     enabled: bool = True
+    secondary: bool = False
 
     def render(self, screen: pygame.Surface, font: pygame.font.Font) -> None:
-        color = COLOR_BLUE if self.enabled else (67, 73, 91)
+        # 보조 버튼은 주 버튼보다 눈에 덜 띄는 톤으로 그린다.
+        base, hover = ((70, 88, 124), (92, 112, 150)) if self.secondary else (COLOR_BLUE, (105, 162, 215))
+        color = base if self.enabled else (67, 73, 91)
         mouse_pos = pygame.mouse.get_pos()
         if self.enabled and self.rect.collidepoint(mouse_pos):
-            color = (105, 162, 215)
+            color = hover
         pygame.draw.rect(screen, color, self.rect, border_radius=8)
         pygame.draw.rect(screen, (156, 178, 205), self.rect, 1, border_radius=8)
         text = font.render(self.text, True, COLOR_WHITE if self.enabled else COLOR_GRAY)

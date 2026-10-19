@@ -46,6 +46,7 @@ class TestPygameUI(unittest.TestCase):
             buy_confirm=self.input.buy_confirm,
             no_tower_warning=self.input.no_tower_warning,
             boss_warning=self.input.boss_warning,
+            board_view=self.input.board_view,
         )
         bounds = self.screen.get_rect()
         for button in self.renderer.buttons.buttons:
@@ -541,6 +542,115 @@ class TestPygameUI(unittest.TestCase):
         self.go_to_boss_preparation(stage_before=30)
         self.assertEqual(self.game.state.phase, GamePhase.VICTORY)
         self.assertFalse(self.input.boss_warning)
+
+    RESULT_PHASES = (
+        (GamePhase.SETTLEMENT, "CONTINUE"),
+        (GamePhase.GAME_OVER, "BACK_TO_TITLE"),
+        (GamePhase.VICTORY, "BACK_TO_TITLE"),
+    )
+
+    def set_result_phase(self, phase, stage=10):
+        """사신이 배치된 채로 정산·패배·승리 단계가 된 상황을 만든다."""
+        state = self.game.state
+        if not state.towers:
+            self.game.step(Action(ActionType.BUY, slot_id=0))
+        state.current_stage = stage
+        state.wave_result.stage = stage
+        state.wave_result.life_before, state.wave_result.life_after = 20, 18
+        state.life = 0 if phase == GamePhase.GAME_OVER else 18
+        state.phase = phase
+        return state
+
+    def action_names(self):
+        return [button.action for button in self.renderer.buttons.buttons]
+
+    def test_result_popups_offer_board_view_button(self):
+        for phase, primary in self.RESULT_PHASES:
+            with self.subTest(phase=phase.value):
+                self.input.board_view = False
+                self.set_result_phase(phase)
+                self.render(f"result-{phase.value}")
+                self.assertEqual(self.action_names(), ["OPEN_BOARD_VIEW", primary])
+
+    def test_board_view_hides_popup_and_shows_side_panel_controls(self):
+        for phase, primary in self.RESULT_PHASES:
+            with self.subTest(phase=phase.value):
+                self.input.board_view = False
+                self.set_result_phase(phase)
+                self.assertIsNone(self.press("OPEN_BOARD_VIEW"))
+                self.assertTrue(self.input.board_view)
+                with patch.object(self.renderer, "_render_settlement_popup") as settlement_popup, \
+                        patch.object(self.renderer, "_render_result") as result_popup:
+                    self.render(f"board-view-{phase.value}")
+                    settlement_popup.assert_not_called()
+                    result_popup.assert_not_called()
+                self.assertEqual(self.action_names(), ["CLOSE_BOARD_VIEW", primary])
+
+    def test_board_view_removes_dark_overlay(self):
+        self.set_result_phase(GamePhase.GAME_OVER)
+        self.render()
+        dimmed = sum(tuple(self.screen.get_at((5, 400)))[:3])
+        self.press("OPEN_BOARD_VIEW")
+        self.render()
+        clear = sum(tuple(self.screen.get_at((5, 400)))[:3])
+        self.assertGreater(clear, dimmed)
+
+    def test_close_board_view_returns_to_result_popup(self):
+        self.set_result_phase(GamePhase.GAME_OVER)
+        self.press("OPEN_BOARD_VIEW")
+        self.assertIsNone(self.press("CLOSE_BOARD_VIEW"))
+        self.assertFalse(self.input.board_view)
+        self.render()
+        self.assertEqual(self.action_names(), ["OPEN_BOARD_VIEW", "BACK_TO_TITLE"])
+
+    def test_settlement_continue_from_board_view_turns_view_off(self):
+        state = self.set_result_phase(GamePhase.SETTLEMENT, stage=3)
+        self.press("OPEN_BOARD_VIEW")
+        action = self.press("CONTINUE")
+        self.assertEqual(action.action_type, ActionType.CONTINUE)
+        self.assertFalse(self.input.board_view)
+        self.game.step(action)
+        self.assertEqual(state.phase, GamePhase.PREPARATION)
+        self.assertEqual(state.current_stage, 4)
+
+    def test_back_to_title_from_board_view_turns_view_off(self):
+        for phase in (GamePhase.GAME_OVER, GamePhase.VICTORY):
+            with self.subTest(phase=phase.value):
+                state = self.set_result_phase(phase)
+                self.press("OPEN_BOARD_VIEW")
+                action = self.press("BACK_TO_TITLE")
+                self.assertEqual(action.action_type, ActionType.BACK_TO_TITLE)
+                self.assertFalse(self.input.board_view)
+                self.game.step(action)
+                self.assertEqual(state.phase, GamePhase.TITLE)
+
+    def test_escape_in_board_view_returns_to_popup_and_enter_still_continues(self):
+        state = self.set_result_phase(GamePhase.SETTLEMENT)
+        self.press("OPEN_BOARD_VIEW")
+        escape = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE)
+        self.assertIsNone(self.input.handle_event(escape, state))
+        self.assertFalse(self.input.board_view)
+        self.assertEqual(state.phase, GamePhase.SETTLEMENT)
+
+        self.press("OPEN_BOARD_VIEW")
+        enter = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN)
+        action = self.input.handle_event(enter, state)
+        self.assertEqual(action.action_type, ActionType.CONTINUE)
+        self.assertFalse(self.input.board_view)
+
+    def test_board_view_flag_is_ignored_outside_result_phases(self):
+        self.input.board_view = True  # 준비 단계에서 켜져 있어도 화면은 평소대로 그려야 한다
+        self.render()
+        self.assertNotIn("CLOSE_BOARD_VIEW", self.action_names())
+        self.assertIn("OPEN_START_CONFIRM", self.action_names())
+
+    def test_board_view_does_not_change_game_state(self):
+        state = self.set_result_phase(GamePhase.VICTORY)
+        before = (state.phase, state.gold, state.life, state.current_stage, copy.deepcopy(state.towers))
+        self.press("OPEN_BOARD_VIEW")
+        self.press("CLOSE_BOARD_VIEW")
+        after = (state.phase, state.gold, state.life, state.current_stage, state.towers)
+        self.assertEqual(before, after)
 
     def test_exhausted_preparation_actions_disable_sell(self):
         self.game.step(Action(ActionType.BUY, slot_id=0))

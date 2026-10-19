@@ -10,6 +10,9 @@ from game.economy import Economy
 from game.state import GamePhase, GameState
 from game.wave import WaveManager
 
+# 정산·패배·승리 때만 팝업을 잠시 치우고 게임판을 볼 수 있다(화면 표시 방식이라 엔진은 모른다).
+_RESULT_PHASES = {GamePhase.SETTLEMENT, GamePhase.GAME_OVER, GamePhase.VICTORY}
+
 
 class InputHandler:
     def __init__(self, buttons: ButtonLayer, projection: MapProjection):
@@ -21,6 +24,7 @@ class InputHandler:
         self.buy_confirm = False
         self.no_tower_warning = False
         self.boss_warning = False
+        self.board_view = False
         self.should_quit = False
 
     def handle_event(self, event: pygame.event.Event, state: GameState) -> Optional[Action]:
@@ -51,6 +55,15 @@ class InputHandler:
             if action_name == "CLOSE_BOSS_WARNING":
                 self.boss_warning = False
                 return None
+            if action_name == "OPEN_BOARD_VIEW":
+                self.board_view = state.phase in _RESULT_PHASES
+                return None
+            if action_name == "CLOSE_BOARD_VIEW":
+                self.board_view = False
+                return None
+            if action_name == "BACK_TO_TITLE":
+                self.board_view = False
+                return Action(ActionType.BACK_TO_TITLE)
             if action_name == "CONTINUE":
                 return self._continue_action(state)
             if action_name == "START_WAVE_NO":
@@ -71,7 +84,6 @@ class InputHandler:
             mapping = {
                 "START_GAME": Action(ActionType.START_GAME),
                 "SHOW_HELP": Action(ActionType.SHOW_HELP),
-                "BACK_TO_TITLE": Action(ActionType.BACK_TO_TITLE),
                 "RESTART": Action(ActionType.RESTART),
                 "CANCEL": Action(ActionType.CANCEL),
                 "CYCLE_SPEED": Action(ActionType.CYCLE_SPEED),
@@ -110,6 +122,10 @@ class InputHandler:
                 return None
             if self.boss_warning:
                 return None
+            if self.board_view:
+                # 배치 확인 중 Esc는 타이틀로 나가지 않고 결과 팝업으로 돌아온다.
+                self.board_view = False
+                return None
             return Action(ActionType.CANCEL if state.phase in {GamePhase.MOVING_TOWER, GamePhase.SELL_CONFIRM} else ActionType.BACK_TO_TITLE)
         if self._popup_open(state):
             return None
@@ -128,6 +144,7 @@ class InputHandler:
 
     def _continue_action(self, state: GameState) -> Action:
         """정산에서 계속하기: 다음 소동이 보스 소동이면 넘어간 뒤 큰 소동 예고 팝업을 연다."""
+        self.board_view = False
         if state.phase == GamePhase.SETTLEMENT and WaveManager.is_boss_stage(state.current_stage + 1):
             self.boss_warning = True
         return Action(ActionType.CONTINUE)

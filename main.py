@@ -57,6 +57,7 @@ def main():
             input_handler.buy_confirm,
             input_handler.no_tower_warning,
             input_handler.boss_warning,
+            input_handler.board_view,
         )
         pygame.display.flip()
 
