@@ -25,6 +25,8 @@ class Button:
     action: str
     enabled: bool = True
     image: Optional[pygame.Surface] = None  # 있으면 글자 대신 아이콘 버튼으로 그립니다
+    # (기본, 마우스 올림) 이미지 한 쌍. 있으면 사각형 대신 이미지 위에 글씨를 씁니다.
+    skin: Optional[Tuple[pygame.Surface, pygame.Surface]] = None
 
     def render(self, screen: pygame.Surface, font: pygame.font.Font) -> None:
         hovered = self.enabled and self.rect.collidepoint(pygame.mouse.get_pos())
@@ -35,6 +37,12 @@ class Button:
             pygame.draw.circle(screen, fill, self.rect.center, radius)
             pygame.draw.circle(screen, border, self.rect.center, radius, 2)
             screen.blit(self.image, self.image.get_rect(center=self.rect.center))
+            return
+        if self.skin:
+            image = self.skin[1] if hovered else self.skin[0]
+            screen.blit(image, image.get_rect(center=self.rect.center))
+            text = font.render(self.text, True, COLOR_MOON if self.enabled else COLOR_GRAY)
+            screen.blit(text, text.get_rect(center=self.rect.center))
             return
         if not self.enabled:
             fill, border, text_color = (30, 34, 48), (70, 74, 88), COLOR_GRAY
@@ -70,6 +78,14 @@ class ButtonLayer:
     def render(self, screen: pygame.Surface, font: pygame.font.Font) -> None:
         for button in self.buttons:
             button.render(screen, font)
+
+
+def make_button_skin(frame: pygame.Surface, size: Tuple[int, int]) -> Tuple[pygame.Surface, pygame.Surface]:
+    """버튼 크기에 맞춘 프레임 이미지와, 마우스를 올렸을 때 쓸 밝은 버전을 만듭니다."""
+    normal = pygame.transform.smoothscale(frame, size)
+    hover = normal.copy()
+    hover.fill((40, 40, 40, 0), special_flags=pygame.BLEND_RGBA_ADD)
+    return normal, hover
 
 
 def panel_rect(x: int, y: int, w: int, h: int) -> pygame.Rect:

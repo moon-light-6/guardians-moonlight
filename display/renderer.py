@@ -46,7 +46,7 @@ from config import (
     SUMMON_TRAVEL_SECONDS,
     SUMMON_WAKE_SECONDS,
 )
-from display.ui import HELP_PAGE_COUNT, Button, ButtonLayer, draw_panel, draw_title_ornament
+from display.ui import HELP_PAGE_COUNT, Button, ButtonLayer, draw_panel, draw_title_ornament, make_button_skin
 from display.sprite_animation import TowerSpriteAnimator
 from display.boss_animation import BossSpriteAnimator
 from display.effect_animation import AttackEffectAnimator
@@ -84,6 +84,17 @@ class Renderer:
         self.background = self._load_background()
         self.start_background = self._load_start_background()
         self.help_icon = self._load_help_icon()
+        self.title_button_skin = make_button_skin(self._load_button_frame(), (312, 60))
+        logo = self._load_ui_image("logo_cutout.png", 91)
+        # 로고는 높이는 두고 가로폭만 0.9배로 좁힙니다.
+        self.hud_logo = pygame.transform.smoothscale(logo, (round(logo.get_width() * 0.9), logo.get_height()))
+        self.hud_icons = {
+            "stage": self._load_ui_image("소동.png", 20),
+            "gold": self._load_ui_image("엽전.png", 20),
+            "phase": self._load_ui_image("수호준비.png", 20),
+            "life": self._load_ui_image("life.png", 20),
+        }
+        self.font_hud = self._font(16)
         self.show_map_debug = MAP_DEBUG_DEFAULT
         self.debug_show_slots = True
         self.debug_show_route = True
@@ -150,6 +161,21 @@ class Renderer:
         icon_size = round(self.HELP_ICON_SIZE * 0.78)  # 원 바탕 안쪽에 여백을 둡니다
         return pygame.transform.smoothscale(image, (icon_size, icon_size))
 
+    def _load_button_frame(self) -> pygame.Surface:
+        """시작 화면 버튼 바탕(panel_frame.png). 빛 번짐 바깥의 빈 여백은 잘라냅니다."""
+        path = Path(__file__).resolve().parents[1] / "assets" / "ui" / "panel_frame.png"
+        image = pygame.image.load(str(path)).convert_alpha()
+        return image.subsurface(image.get_bounding_rect(min_alpha=20)).copy()
+
+    def _load_ui_image(self, name: str, height: int) -> pygame.Surface:
+        """assets/ui 이미지를 투명 여백 없이 잘라 높이에 맞춰 줄입니다(비율 유지)."""
+        path = Path(__file__).resolve().parents[1] / "assets" / "ui" / name
+        image = pygame.image.load(str(path)).convert_alpha()
+        # 거의 안 보이는 옅은 픽셀까지 넣으면 여백이 남아 아이콘이 작아지므로 알파 20 이상만 기준으로 자릅니다.
+        image = image.subsurface(image.get_bounding_rect(min_alpha=20)).copy()
+        width = round(image.get_width() * height / image.get_height())
+        return pygame.transform.smoothscale(image, (width, height))
+
     def toggle_map_debug(self) -> bool:
         self.show_map_debug = not self.show_map_debug
         return self.show_map_debug
@@ -212,9 +238,9 @@ class Renderer:
     def _render_title(self) -> None:
         # 제목 "월하사신"과 부제는 startbackimage.png에 그려져 있어 버튼만 그 아래에 둡니다.
         buttons = [
-            Button(pygame.Rect(520, 470, 240, 46), "게임 시작", "START_GAME"),
-            Button(pygame.Rect(520, 528, 240, 46), "게임 방법", "SHOW_HELP"),
-            Button(pygame.Rect(520, 586, 240, 46), "종료", "QUIT"),
+            Button(pygame.Rect(484, 445, 312, 60), "게임 시작", "START_GAME", skin=self.title_button_skin),
+            Button(pygame.Rect(484, 521, 312, 60), "게임 방법", "SHOW_HELP", skin=self.title_button_skin),
+            Button(pygame.Rect(484, 597, 312, 60), "종료", "QUIT", skin=self.title_button_skin),
         ]
         self.buttons.set_buttons(buttons)
         self.buttons.render(self.screen, self.font_med)
@@ -560,7 +586,7 @@ class Renderer:
         ])
 
     def _render_hud(self, state: GameState) -> None:
-        self._text("월하사신", 42, 34, self.font_big, COLOR_WHITE)
+        logo = self.screen.blit(self.hud_logo, (20, 22))
         is_preparing = state.phase not in {
             GamePhase.WAVE_ACTIVE, GamePhase.SETTLEMENT, GamePhase.GAME_OVER, GamePhase.VICTORY
         }
@@ -574,13 +600,35 @@ class Renderer:
             phase = "승리"
         else:
             phase = "수호 준비"
-        self._text(f"소동 {state.current_stage:02d} / 30", 250, 46, self.font_med, COLOR_WHITE)
-        self._text(f"결계 {state.life}", 430, 46, self.font_med, COLOR_MINT)
-        self._text(f"{state.gold} G", 548, 46, self.font_med, COLOR_GOLD)
-        self._text(phase, 680, 46, self.font_med, COLOR_CYAN)
+        phase_parts = [(phase, COLOR_WHITE)]
         if is_preparing:
-            count_x = 680 + self.font_med.size(phase)[0] + 12
-            self._text(f"{state.actions_taken_this_wave} / 20", count_x, 50, self.font_small, COLOR_GRAY)
+            phase_parts.append((f"{state.actions_taken_this_wave} / 20", COLOR_BLUE))
+        # 정보 칸은 로고 바로 오른쪽에 붙이고, 세로 가운데를 로고와 맞춥니다.
+        x, cy = logo.right + 6, logo.centery
+        x = self._draw_hud_pill(x, cy, self.hud_icons["stage"], [(f"소동 {state.current_stage:02d} / 30", COLOR_WHITE)])
+        x = self._draw_hud_pill(x, cy, self.hud_icons["gold"], [(f"{state.gold} G", COLOR_GOLD)])
+        x = self._draw_hud_pill(x, cy, self.hud_icons["phase"], phase_parts)
+        self._draw_hud_pill(x, cy, self.hud_icons["life"], [(f"결계 {state.life}", COLOR_MINT)])
+
+    def _draw_hud_pill(self, x: int, cy: int, icon, parts) -> int:
+        """상단 정보 칸: 반투명 둥근 바탕 + 아이콘 + 글씨 조각들. 다음 칸이 시작할 x를 돌려줍니다."""
+        pad, gap, height = 13, 7, 34
+        texts = [self.font_hud.render(text, True, color) for text, color in parts]
+        width = pad * 2 + sum(t.get_width() for t in texts) + gap * (len(texts) - 1)
+        if icon:
+            width += icon.get_width() + gap
+        pill = pygame.Surface((width, height), pygame.SRCALPHA)
+        pygame.draw.rect(pill, (10, 16, 34, 175), pill.get_rect(), border_radius=10)
+        pygame.draw.rect(pill, (150, 175, 230, 28), pill.get_rect(), 1, border_radius=10)
+        self.screen.blit(pill, (x, cy - height // 2))
+        cx = x + pad
+        if icon:
+            self.screen.blit(icon, icon.get_rect(midleft=(cx, cy)))
+            cx += icon.get_width() + gap
+        for text in texts:
+            self.screen.blit(text, text.get_rect(midleft=(cx, cy)))
+            cx += text.get_width() + gap
+        return x + width + 7
 
     def _render_board(self, state: GameState) -> None:
         # 길·포털·기본 사신 받침은 map_background.png에 완성돼 있습니다. 예전
