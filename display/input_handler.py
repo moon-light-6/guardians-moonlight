@@ -5,6 +5,7 @@ import pygame
 from config import PANEL_X
 from display.ui import ButtonLayer
 from game.actions import Action, ActionType
+from game.economy import Economy
 from game.map import GameMap
 from game.state import GamePhase, GameState
 
@@ -13,9 +14,11 @@ class InputHandler:
     def __init__(self, buttons: ButtonLayer):
         self.buttons = buttons
         self.map = GameMap()
+        self.economy = Economy()
         self.quit_confirm = False
         self.start_confirm = False
         self.buy_confirm = False
+        self.no_tower_warning = False
         self.should_quit = False
 
     def handle_event(self, event: pygame.event.Event, state: GameState) -> Optional[Action]:
@@ -38,7 +41,10 @@ class InputHandler:
                 self.should_quit = True
                 return None
             if action_name == "OPEN_START_CONFIRM":
-                self.start_confirm = state.phase == GamePhase.PREPARATION
+                self._open_start_flow(state)
+                return None
+            if action_name == "CLOSE_NO_TOWER_WARNING":
+                self.no_tower_warning = False
                 return None
             if action_name == "START_WAVE_NO":
                 self.start_confirm = False
@@ -71,7 +77,7 @@ class InputHandler:
             }
             return mapping.get(action_name)
 
-        if self.quit_confirm or self.start_confirm or self.buy_confirm or state.boss_warning:
+        if self._popup_open(state):
             return None
         slot_id = self.map.pixel_to_slot(pos)
         if state.phase == GamePhase.WAVE_ACTIVE and slot_id is None:
@@ -92,18 +98,34 @@ class InputHandler:
             if state.phase == GamePhase.TITLE or self.quit_confirm:
                 self.quit_confirm = not self.quit_confirm
                 return None
-            if self.start_confirm or self.buy_confirm:
+            if self.start_confirm or self.buy_confirm or self.no_tower_warning:
                 self.start_confirm = False
                 self.buy_confirm = False
+                self.no_tower_warning = False
                 return None
             if state.boss_warning:
                 return None
             return Action(ActionType.CANCEL if state.phase in {GamePhase.MOVING_TOWER, GamePhase.SELL_CONFIRM} else ActionType.BACK_TO_TITLE)
-        if self.quit_confirm or self.start_confirm or self.buy_confirm or state.boss_warning:
+        if self._popup_open(state):
             return None
         if key == pygame.K_SPACE and state.phase == GamePhase.PREPARATION:
-            self.start_confirm = True
+            self._open_start_flow(state)
             return None
         if key == pygame.K_RETURN and state.phase == GamePhase.SETTLEMENT:
             return Action(ActionType.CONTINUE)
         return None
+
+    def _popup_open(self, state: GameState) -> bool:
+        return (
+            self.quit_confirm or self.start_confirm or self.buy_confirm
+            or self.no_tower_warning or state.boss_warning
+        )
+
+    def _open_start_flow(self, state: GameState) -> None:
+        """시작 버튼: 사신이 없으면 경고, 있으면 시작 확인 팝업을 연다(규칙 판단은 Economy)."""
+        if state.phase != GamePhase.PREPARATION:
+            return
+        if self.economy.has_defender(state):
+            self.start_confirm = True
+        else:
+            self.no_tower_warning = True

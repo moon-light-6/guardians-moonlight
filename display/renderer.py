@@ -115,6 +115,7 @@ class Renderer:
         quit_confirm: bool = False,
         start_confirm: bool = False,
         buy_confirm: bool = False,
+        no_tower_warning: bool = False,
     ) -> None:
         self.screen.fill(COLOR_BLACK)
         self._draw_moonlit_background()
@@ -130,6 +131,8 @@ class Renderer:
             self._render_boss_warning_popup(state)
         if buy_confirm and state.phase == GamePhase.PREPARATION:
             self._render_buy_popup()
+        if no_tower_warning and state.phase == GamePhase.PREPARATION:
+            self._render_no_tower_popup()
         if quit_confirm:
             self._render_quit_popup()
 
@@ -196,6 +199,25 @@ class Renderer:
 
         self.buttons.set_buttons([
             Button(pygame.Rect(panel.centerx - 110, panel.bottom - 80, 220, 46), "수호 준비!", "DISMISS_BOSS_WARNING"),
+        ])
+        self.buttons.render(self.screen, self.font_med)
+
+    def _render_no_tower_popup(self) -> None:
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        self.screen.blit(overlay, (0, 0))
+
+        width, height = 480, 260
+        panel = pygame.Rect((SCREEN_WIDTH - width) // 2, (SCREEN_HEIGHT - height) // 2, width, height)
+        draw_panel(self.screen, panel)
+
+        title = self.font_big.render("앗, 사신이 없어!", True, COLOR_GOLD)
+        self.screen.blit(title, title.get_rect(center=(panel.centerx, panel.y + 70)))
+        body = self.font_med.render("결계를 지켜줄 사신을 먼저 소환해줘", True, COLOR_WHITE)
+        self.screen.blit(body, body.get_rect(center=(panel.centerx, panel.y + 130)))
+
+        self.buttons.set_buttons([
+            Button(pygame.Rect(panel.centerx - 110, panel.bottom - 76, 220, 46), "알겠어!", "CLOSE_NO_TOWER_WARNING"),
         ])
         self.buttons.render(self.screen, self.font_med)
 

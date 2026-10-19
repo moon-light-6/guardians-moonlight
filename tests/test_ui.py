@@ -40,6 +40,7 @@ class TestPygameUI(unittest.TestCase):
             self.game.state,
             start_confirm=self.input.start_confirm,
             buy_confirm=self.input.buy_confirm,
+            no_tower_warning=self.input.no_tower_warning,
         )
         bounds = self.screen.get_rect()
         for button in self.renderer.buttons.buttons:
@@ -61,6 +62,11 @@ class TestPygameUI(unittest.TestCase):
 
     def click(self, action_name):
         if action_name == "START_WAVE":
+            if not self.game.state.towers:
+                # 사신이 없으면 화면이 경고 팝업을 띄워 막는다(별도 테스트에서 확인).
+                # 사신 없이 시작하는 엔진 규칙이 필요한 테스트는 행동을 바로 보낸다.
+                self.game.step(Action(ActionType.START_WAVE))
+                return
             # 소동 시작 버튼은 확인 팝업을 한 번 거친 뒤 "예"를 눌러야 시작된다.
             self.assertIsNone(self.press("OPEN_START_CONFIRM"))
             action_name = "START_WAVE_YES"
@@ -115,7 +121,54 @@ class TestPygameUI(unittest.TestCase):
         self.assertFalse(self.input.buy_confirm)
         self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
 
+    def test_start_without_tower_shows_warning_instead_of_confirmation(self):
+        self.assertFalse(self.game.state.towers)
+        self.assertIsNone(self.press("OPEN_START_CONFIRM"))
+        self.assertTrue(self.input.no_tower_warning)
+        self.assertFalse(self.input.start_confirm)
+        self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
+        self.render("no-tower-warning")
+        actions = {button.action for button in self.renderer.buttons.buttons}
+        self.assertEqual(actions, {"CLOSE_NO_TOWER_WARNING"})
+
+    def test_no_tower_warning_button_closes_and_start_is_still_blocked(self):
+        self.press("OPEN_START_CONFIRM")
+        self.assertIsNone(self.press("CLOSE_NO_TOWER_WARNING"))
+        self.assertFalse(self.input.no_tower_warning)
+        self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
+        self.assertIsNone(self.press("OPEN_START_CONFIRM"))
+        self.assertTrue(self.input.no_tower_warning)
+
+    def test_no_tower_warning_blocks_board_clicks_and_keys_and_escape_closes(self):
+        self.press("OPEN_START_CONFIRM")
+        position = self.game.map.grid_to_pixel(self.game.map.get_slot_position(0))
+        click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=position)
+        self.assertIsNone(self.input.handle_event(click, self.game.state))
+        space = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE)
+        self.assertIsNone(self.input.handle_event(space, self.game.state))
+        self.assertTrue(self.input.no_tower_warning)
+        self.assertFalse(self.input.start_confirm)
+        escape = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE)
+        self.assertIsNone(self.input.handle_event(escape, self.game.state))
+        self.assertFalse(self.input.no_tower_warning)
+        self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
+
+    def test_space_without_tower_shows_warning(self):
+        space = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE)
+        self.assertIsNone(self.input.handle_event(space, self.game.state))
+        self.assertTrue(self.input.no_tower_warning)
+        self.assertFalse(self.input.start_confirm)
+
+    def test_tower_being_summoned_counts_as_placed_for_start(self):
+        self.select_empty_slot()
+        self.click("BUY")  # 소환 연출 중에도 사신이 배치된 것으로 본다
+        self.assertTrue(self.game.state.summons)
+        self.assertIsNone(self.press("OPEN_START_CONFIRM"))
+        self.assertTrue(self.input.start_confirm)
+        self.assertFalse(self.input.no_tower_warning)
+
     def test_start_wave_asks_for_confirmation_first(self):
+        self.game.step(Action(ActionType.BUY, slot_id=0))
         self.assertIsNone(self.press("OPEN_START_CONFIRM"))
         self.assertTrue(self.input.start_confirm)
         self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
@@ -124,12 +177,14 @@ class TestPygameUI(unittest.TestCase):
         self.assertEqual(actions, {"START_WAVE_NO", "START_WAVE_YES"})
 
     def test_start_confirm_no_closes_popup_without_starting(self):
+        self.game.step(Action(ActionType.BUY, slot_id=0))
         self.press("OPEN_START_CONFIRM")
         self.assertIsNone(self.press("START_WAVE_NO"))
         self.assertFalse(self.input.start_confirm)
         self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
 
     def test_start_confirm_yes_starts_wave(self):
+        self.game.step(Action(ActionType.BUY, slot_id=0))
         self.press("OPEN_START_CONFIRM")
         action = self.press("START_WAVE_YES")
         self.assertEqual(action.action_type, ActionType.START_WAVE)
@@ -138,6 +193,7 @@ class TestPygameUI(unittest.TestCase):
         self.assertEqual(self.game.state.phase, GamePhase.WAVE_ACTIVE)
 
     def test_space_and_escape_use_start_confirmation(self):
+        self.game.step(Action(ActionType.BUY, slot_id=0))
         space = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE)
         self.assertIsNone(self.input.handle_event(space, self.game.state))
         self.assertTrue(self.input.start_confirm)
