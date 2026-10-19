@@ -75,29 +75,20 @@ class TestGameEngine(unittest.TestCase):
         self.game.step(Action(ActionType.START_GAME))
         self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
 
-    def test_boss_warning_appears_after_continuing_into_boss_stage(self):
-        for before_boss in (4, 9, 14, 19, 24, 29):
-            with self.subTest(stage=before_boss):
-                self.state.current_stage = before_boss
-                self.state.phase = GamePhase.SETTLEMENT
-                self.game.step(Action(ActionType.CONTINUE))
-                self.assertEqual(self.state.current_stage, before_boss + 1)
-                self.assertTrue(self.state.boss_warning)
-                self.game.step(Action(ActionType.DISMISS_BOSS_WARNING))
-                self.assertFalse(self.state.boss_warning)
+    def test_is_boss_stage_only_for_boss_stages(self):
+        for stage in range(1, 31):
+            with self.subTest(stage=stage):
+                self.assertEqual(WaveManager.is_boss_stage(stage), stage % 5 == 0)
+        self.assertFalse(WaveManager.is_boss_stage(31))
 
-    def test_boss_warning_not_shown_for_normal_stages(self):
-        for before in (1, 2, 3, 5, 8, 10, 28):
-            with self.subTest(stage=before):
-                self.state.current_stage = before
-                self.state.phase = GamePhase.SETTLEMENT
-                self.game.step(Action(ActionType.CONTINUE))
-                self.assertFalse(self.state.boss_warning)
-
-    def test_boss_warning_is_cleared_on_new_run(self):
-        self.state.boss_warning = True
-        self.game.step(Action(ActionType.RESTART))
-        self.assertFalse(self.game.state.boss_warning)
+    def test_continue_moves_to_next_stage_without_any_popup_state(self):
+        # 큰 소동 예고 팝업은 화면(입력 핸들러) 상태라서 엔진 상태에는 흔적이 없어야 한다.
+        self.state.current_stage = 4
+        self.state.phase = GamePhase.SETTLEMENT
+        self.game.step(Action(ActionType.CONTINUE))
+        self.assertEqual(self.state.current_stage, 5)
+        self.assertEqual(self.state.phase, GamePhase.PREPARATION)
+        self.assertFalse(hasattr(self.state, "boss_warning"))
 
     def test_stage_five_continues_and_preserves_resources(self):
         self.game.step(Action(ActionType.BUY, slot_id=0))

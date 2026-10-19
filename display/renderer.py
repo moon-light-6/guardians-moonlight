@@ -116,6 +116,7 @@ class Renderer:
         start_confirm: bool = False,
         buy_confirm: bool = False,
         no_tower_warning: bool = False,
+        boss_warning: bool = False,
     ) -> None:
         self.screen.fill(COLOR_BLACK)
         self._draw_moonlit_background()
@@ -127,8 +128,8 @@ class Renderer:
             self._render_game(state)
         if start_confirm and state.phase == GamePhase.PREPARATION:
             self._render_start_popup(state)
-        if state.boss_warning and state.phase == GamePhase.PREPARATION:
-            self._render_boss_warning_popup(state)
+        if boss_warning and state.phase == GamePhase.PREPARATION:
+            self._render_boss_warning_popup()
         if buy_confirm and state.phase == GamePhase.PREPARATION:
             self._render_buy_popup()
         if no_tower_warning and state.phase == GamePhase.PREPARATION:
@@ -181,7 +182,7 @@ class Renderer:
         ])
         self.buttons.render(self.screen, self.font_med)
 
-    def _render_boss_warning_popup(self, state: GameState) -> None:
+    def _render_boss_warning_popup(self) -> None:
         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 150))
         self.screen.blit(overlay, (0, 0))
@@ -198,7 +199,7 @@ class Renderer:
         self.screen.blit(info2, info2.get_rect(center=(panel.centerx, panel.y + 165)))
 
         self.buttons.set_buttons([
-            Button(pygame.Rect(panel.centerx - 110, panel.bottom - 80, 220, 46), "수호 준비!", "DISMISS_BOSS_WARNING"),
+            Button(pygame.Rect(panel.centerx - 110, panel.bottom - 80, 220, 46), "수호 준비!", "CLOSE_BOSS_WARNING"),
         ])
         self.buttons.render(self.screen, self.font_med)
 

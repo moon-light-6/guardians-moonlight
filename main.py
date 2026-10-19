@@ -39,6 +39,7 @@ def main():
             input_handler.start_confirm,
             input_handler.buy_confirm,
             input_handler.no_tower_warning,
+            input_handler.boss_warning,
         )
         pygame.display.flip()
 

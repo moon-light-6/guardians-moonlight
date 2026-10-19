@@ -55,8 +55,6 @@ class Game:
             self._new_run()
         elif kind == ActionType.CONTINUE:
             self._continue_after_settlement()
-        elif kind == ActionType.DISMISS_BOSS_WARNING:
-            self.state.boss_warning = False
         elif kind == ActionType.CYCLE_SPEED and self.state.phase == GamePhase.WAVE_ACTIVE:
             index = COMBAT_SPEEDS.index(self.state.combat_speed)
             self.state.combat_speed = COMBAT_SPEEDS[(index + 1) % len(COMBAT_SPEEDS)]
@@ -381,5 +379,4 @@ class Game:
         self.state.actions_taken_this_wave = 0
         self.state.selected_slot = None
         self.state.phase = GamePhase.PREPARATION
-        self.state.boss_warning = self.state.current_stage in WaveManager.BOSSES
         self.state.message = "다음 수호 준비 단계"

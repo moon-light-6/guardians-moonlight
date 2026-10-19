@@ -50,6 +50,10 @@ class WaveManager:
     def is_wave_complete(self, alive_enemies: List[Enemy]) -> bool:
         return not self.spawn_queue and not alive_enemies
 
+    @classmethod
+    def is_boss_stage(cls, stage: int) -> bool:
+        return stage in cls.BOSSES
+
     def get_remaining_spawns(self) -> int:
         return len(self.spawn_queue)
 

@@ -41,6 +41,7 @@ class TestPygameUI(unittest.TestCase):
             start_confirm=self.input.start_confirm,
             buy_confirm=self.input.buy_confirm,
             no_tower_warning=self.input.no_tower_warning,
+            boss_warning=self.input.boss_warning,
         )
         bounds = self.screen.get_rect()
         for button in self.renderer.buttons.buttons:
@@ -297,29 +298,56 @@ class TestPygameUI(unittest.TestCase):
     def test_boss_warning_popup_shows_and_blocks_input_until_dismissed(self):
         self.go_to_boss_preparation()
         state = self.game.state
-        self.assertTrue(state.boss_warning)
+        self.assertTrue(self.input.boss_warning)
         self.render("boss-warning")
         actions = {button.action for button in self.renderer.buttons.buttons}
-        self.assertEqual(actions, {"DISMISS_BOSS_WARNING"})
+        self.assertEqual(actions, {"CLOSE_BOSS_WARNING"})
         position = self.game.map.grid_to_pixel(self.game.map.get_slot_position(0))
         click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=position)
         self.assertIsNone(self.input.handle_event(click, state))
         for key in (pygame.K_SPACE, pygame.K_ESCAPE, pygame.K_RETURN):
             self.assertIsNone(self.input.handle_event(pygame.event.Event(pygame.KEYDOWN, key=key), state))
         self.assertEqual(state.phase, GamePhase.PREPARATION)
-        self.assertTrue(state.boss_warning)
+        self.assertTrue(self.input.boss_warning)
 
     def test_boss_warning_button_dismisses_popup(self):
         self.go_to_boss_preparation()
-        self.click("DISMISS_BOSS_WARNING")
-        self.assertFalse(self.game.state.boss_warning)
+        self.assertIsNone(self.press("CLOSE_BOSS_WARNING"))
+        self.assertFalse(self.input.boss_warning)
         self.render()
         actions = {button.action for button in self.renderer.buttons.buttons}
         self.assertIn("OPEN_START_CONFIRM", actions)
 
+    def test_boss_warning_opens_for_every_stage_before_a_boss(self):
+        for before_boss in (4, 9, 14, 19, 24, 29):
+            with self.subTest(stage=before_boss):
+                self.input.boss_warning = False
+                self.go_to_boss_preparation(stage_before=before_boss)
+                self.assertEqual(self.game.state.current_stage, before_boss + 1)
+                self.assertTrue(self.input.boss_warning)
+
+    def test_enter_on_settlement_also_opens_boss_warning(self):
+        state = self.game.state
+        state.current_stage = 9
+        state.phase = GamePhase.SETTLEMENT
+        enter = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN)
+        action = self.input.handle_event(enter, state)
+        self.assertEqual(action.action_type, ActionType.CONTINUE)
+        self.assertTrue(self.input.boss_warning)
+        self.game.step(action)
+        self.assertEqual(state.current_stage, 10)
+
     def test_no_boss_warning_before_normal_stage(self):
-        self.go_to_boss_preparation(stage_before=3)
-        self.assertFalse(self.game.state.boss_warning)
+        for before in (1, 3, 5, 10, 28):
+            with self.subTest(stage=before):
+                self.input.boss_warning = False
+                self.go_to_boss_preparation(stage_before=before)
+                self.assertFalse(self.input.boss_warning)
+
+    def test_no_boss_warning_when_finishing_last_stage(self):
+        self.go_to_boss_preparation(stage_before=30)
+        self.assertEqual(self.game.state.phase, GamePhase.VICTORY)
+        self.assertFalse(self.input.boss_warning)
 
     def test_exhausted_preparation_actions_disable_sell(self):
         self.game.step(Action(ActionType.BUY, slot_id=0))

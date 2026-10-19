@@ -64,7 +64,6 @@ class GameState:
     clear_rewarded_stages: set[int] = field(default_factory=set)
     wave_reached_base: int = 0
     combat_speed: float = 1.0
-    boss_warning: bool = False
 
     def is_valid_slot(self, slot_id: int) -> bool:
         return isinstance(slot_id, int) and 0 <= slot_id < SLOT_COUNT

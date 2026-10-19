@@ -21,7 +21,6 @@ class ActionType(Enum):
     CANCEL = "CANCEL"
     START_WAVE = "START_WAVE"
     CYCLE_SPEED = "CYCLE_SPEED"
-    DISMISS_BOSS_WARNING = "DISMISS_BOSS_WARNING"
 
 
 @dataclass
