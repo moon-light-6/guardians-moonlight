@@ -20,7 +20,7 @@ from game.enemy import Enemy, EnemyType
 from game.state import GamePhase
 from game.tower import Tower
 from game.wave import WaveManager
-from main import _apply_action
+from main import MAX_FRAME_SECONDS, _advance_game, _apply_action
 
 
 class TestPygameUI(unittest.TestCase):
@@ -46,6 +46,8 @@ class TestPygameUI(unittest.TestCase):
             buy_confirm=self.input.buy_confirm,
             no_tower_warning=self.input.no_tower_warning,
             boss_warning=self.input.boss_warning,
+            board_view=self.input.board_view,
+            give_up_confirm=self.input.give_up_confirm,
         )
         bounds = self.screen.get_rect()
         for button in self.renderer.buttons.buttons:
@@ -541,6 +543,351 @@ class TestPygameUI(unittest.TestCase):
         self.go_to_boss_preparation(stage_before=30)
         self.assertEqual(self.game.state.phase, GamePhase.VICTORY)
         self.assertFalse(self.input.boss_warning)
+
+    RESULT_PHASES = (
+        (GamePhase.SETTLEMENT, "CONTINUE"),
+        (GamePhase.GAME_OVER, "BACK_TO_TITLE"),
+        (GamePhase.VICTORY, "BACK_TO_TITLE"),
+    )
+
+    def set_result_phase(self, phase, stage=10):
+        """사신이 배치된 채로 정산·패배·승리 단계가 된 상황을 만든다."""
+        state = self.game.state
+        if not state.towers:
+            self.game.step(Action(ActionType.BUY, slot_id=0))
+        state.current_stage = stage
+        state.wave_result.stage = stage
+        state.wave_result.life_before, state.wave_result.life_after = 20, 18
+        state.life = 0 if phase == GamePhase.GAME_OVER else 18
+        state.phase = phase
+        return state
+
+    def action_names(self):
+        return [button.action for button in self.renderer.buttons.buttons]
+
+    def test_result_popups_offer_board_view_button(self):
+        for phase, primary in self.RESULT_PHASES:
+            with self.subTest(phase=phase.value):
+                self.input.board_view = False
+                self.set_result_phase(phase)
+                self.render(f"result-{phase.value}")
+                self.assertEqual(self.action_names(), ["OPEN_BOARD_VIEW", primary])
+
+    def test_board_view_hides_popup_and_shows_side_panel_controls(self):
+        for phase, primary in self.RESULT_PHASES:
+            with self.subTest(phase=phase.value):
+                self.input.board_view = False
+                self.set_result_phase(phase)
+                self.assertIsNone(self.press("OPEN_BOARD_VIEW"))
+                self.assertTrue(self.input.board_view)
+                with patch.object(self.renderer, "_render_settlement_popup") as settlement_popup, \
+                        patch.object(self.renderer, "_render_result") as result_popup:
+                    self.render(f"board-view-{phase.value}")
+                    settlement_popup.assert_not_called()
+                    result_popup.assert_not_called()
+                self.assertEqual(self.action_names(), ["CLOSE_BOARD_VIEW", primary])
+
+    def test_board_view_removes_dark_overlay(self):
+        self.set_result_phase(GamePhase.GAME_OVER)
+        self.render()
+        dimmed = sum(tuple(self.screen.get_at((5, 400)))[:3])
+        self.press("OPEN_BOARD_VIEW")
+        self.render()
+        clear = sum(tuple(self.screen.get_at((5, 400)))[:3])
+        self.assertGreater(clear, dimmed)
+
+    def test_close_board_view_returns_to_result_popup(self):
+        self.set_result_phase(GamePhase.GAME_OVER)
+        self.press("OPEN_BOARD_VIEW")
+        self.assertIsNone(self.press("CLOSE_BOARD_VIEW"))
+        self.assertFalse(self.input.board_view)
+        self.render()
+        self.assertEqual(self.action_names(), ["OPEN_BOARD_VIEW", "BACK_TO_TITLE"])
+
+    def test_settlement_continue_from_board_view_turns_view_off(self):
+        state = self.set_result_phase(GamePhase.SETTLEMENT, stage=3)
+        self.press("OPEN_BOARD_VIEW")
+        action = self.press("CONTINUE")
+        self.assertEqual(action.action_type, ActionType.CONTINUE)
+        self.assertFalse(self.input.board_view)
+        self.game.step(action)
+        self.assertEqual(state.phase, GamePhase.PREPARATION)
+        self.assertEqual(state.current_stage, 4)
+
+    def test_back_to_title_from_board_view_turns_view_off(self):
+        for phase in (GamePhase.GAME_OVER, GamePhase.VICTORY):
+            with self.subTest(phase=phase.value):
+                state = self.set_result_phase(phase)
+                self.press("OPEN_BOARD_VIEW")
+                action = self.press("BACK_TO_TITLE")
+                self.assertEqual(action.action_type, ActionType.BACK_TO_TITLE)
+                self.assertFalse(self.input.board_view)
+                self.game.step(action)
+                self.assertEqual(state.phase, GamePhase.TITLE)
+
+    def test_escape_in_board_view_returns_to_popup_and_enter_still_continues(self):
+        state = self.set_result_phase(GamePhase.SETTLEMENT)
+        self.press("OPEN_BOARD_VIEW")
+        escape = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE)
+        self.assertIsNone(self.input.handle_event(escape, state))
+        self.assertFalse(self.input.board_view)
+        self.assertEqual(state.phase, GamePhase.SETTLEMENT)
+
+        self.press("OPEN_BOARD_VIEW")
+        enter = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN)
+        action = self.input.handle_event(enter, state)
+        self.assertEqual(action.action_type, ActionType.CONTINUE)
+        self.assertFalse(self.input.board_view)
+
+    def test_board_view_flag_is_ignored_outside_result_phases(self):
+        self.input.board_view = True  # 준비 단계에서 켜져 있어도 화면은 평소대로 그려야 한다
+        self.render()
+        self.assertNotIn("CLOSE_BOARD_VIEW", self.action_names())
+        self.assertIn("OPEN_START_CONFIRM", self.action_names())
+
+    def test_board_view_does_not_change_game_state(self):
+        state = self.set_result_phase(GamePhase.VICTORY)
+        before = (state.phase, state.gold, state.life, state.current_stage, copy.deepcopy(state.towers))
+        self.press("OPEN_BOARD_VIEW")
+        self.press("CLOSE_BOARD_VIEW")
+        after = (state.phase, state.gold, state.life, state.current_stage, state.towers)
+        self.assertEqual(before, after)
+
+    def start_wave_in_progress(self):
+        """사신 1기를 소환하고 소동을 시작해 1초 진행시킨 상태를 만든다."""
+        self.game.step(Action(ActionType.BUY, slot_id=0))
+        self.click("START_WAVE")
+        for _ in range(60):
+            _advance_game(self.game, self.input, 1 / 60)
+        return self.game.state
+
+    def press_escape(self):
+        event = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE)
+        return self.input.handle_event(event, self.game.state)
+
+    def wave_snapshot(self):
+        state = self.game.state
+        return {
+            "elapsed": state.wave_elapsed,
+            "spawn_time": self.game.wave_manager.current_time,
+            "queued": len(self.game.wave_manager.spawn_queue),
+            "enemies": [(enemy.enemy_id, enemy.get_current_position()) for enemy in state.enemies],
+            "cooldowns": {slot: tower.get("cooldown") for slot, tower in state.towers.items()},
+            "effects": len(state.effects),
+            "accumulator": self.game._simulation_accumulator,
+        }
+
+    def test_escape_during_wave_opens_give_up_popup_instead_of_leaving(self):
+        state = self.start_wave_in_progress()
+        self.assertEqual(state.phase, GamePhase.WAVE_ACTIVE)
+        self.assertIsNone(self.press_escape())
+        self.assertTrue(self.input.give_up_confirm)
+        self.assertEqual(state.phase, GamePhase.WAVE_ACTIVE)
+        self.render("give-up-confirm")
+        buttons = self.renderer.buttons.buttons
+        self.assertEqual([b.action for b in buttons], ["GIVE_UP_YES", "GIVE_UP_NO"])
+        self.assertEqual([b.text for b in buttons], ["수호 포기하기", "계속 수호하기"])
+
+    def test_give_up_popup_pauses_game_time(self):
+        self.start_wave_in_progress()
+        self.press_escape()
+        before = self.wave_snapshot()
+        self.assertGreater(before["elapsed"], 0)
+        for _ in range(600):  # 10초 분량의 프레임이 지나가도
+            _advance_game(self.game, self.input, 1 / 60)
+        self.assertEqual(self.wave_snapshot(), before)
+
+    def test_resume_continues_from_paused_point_without_catching_up(self):
+        self.start_wave_in_progress()
+        self.press_escape()
+        before = self.wave_snapshot()
+        for _ in range(600):
+            _advance_game(self.game, self.input, 1 / 60)
+
+        self.assertIsNone(self.press("GIVE_UP_NO"))
+        self.assertFalse(self.input.give_up_confirm)
+        self.assertEqual(self.game.state.phase, GamePhase.WAVE_ACTIVE)
+        _advance_game(self.game, self.input, 1 / 60)  # 재개 후 첫 프레임
+
+        after = self.wave_snapshot()
+        step = 1 / 120
+        self.assertAlmostEqual(after["elapsed"] - before["elapsed"], 1 / 60, delta=step)
+        self.assertAlmostEqual(after["spawn_time"] - before["spawn_time"], 1 / 60, delta=step)
+        self.assertLessEqual(before["queued"] - after["queued"], 1)
+        moved = [
+            ((x1 - x0) ** 2 + (y1 - y0) ** 2) ** 0.5
+            for (id0, (x0, y0)), (id1, (x1, y1)) in zip(before["enemies"], after["enemies"])
+            if id0 == id1
+        ]
+        self.assertTrue(all(distance < 0.05 for distance in moved), moved)
+
+    def test_long_frame_after_resume_is_capped_so_nothing_jumps_ahead(self):
+        self.start_wave_in_progress()
+        self.press_escape()
+        self.press("GIVE_UP_NO")
+        before = self.wave_snapshot()
+        _advance_game(self.game, self.input, 5.0)  # 재개 순간 프레임이 5초 밀린 경우
+        after = self.wave_snapshot()
+        self.assertLessEqual(after["elapsed"] - before["elapsed"], MAX_FRAME_SECONDS + 1 / 120)
+        self.assertLessEqual(after["spawn_time"] - before["spawn_time"], MAX_FRAME_SECONDS + 1 / 120)
+
+    def test_escape_again_closes_give_up_popup_like_continue(self):
+        state = self.start_wave_in_progress()
+        self.press_escape()
+        self.assertTrue(self.input.give_up_confirm)
+        self.assertIsNone(self.press_escape())
+        self.assertFalse(self.input.give_up_confirm)
+        self.assertEqual(state.phase, GamePhase.WAVE_ACTIVE)
+        self.assertFalse(self.input.paused)
+
+    def test_give_up_yes_returns_to_title_and_next_game_starts_fresh(self):
+        self.start_wave_in_progress()
+        self.press_escape()
+        action = self.press("GIVE_UP_YES")
+        self.assertEqual(action.action_type, ActionType.BACK_TO_TITLE)
+        self.assertFalse(self.input.give_up_confirm)
+        self.game.step(action)
+        self.assertEqual(self.game.state.phase, GamePhase.TITLE)
+
+        self.game.step(Action(ActionType.START_GAME))
+        fresh = self.game.state
+        self.assertEqual(fresh.phase, GamePhase.PREPARATION)
+        self.assertEqual((fresh.current_stage, fresh.gold, fresh.life), (1, 200, 20))
+        self.assertFalse(fresh.towers)
+        self.assertFalse(fresh.enemies)
+
+    def test_give_up_popup_blocks_board_clicks_and_keys(self):
+        state = self.start_wave_in_progress()
+        self.press_escape()
+        position = self.renderer.projection.game_to_pixel(self.game.map.get_slot_position(0))
+        click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=position)
+        self.assertIsNone(self.input.handle_event(click, state))
+        for key in (pygame.K_SPACE, pygame.K_RETURN):
+            self.assertIsNone(self.input.handle_event(pygame.event.Event(pygame.KEYDOWN, key=key), state))
+        self.assertTrue(self.input.give_up_confirm)
+
+    def test_escape_in_preparation_opens_give_up_popup_instead_of_leaving(self):
+        state = self.game.state
+        self.game.step(Action(ActionType.BUY, slot_id=0))
+        self.assertEqual(state.phase, GamePhase.PREPARATION)
+        before = (state.gold, state.current_stage, dict(state.towers), state.selected_slot,
+                  state.actions_taken_this_wave)
+        self.assertIsNone(self.press_escape())
+        self.assertTrue(self.input.give_up_confirm)
+        self.assertEqual(state.phase, GamePhase.PREPARATION)
+        self.render("give-up-confirm-preparation")
+        buttons = self.renderer.buttons.buttons
+        self.assertEqual([b.text for b in buttons], ["수호 포기하기", "계속 수호하기"])
+
+        # 계속 수호하기: 팝업만 닫히고 준비 상태는 그대로다.
+        self.assertIsNone(self.press("GIVE_UP_NO"))
+        self.assertFalse(self.input.give_up_confirm)
+        after = (state.gold, state.current_stage, dict(state.towers), state.selected_slot,
+                 state.actions_taken_this_wave)
+        self.assertEqual(before, after)
+
+    def test_give_up_yes_in_preparation_returns_to_title(self):
+        self.game.step(Action(ActionType.BUY, slot_id=0))
+        self.press_escape()
+        action = self.press("GIVE_UP_YES")
+        self.assertEqual(action.action_type, ActionType.BACK_TO_TITLE)
+        self.game.step(action)
+        self.assertEqual(self.game.state.phase, GamePhase.TITLE)
+        self.game.step(Action(ActionType.START_GAME))
+        self.assertEqual((self.game.state.gold, self.game.state.current_stage), (200, 1))
+        self.assertFalse(self.game.state.towers)
+
+    def test_escape_in_preparation_closes_other_popups_first(self):
+        self.game.step(Action(ActionType.BUY, slot_id=0))
+        self.press("OPEN_START_CONFIRM")
+        self.assertTrue(self.input.start_confirm)
+        self.assertIsNone(self.press_escape())
+        self.assertFalse(self.input.start_confirm)
+        self.assertFalse(self.input.give_up_confirm)  # 먼저 열려 있던 팝업만 닫힌다
+
+    def test_escape_still_cancels_move_and_sell_confirmation(self):
+        state = self.game.state
+        self.game.step(Action(ActionType.BUY, slot_id=0))
+        self.game.step(Action(ActionType.SELECT_SLOT, slot_id=0))
+        self.game.step(Action(ActionType.BEGIN_RELOCATE, slot_id=0))
+        self.assertEqual(state.phase, GamePhase.MOVING_TOWER)
+        action = self.press_escape()
+        self.assertEqual(action.action_type, ActionType.CANCEL)
+        self.assertFalse(self.input.give_up_confirm)
+        self.game.step(action)
+
+        self.game.step(Action(ActionType.SELL, slot_id=0))
+        self.assertEqual(state.phase, GamePhase.SELL_CONFIRM)
+        action = self.press_escape()
+        self.assertEqual(action.action_type, ActionType.CANCEL)
+        self.assertFalse(self.input.give_up_confirm)
+
+    def test_give_up_popup_is_not_drawn_after_game_has_ended(self):
+        self.input.give_up_confirm = True  # 끝난 게임(패배·승리)에서는 켜져 있어도 그리지 않는다
+        for phase in (GamePhase.GAME_OVER, GamePhase.VICTORY):
+            with self.subTest(phase=phase.value):
+                self.set_result_phase(phase)
+                self.render()
+                self.assertNotIn("GIVE_UP_YES", self.action_names())
+
+    def test_escape_after_game_has_ended_still_goes_to_title(self):
+        # 이미 끝난 게임(패배·승리)의 Esc는 이번 변경 대상이 아니다(기존 동작 유지).
+        for phase in (GamePhase.GAME_OVER, GamePhase.VICTORY):
+            with self.subTest(phase=phase.value):
+                self.input.give_up_confirm = False
+                self.input.board_view = False
+                self.set_result_phase(phase)
+                action = self.press_escape()
+                self.assertEqual(action.action_type, ActionType.BACK_TO_TITLE)
+                self.assertFalse(self.input.give_up_confirm)
+
+    def test_escape_in_settlement_opens_give_up_popup_and_keeps_results(self):
+        state = self.set_result_phase(GamePhase.SETTLEMENT, stage=7)
+        before = (state.phase, state.gold, state.life, state.current_stage, copy.deepcopy(state.towers),
+                  state.wave_result.stage)
+        self.assertIsNone(self.press_escape())
+        self.assertTrue(self.input.give_up_confirm)
+        self.assertEqual(state.phase, GamePhase.SETTLEMENT)
+        self.render("give-up-confirm-settlement")
+        buttons = self.renderer.buttons.buttons
+        self.assertEqual([b.text for b in buttons], ["수호 포기하기", "계속 수호하기"])
+
+        # 계속 수호하기: 정산 팝업으로 돌아오고 결과는 그대로다.
+        self.assertIsNone(self.press("GIVE_UP_NO"))
+        self.assertFalse(self.input.give_up_confirm)
+        self.render()
+        self.assertEqual(self.action_names(), ["OPEN_BOARD_VIEW", "CONTINUE"])
+        after = (state.phase, state.gold, state.life, state.current_stage, state.towers, state.wave_result.stage)
+        self.assertEqual(before, after)
+
+    def test_give_up_yes_in_settlement_returns_to_title(self):
+        self.set_result_phase(GamePhase.SETTLEMENT, stage=7)
+        self.press_escape()
+        action = self.press("GIVE_UP_YES")
+        self.assertEqual(action.action_type, ActionType.BACK_TO_TITLE)
+        self.game.step(action)
+        self.assertEqual(self.game.state.phase, GamePhase.TITLE)
+        self.game.step(Action(ActionType.START_GAME))
+        self.assertEqual((self.game.state.current_stage, self.game.state.gold), (1, 200))
+
+    def test_enter_does_not_continue_while_give_up_popup_is_open_in_settlement(self):
+        state = self.set_result_phase(GamePhase.SETTLEMENT)
+        self.press_escape()
+        enter = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN)
+        self.assertIsNone(self.input.handle_event(enter, state))
+        self.assertTrue(self.input.give_up_confirm)
+        self.assertEqual(state.phase, GamePhase.SETTLEMENT)
+
+    def test_escape_order_in_settlement_board_view(self):
+        # 배치 확인 중 첫 Esc는 정산 팝업으로 복귀, 다음 Esc가 포기 확인 팝업이다.
+        state = self.set_result_phase(GamePhase.SETTLEMENT)
+        self.press("OPEN_BOARD_VIEW")
+        self.assertIsNone(self.press_escape())
+        self.assertFalse(self.input.board_view)
+        self.assertFalse(self.input.give_up_confirm)
+        self.assertIsNone(self.press_escape())
+        self.assertTrue(self.input.give_up_confirm)
+        self.assertEqual(state.phase, GamePhase.SETTLEMENT)
 
     def test_exhausted_preparation_actions_disable_sell(self):
         self.game.step(Action(ActionType.BUY, slot_id=0))

@@ -20,6 +20,18 @@ def _apply_action(game, renderer, action):
     return state
 
 
+# 한 프레임에 반영할 최대 시간(초). 일시정지 직후나 창 끌기 같은 프레임 지연이
+# 한꺼번에 계산되어 잡귀가 순간 이동하거나 공격이 몰아서 실행되는 일을 막는다.
+MAX_FRAME_SECONDS = 0.1
+
+
+def _advance_game(game, input_handler, dt):
+    """팝업으로 멈춘 동안에는 게임 시간을 진행하지 않는다(재개하면 멈춘 시점부터 이어진다)."""
+    if input_handler.paused:
+        return
+    game.update(min(dt, MAX_FRAME_SECONDS))
+
+
 def main():
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -47,8 +59,7 @@ def main():
         if input_handler.should_quit:
             running = False
 
-        if not input_handler.quit_confirm:
-            game.update(dt)
+        _advance_game(game, input_handler, dt)
         state = game.get_state()
         renderer.render(
             state,
@@ -57,6 +68,8 @@ def main():
             input_handler.buy_confirm,
             input_handler.no_tower_warning,
             input_handler.boss_warning,
+            input_handler.board_view,
+            input_handler.give_up_confirm,
         )
         pygame.display.flip()
 
