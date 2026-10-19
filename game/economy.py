@@ -103,6 +103,10 @@ class Economy:
     def can_start_wave(self, state: GameState) -> bool:
         return state.phase == GamePhase.PREPARATION
 
+    def has_defender(self, state: GameState) -> bool:
+        # 소환 연출 중인 사신도 이미 배치된 것으로 본다(towers는 구매 즉시 채워진다).
+        return bool(state.towers)
+
     def get_upgrade_cost(self, state: GameState, slot_id: int) -> int:
         if not state.has_tower(slot_id):
             return 0

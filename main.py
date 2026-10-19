@@ -50,7 +50,14 @@ def main():
         if not input_handler.quit_confirm:
             game.update(dt)
         state = game.get_state()
-        renderer.render(state, input_handler.quit_confirm)
+        renderer.render(
+            state,
+            input_handler.quit_confirm,
+            input_handler.start_confirm,
+            input_handler.buy_confirm,
+            input_handler.no_tower_warning,
+            input_handler.boss_warning,
+        )
         pygame.display.flip()
 
     pygame.quit()

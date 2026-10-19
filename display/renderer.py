@@ -127,7 +127,15 @@ class Renderer:
 
         return pygame.font.Font(None, size)
 
-    def render(self, state: GameState, quit_confirm: bool = False) -> None:
+    def render(
+        self,
+        state: GameState,
+        quit_confirm: bool = False,
+        start_confirm: bool = False,
+        buy_confirm: bool = False,
+        no_tower_warning: bool = False,
+        boss_warning: bool = False,
+    ) -> None:
         if state.phase in {GamePhase.TITLE, GamePhase.HELP}:
             self._upgrade_effects.clear()
         self.screen.fill(COLOR_BLACK)
@@ -138,6 +146,14 @@ class Renderer:
             self._render_help()
         else:
             self._render_game(state)
+        if start_confirm and state.phase == GamePhase.PREPARATION:
+            self._render_start_popup(state)
+        if boss_warning and state.phase == GamePhase.PREPARATION:
+            self._render_boss_warning_popup()
+        if buy_confirm and state.phase == GamePhase.PREPARATION:
+            self._render_buy_popup()
+        if no_tower_warning and state.phase == GamePhase.PREPARATION:
+            self._render_no_tower_popup()
         if quit_confirm:
             self._render_quit_popup()
 
@@ -172,13 +188,81 @@ class Renderer:
         ])
         self.buttons.render(self.screen, self.font_med)
 
+    def _render_start_popup(self, state: GameState) -> None:
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        self.screen.blit(overlay, (0, 0))
+        panel = pygame.Rect(430, 280, 420, 200)
+        draw_panel(self.screen, panel)
+        message = self.font_med.render(f"{state.current_stage}번째 수호를 시작할까요?", True, COLOR_WHITE)
+        self.screen.blit(message, message.get_rect(center=(panel.centerx, panel.y + 66)))
+        self.buttons.set_buttons([
+            Button(pygame.Rect(454, 410, 174, 42), "아니요", "START_WAVE_NO"),
+            Button(pygame.Rect(652, 410, 174, 42), "예", "START_WAVE_YES"),
+        ])
+        self.buttons.render(self.screen, self.font_med)
+
+    def _render_boss_warning_popup(self) -> None:
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        self.screen.blit(overlay, (0, 0))
+
+        width, height = 480, 280
+        panel = pygame.Rect((SCREEN_WIDTH - width) // 2, (SCREEN_HEIGHT - height) // 2, width, height)
+        draw_panel(self.screen, panel)
+
+        title = self.font_big.render("큰 소동 예고!", True, COLOR_RED)
+        self.screen.blit(title, title.get_rect(center=(panel.centerx, panel.y + 70)))
+        info = self.font_med.render("곧 강력한 보스 악귀가 나타납니다", True, COLOR_MOON)
+        self.screen.blit(info, info.get_rect(center=(panel.centerx, panel.y + 130)))
+        info2 = self.font_small.render("사신들을 점검하고 다음 소동에 대비할까요?", True, COLOR_GRAY)
+        self.screen.blit(info2, info2.get_rect(center=(panel.centerx, panel.y + 165)))
+
+        self.buttons.set_buttons([
+            Button(pygame.Rect(panel.centerx - 110, panel.bottom - 80, 220, 46), "수호 준비!", "CLOSE_BOSS_WARNING"),
+        ])
+        self.buttons.render(self.screen, self.font_med)
+
+    def _render_no_tower_popup(self) -> None:
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        self.screen.blit(overlay, (0, 0))
+
+        width, height = 480, 260
+        panel = pygame.Rect((SCREEN_WIDTH - width) // 2, (SCREEN_HEIGHT - height) // 2, width, height)
+        draw_panel(self.screen, panel)
+
+        title = self.font_big.render("앗, 사신이 없어!", True, COLOR_GOLD)
+        self.screen.blit(title, title.get_rect(center=(panel.centerx, panel.y + 70)))
+        body = self.font_med.render("결계를 지켜줄 사신을 먼저 소환해줘", True, COLOR_WHITE)
+        self.screen.blit(body, body.get_rect(center=(panel.centerx, panel.y + 130)))
+
+        self.buttons.set_buttons([
+            Button(pygame.Rect(panel.centerx - 110, panel.bottom - 76, 220, 46), "알겠어!", "CLOSE_NO_TOWER_WARNING"),
+        ])
+        self.buttons.render(self.screen, self.font_med)
+
+    def _render_buy_popup(self) -> None:
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        self.screen.blit(overlay, (0, 0))
+        panel = pygame.Rect(430, 280, 420, 200)
+        draw_panel(self.screen, panel)
+        message = self.font_med.render("랜덤 사신을 소환하시겠습니까?", True, COLOR_WHITE)
+        self.screen.blit(message, message.get_rect(center=(panel.centerx, panel.y + 66)))
+        self.buttons.set_buttons([
+            Button(pygame.Rect(454, 410, 174, 42), "아니요", "BUY_NO"),
+            Button(pygame.Rect(652, 410, 174, 42), "예", "BUY_YES"),
+        ])
+        self.buttons.render(self.screen, self.font_med)
+
     def _render_help(self) -> None:
         draw_panel(self.screen, pygame.Rect(310, 180, 660, 440))
         self._text("게임 방법", 360, 220, self.font_big, COLOR_WHITE)
         lines = [
             "01 빈 슬롯 선택: 100G로 사신 1종을 랜덤 소환합니다.",
             "02 사신 관리: 수호 준비 단계에서 강화, 이동, 판매합니다.",
-            "03 소동 시작: 악귀는 고정 경로, 사신은 자동 공격합니다.",
+            "03 수호 시작: 악귀는 고정 경로, 사신은 자동 공격합니다.",
             "04 결계 수호: 30번째 소동까지 해결하면 승리합니다.",
         ]
         for i, line in enumerate(lines):
@@ -212,10 +296,6 @@ class Renderer:
 
         title = self.font_big.render(f"{result.stage}번째 소동 해결!", True, COLOR_WHITE)
         self.screen.blit(title, title.get_rect(center=(panel.centerx, panel.y + 48)))
-        if result.boss_name:
-            boss_result = "처치 성공" if result.boss_kills else "결계 도달"
-            boss_line = self.font_small.render(f"{result.boss_name} · {boss_result}", True, COLOR_MOON)
-            self.screen.blit(boss_line, boss_line.get_rect(center=(panel.centerx, panel.y + 92)))
 
         rows = [
             (f"일반 악귀 {result.normal_kills}마리 처치 보상", f"{result.kill_gold} G"),
@@ -247,7 +327,7 @@ class Renderer:
         self._text(f"환급 {refund} G", 454, 388, self.font_med, COLOR_GOLD)
         self.buttons.set_buttons([
             Button(pygame.Rect(454, 460, 174, 42), "취소", "CANCEL"),
-            Button(pygame.Rect(652, 460, 174, 42), "판매 확정", "CONFIRM_SELL", self.economy.can_confirm_sell(state, selected)),
+            Button(pygame.Rect(652, 460, 174, 42), "판매", "CONFIRM_SELL", self.economy.can_confirm_sell(state, selected)),
         ])
 
     def _render_hud(self, state: GameState) -> None:
@@ -635,7 +715,7 @@ class Renderer:
             self._text("빈 돌판을 선택해 벽화 속 사신을 소환하세요", 66, 744, self.font_med, COLOR_WHITE)
             self._text("청룡 · 백호 · 주작 · 현무 중 하나가 달빛을 타고 도착합니다", 66, 779, self.font_small, COLOR_GRAY)
             buttons.extend([
-                Button(pygame.Rect(570, 765, 222, 38), "랜덤 사신 소환 100 G", "BUY", selected is not None and self.economy.can_buy(state, selected)),
+                Button(pygame.Rect(570, 765, 222, 38), "랜덤 사신 소환 100 G", "OPEN_BUY_CONFIRM", selected is not None and self.economy.can_buy(state, selected)),
                 Button(pygame.Rect(1022, 765, 188, 38), f"{state.current_stage}번째 웨이브 시작", "START_WAVE"),
             ])
 
@@ -675,7 +755,7 @@ class Renderer:
             buttons.extend([
                 Button(pygame.Rect(PANEL_X + 24, 558, 126, 40), "이동", "BEGIN_RELOCATE", False),
                 Button(pygame.Rect(PANEL_X + 158, 558, 126, 40), "판매", "SELL", False),
-                Button(pygame.Rect(PANEL_X + 24, 606, 260, 40), "랜덤 사신 소환 100 G", "BUY", False),
+                Button(pygame.Rect(PANEL_X + 24, 606, 260, 40), "랜덤 사신 소환 100 G", "OPEN_BUY_CONFIRM", False),
             ])
             buttons.append(Button(pygame.Rect(PANEL_X + 24, 672, 260, 42), f"배속 ×{state.combat_speed:g}", "CYCLE_SPEED"))
         elif state.phase == GamePhase.SETTLEMENT:
@@ -715,7 +795,7 @@ class Renderer:
         self._text("사신 소환", PANEL_X + 24, y, self.font_med, COLOR_WHITE)
         self._text("빈 슬롯 선택 후 랜덤 소환", PANEL_X + 24, y + 34, self.font_small, COLOR_GRAY)
         self._text("청룡 · 백호 · 주작 · 현무 각 25%", PANEL_X + 24, y + 66, self.font_small, COLOR_MOON)
-        buttons.append(Button(pygame.Rect(PANEL_X + 24, y + 102, 260, 40), "랜덤 사신 소환 100 G", "BUY", selected is not None and self.economy.can_buy(state, selected)))
+        buttons.append(Button(pygame.Rect(PANEL_X + 24, y + 102, 260, 40), "랜덤 사신 소환 100 G", "OPEN_BUY_CONFIRM", selected is not None and self.economy.can_buy(state, selected)))
 
         if selected is not None and state.has_tower(selected):
             tower = state.towers[selected]
@@ -730,13 +810,15 @@ class Renderer:
         desc = WaveManager().describe_stage(state.current_stage)
         self._text("다음 소동", PANEL_X + 24, 624, self.font_small, COLOR_GRAY)
         self._text(desc, PANEL_X + 24, 650, self.font_small, COLOR_WHITE)
-        buttons.append(Button(pygame.Rect(PANEL_X + 24, 682, 260, 40), f"{state.current_stage}번째 소동 시작", "START_WAVE"))
+        buttons.append(Button(pygame.Rect(PANEL_X + 24, 682, 260, 40), f"{state.current_stage}번째 수호 시작", "OPEN_START_CONFIRM"))
 
     def _render_result(self, state: GameState) -> None:
         if state.phase == GamePhase.GAME_OVER:
             title = "소동 해결 실패"
+            title_color = COLOR_RED
         else:
-            title = "결계를 지켜냈어요"
+            title = "결계 수호 성공!"
+            title_color = COLOR_MOON
         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 150))
         self.screen.blit(overlay, (0, 0))
@@ -745,7 +827,7 @@ class Renderer:
         panel = pygame.Rect((SCREEN_WIDTH - width) // 2, (SCREEN_HEIGHT - height) // 2, width, height)
         draw_panel(self.screen, panel)
 
-        title_surface = self.font_big.render(title, True, COLOR_RED)
+        title_surface = self.font_big.render(title, True, title_color)
         self.screen.blit(title_surface, title_surface.get_rect(center=(panel.centerx, panel.y + 70)))
         if state.phase == GamePhase.GAME_OVER:
             fail_text = f"{state.current_stage}번째 소동에서 실패했어요"
@@ -753,11 +835,15 @@ class Renderer:
             self.screen.blit(fail_surface, fail_surface.get_rect(center=(panel.centerx, panel.y + 150)))
             hint_surface = self.font_small.render("이런, 잡귀들을 막아내지 못했다… 다시 결계를 지켜볼까?", True, COLOR_MOON)
             self.screen.blit(hint_surface, hint_surface.get_rect(center=(panel.centerx, panel.y + 205)))
+        else:
+            success_text1 = self.font_med.render("모든 소동을 해결했다!", True, COLOR_WHITE)
+            self.screen.blit(success_text1, success_text1.get_rect(center=(panel.centerx, panel.y + 150)))
+            success_text2 = self.font_small.render("사신들과 함께 궁궐의 평화를 지켜냈다!", True, COLOR_GRAY)
+            self.screen.blit(success_text2, success_text2.get_rect(center=(panel.centerx, panel.y + 205)))
 
         button_y = panel.bottom - 80
         self.buttons.set_buttons([
-            Button(pygame.Rect(panel.centerx - 184, button_y, 174, 46), "다시 도전하기", "RESTART"),
-            Button(pygame.Rect(panel.centerx + 10, button_y, 174, 46), "처음으로", "BACK_TO_TITLE"),
+            Button(pygame.Rect(panel.centerx - 87, button_y, 174, 46), "처음으로", "BACK_TO_TITLE"),
         ])
 
     def _text(self, value: str, x: int, y: int, font: pygame.font.Font, color) -> None:

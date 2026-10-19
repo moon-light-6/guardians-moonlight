@@ -10,7 +10,7 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 
 import pygame
 
-from config import COLOR_GOLD, SCREEN_HEIGHT, SCREEN_WIDTH
+from config import COLOR_GOLD, PANEL_X, SCREEN_HEIGHT, SCREEN_WIDTH
 from display.input_handler import InputHandler
 from display.renderer import Renderer
 from display.render_sizes import TOWER_BOTTOM_OFFSET, TOWER_LEVEL_GAP, TOWER_Y_OFFSETS
@@ -40,7 +40,13 @@ class TestPygameUI(unittest.TestCase):
         self.input = InputHandler(self.renderer.buttons, self.renderer.projection)
 
     def render(self, name=None):
-        self.renderer.render(self.game.state)
+        self.renderer.render(
+            self.game.state,
+            start_confirm=self.input.start_confirm,
+            buy_confirm=self.input.buy_confirm,
+            no_tower_warning=self.input.no_tower_warning,
+            boss_warning=self.input.boss_warning,
+        )
         bounds = self.screen.get_rect()
         for button in self.renderer.buttons.buttons:
             self.assertTrue(bounds.contains(button.rect))
@@ -53,13 +59,153 @@ class TestPygameUI(unittest.TestCase):
             path.mkdir(parents=True, exist_ok=True)
             pygame.image.save(self.screen, str(path / f"{name}.png"))
 
-    def click(self, action_name):
+    def press(self, action_name):
         self.render()
         button = next(button for button in self.renderer.buttons.buttons if button.action == action_name)
         event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=button.rect.center)
-        action = self.input.handle_event(event, self.game.state)
+        return self.input.handle_event(event, self.game.state)
+
+    def click(self, action_name):
+        if action_name == "START_WAVE":
+            if not self.game.state.towers:
+                # 사신이 없으면 화면이 경고 팝업을 띄워 막는다(별도 테스트에서 확인).
+                # 사신 없이 시작하는 엔진 규칙이 필요한 테스트는 행동을 바로 보낸다.
+                self.game.step(Action(ActionType.START_WAVE))
+                return
+            # 소동 시작 버튼은 확인 팝업을 한 번 거친 뒤 "예"를 눌러야 시작된다.
+            self.assertIsNone(self.press("OPEN_START_CONFIRM"))
+            action_name = "START_WAVE_YES"
+        elif action_name == "BUY":
+            # 랜덤 소환 버튼도 확인 팝업에서 "예"를 눌러야 소환된다.
+            self.assertIsNone(self.press("OPEN_BUY_CONFIRM"))
+            action_name = "BUY_YES"
+        action = self.press(action_name)
         self.assertIsNotNone(action)
         _apply_action(self.game, self.renderer, action)
+
+    def select_empty_slot(self, slot_id=0):
+        self.game.step(Action(ActionType.SELECT_SLOT, slot_id=slot_id))
+
+    def test_buy_asks_for_confirmation_first(self):
+        self.select_empty_slot()
+        gold = self.game.state.gold
+        self.assertIsNone(self.press("OPEN_BUY_CONFIRM"))
+        self.assertTrue(self.input.buy_confirm)
+        self.assertEqual(self.game.state.gold, gold)
+        self.assertFalse(self.game.state.towers)
+        self.render("buy-confirm")
+        actions = {button.action for button in self.renderer.buttons.buttons}
+        self.assertEqual(actions, {"BUY_NO", "BUY_YES"})
+
+    def test_buy_confirm_no_closes_popup_without_summoning(self):
+        self.select_empty_slot()
+        gold = self.game.state.gold
+        self.press("OPEN_BUY_CONFIRM")
+        self.assertIsNone(self.press("BUY_NO"))
+        self.assertFalse(self.input.buy_confirm)
+        self.assertEqual(self.game.state.gold, gold)
+        self.assertFalse(self.game.state.towers)
+
+    def test_buy_confirm_yes_summons_tower_in_selected_slot(self):
+        self.select_empty_slot(2)
+        gold = self.game.state.gold
+        self.press("OPEN_BUY_CONFIRM")
+        action = self.press("BUY_YES")
+        self.assertEqual(action.action_type, ActionType.BUY)
+        self.assertEqual(action.slot_id, 2)
+        self.assertFalse(self.input.buy_confirm)
+        self.game.step(action)
+        self.assertIn(2, self.game.state.towers)
+        self.assertEqual(self.game.state.gold, gold - 100)
+
+    def test_escape_closes_buy_confirmation(self):
+        self.select_empty_slot()
+        self.press("OPEN_BUY_CONFIRM")
+        escape = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE)
+        self.assertIsNone(self.input.handle_event(escape, self.game.state))
+        self.assertFalse(self.input.buy_confirm)
+        self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
+
+    def test_start_without_tower_shows_warning_instead_of_confirmation(self):
+        self.assertFalse(self.game.state.towers)
+        self.assertIsNone(self.press("OPEN_START_CONFIRM"))
+        self.assertTrue(self.input.no_tower_warning)
+        self.assertFalse(self.input.start_confirm)
+        self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
+        self.render("no-tower-warning")
+        actions = {button.action for button in self.renderer.buttons.buttons}
+        self.assertEqual(actions, {"CLOSE_NO_TOWER_WARNING"})
+
+    def test_no_tower_warning_button_closes_and_start_is_still_blocked(self):
+        self.press("OPEN_START_CONFIRM")
+        self.assertIsNone(self.press("CLOSE_NO_TOWER_WARNING"))
+        self.assertFalse(self.input.no_tower_warning)
+        self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
+        self.assertIsNone(self.press("OPEN_START_CONFIRM"))
+        self.assertTrue(self.input.no_tower_warning)
+
+    def test_no_tower_warning_blocks_board_clicks_and_keys_and_escape_closes(self):
+        self.press("OPEN_START_CONFIRM")
+        position = self.renderer.projection.game_to_pixel(self.game.map.get_slot_position(0))
+        click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=position)
+        self.assertIsNone(self.input.handle_event(click, self.game.state))
+        space = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE)
+        self.assertIsNone(self.input.handle_event(space, self.game.state))
+        self.assertTrue(self.input.no_tower_warning)
+        self.assertFalse(self.input.start_confirm)
+        escape = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE)
+        self.assertIsNone(self.input.handle_event(escape, self.game.state))
+        self.assertFalse(self.input.no_tower_warning)
+        self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
+
+    def test_space_without_tower_shows_warning(self):
+        space = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE)
+        self.assertIsNone(self.input.handle_event(space, self.game.state))
+        self.assertTrue(self.input.no_tower_warning)
+        self.assertFalse(self.input.start_confirm)
+
+    def test_tower_being_summoned_counts_as_placed_for_start(self):
+        self.select_empty_slot()
+        self.click("BUY")  # 소환 연출 중에도 사신이 배치된 것으로 본다
+        self.assertTrue(self.game.state.summons)
+        self.assertIsNone(self.press("OPEN_START_CONFIRM"))
+        self.assertTrue(self.input.start_confirm)
+        self.assertFalse(self.input.no_tower_warning)
+
+    def test_start_wave_asks_for_confirmation_first(self):
+        self.game.step(Action(ActionType.BUY, slot_id=0))
+        self.assertIsNone(self.press("OPEN_START_CONFIRM"))
+        self.assertTrue(self.input.start_confirm)
+        self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
+        self.render("start-confirm")
+        actions = {button.action for button in self.renderer.buttons.buttons}
+        self.assertEqual(actions, {"START_WAVE_NO", "START_WAVE_YES"})
+
+    def test_start_confirm_no_closes_popup_without_starting(self):
+        self.game.step(Action(ActionType.BUY, slot_id=0))
+        self.press("OPEN_START_CONFIRM")
+        self.assertIsNone(self.press("START_WAVE_NO"))
+        self.assertFalse(self.input.start_confirm)
+        self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
+
+    def test_start_confirm_yes_starts_wave(self):
+        self.game.step(Action(ActionType.BUY, slot_id=0))
+        self.press("OPEN_START_CONFIRM")
+        action = self.press("START_WAVE_YES")
+        self.assertEqual(action.action_type, ActionType.START_WAVE)
+        self.assertFalse(self.input.start_confirm)
+        self.game.step(action)
+        self.assertEqual(self.game.state.phase, GamePhase.WAVE_ACTIVE)
+
+    def test_space_and_escape_use_start_confirmation(self):
+        self.game.step(Action(ActionType.BUY, slot_id=0))
+        space = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE)
+        self.assertIsNone(self.input.handle_event(space, self.game.state))
+        self.assertTrue(self.input.start_confirm)
+        escape = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE)
+        self.assertIsNone(self.input.handle_event(escape, self.game.state))
+        self.assertFalse(self.input.start_confirm)
+        self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
 
     def test_guardian_level_labels_follow_visual_feet(self):
         position = self.renderer.projection.game_to_pixel(self.game.map.get_slot_position(0))
@@ -286,7 +432,7 @@ class TestPygameUI(unittest.TestCase):
         self.click("BUY")
         self.assertTrue(self.game.state.has_tower(0))
 
-    def test_speed_button_cycle_and_restart(self):
+    def test_speed_button_cycle_and_back_to_title(self):
         self.click("START_WAVE")
         for index, speed in enumerate((1, 1.5, 2, 5, 1)):
             self.render(f"combat-speed-{index}")
@@ -296,7 +442,7 @@ class TestPygameUI(unittest.TestCase):
             self.click("CYCLE_SPEED")
         self.game.state.phase = GamePhase.GAME_OVER
         self.render("defeat")
-        self.click("RESTART")
+        self.click("BACK_TO_TITLE")
         self.assertEqual(self.game.state.combat_speed, 1)
 
     def test_six_boss_screens_use_distinct_artwork(self):
@@ -336,6 +482,66 @@ class TestPygameUI(unittest.TestCase):
         self.assertEqual(self.game.state.phase, GamePhase.VICTORY)
         self.render("victory")
 
+    def go_to_boss_preparation(self, stage_before=4):
+        state = self.game.state
+        state.current_stage = stage_before
+        state.phase = GamePhase.SETTLEMENT
+        self.click("CONTINUE")
+
+    def test_boss_warning_popup_shows_and_blocks_input_until_dismissed(self):
+        self.go_to_boss_preparation()
+        state = self.game.state
+        self.assertTrue(self.input.boss_warning)
+        self.render("boss-warning")
+        actions = {button.action for button in self.renderer.buttons.buttons}
+        self.assertEqual(actions, {"CLOSE_BOSS_WARNING"})
+        position = self.renderer.projection.game_to_pixel(self.game.map.get_slot_position(0))
+        click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=position)
+        self.assertIsNone(self.input.handle_event(click, state))
+        for key in (pygame.K_SPACE, pygame.K_ESCAPE, pygame.K_RETURN):
+            self.assertIsNone(self.input.handle_event(pygame.event.Event(pygame.KEYDOWN, key=key), state))
+        self.assertEqual(state.phase, GamePhase.PREPARATION)
+        self.assertTrue(self.input.boss_warning)
+
+    def test_boss_warning_button_dismisses_popup(self):
+        self.go_to_boss_preparation()
+        self.assertIsNone(self.press("CLOSE_BOSS_WARNING"))
+        self.assertFalse(self.input.boss_warning)
+        self.render()
+        actions = {button.action for button in self.renderer.buttons.buttons}
+        self.assertIn("OPEN_START_CONFIRM", actions)
+
+    def test_boss_warning_opens_for_every_stage_before_a_boss(self):
+        for before_boss in (4, 9, 14, 19, 24, 29):
+            with self.subTest(stage=before_boss):
+                self.input.boss_warning = False
+                self.go_to_boss_preparation(stage_before=before_boss)
+                self.assertEqual(self.game.state.current_stage, before_boss + 1)
+                self.assertTrue(self.input.boss_warning)
+
+    def test_enter_on_settlement_also_opens_boss_warning(self):
+        state = self.game.state
+        state.current_stage = 9
+        state.phase = GamePhase.SETTLEMENT
+        enter = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN)
+        action = self.input.handle_event(enter, state)
+        self.assertEqual(action.action_type, ActionType.CONTINUE)
+        self.assertTrue(self.input.boss_warning)
+        self.game.step(action)
+        self.assertEqual(state.current_stage, 10)
+
+    def test_no_boss_warning_before_normal_stage(self):
+        for before in (1, 3, 5, 10, 28):
+            with self.subTest(stage=before):
+                self.input.boss_warning = False
+                self.go_to_boss_preparation(stage_before=before)
+                self.assertFalse(self.input.boss_warning)
+
+    def test_no_boss_warning_when_finishing_last_stage(self):
+        self.go_to_boss_preparation(stage_before=30)
+        self.assertEqual(self.game.state.phase, GamePhase.VICTORY)
+        self.assertFalse(self.input.boss_warning)
+
     def test_exhausted_preparation_actions_disable_sell(self):
         self.game.step(Action(ActionType.BUY, slot_id=0))
         self.game.state.actions_taken_this_wave = 20
@@ -373,7 +579,7 @@ class TestPygameUI(unittest.TestCase):
         self.game.step(action)
         self.assertEqual(state.selected_slot, 0)
         self.render("combat-tower-selected")
-        for name in ("BUY", "BEGIN_RELOCATE", "SELL"):
+        for name in ("OPEN_BUY_CONFIRM", "BEGIN_RELOCATE", "SELL"):
             button = next(b for b in self.renderer.buttons.buttons if b.action == name)
             self.assertFalse(button.enabled)
             self.assertIsNone(self.input.handle_event(
@@ -415,6 +621,45 @@ class TestPygameUI(unittest.TestCase):
         for index, button in enumerate(buttons):
             for other in buttons[index + 1:]:
                 self.assertFalse(button.rect.colliderect(other.rect))
+
+    def test_clicking_background_in_combat_deselects_tower_and_shows_boss(self):
+        self.game.step(Action(ActionType.BUY, slot_id=0))
+        self.game.state.current_stage = 10
+        self.click("START_WAVE")
+        boss = Enemy.create(EnemyType.BOSS, self.game.map.get_path(), 2160, "철갓장군")
+        self.game.state.enemies = [boss]
+        state = self.game.state
+        self.assertEqual(state.selected_slot, 0)  # 사신을 소환하면 그 슬롯이 선택된 상태다
+        self.render("combat-tower-info")
+        self.assertIn("UPGRADE", {b.action for b in self.renderer.buttons.buttons})
+
+        # 사신이 없는 배경(판 바깥쪽 위쪽 모서리)을 누르면 선택이 풀리고 보스 정보가 나온다.
+        background = (5, 400)
+        self.assertIsNone(self.renderer.projection.pixel_to_slot(background))
+        action = self.input.handle_event(
+            pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=background), state)
+        self.assertEqual(action.action_type, ActionType.SELECT_SLOT)
+        self.assertIsNone(action.slot_id)
+        self.game.step(action)
+        self.assertIsNone(state.selected_slot)
+        self.render("combat-boss-info")
+        self.assertNotIn("UPGRADE", {b.action for b in self.renderer.buttons.buttons})
+
+        # 사신을 다시 누르면 사신 정보가 그대로 보인다.
+        position = self.renderer.projection.game_to_pixel(self.game.map.get_slot_position(0))
+        action = self.input.handle_event(
+            pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=position), state)
+        self.game.step(action)
+        self.assertEqual(state.selected_slot, 0)
+
+    def test_clicking_side_panel_background_in_combat_keeps_selected_tower(self):
+        self.game.step(Action(ActionType.BUY, slot_id=0))
+        self.click("START_WAVE")
+        self.render()
+        panel_background = (PANEL_X + 150, 450)
+        action = self.input.handle_event(
+            pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=panel_background), self.game.state)
+        self.assertIsNone(action)
 
     def test_settlement_shows_callback_kill_counts_and_gold(self):
         state = self.game.state
