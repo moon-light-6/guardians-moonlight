@@ -24,9 +24,18 @@ class Button:
     text: str
     action: str
     enabled: bool = True
+    image: Optional[pygame.Surface] = None  # 있으면 글자 대신 아이콘 버튼으로 그립니다
 
     def render(self, screen: pygame.Surface, font: pygame.font.Font) -> None:
         hovered = self.enabled and self.rect.collidepoint(pygame.mouse.get_pos())
+        if self.image is not None:
+            # 남색 원 바탕 + 금빛 테두리 위에 아이콘. 마우스를 올리면 바탕과 테두리가 밝아집니다.
+            radius = min(self.rect.size) // 2
+            fill, border = (COLOR_BUTTON_HOVER, COLOR_MOON) if hovered else (COLOR_BUTTON, COLOR_FRAME_GOLD)
+            pygame.draw.circle(screen, fill, self.rect.center, radius)
+            pygame.draw.circle(screen, border, self.rect.center, radius, 2)
+            screen.blit(self.image, self.image.get_rect(center=self.rect.center))
+            return
         if not self.enabled:
             fill, border, text_color = (30, 34, 48), (70, 74, 88), COLOR_GRAY
         elif hovered:

@@ -24,6 +24,8 @@ class InputHandler:
         self.should_quit = False
         # 게임 방법 화면의 현재 페이지(화면 전용 상태라 게임 상태에 넣지 않습니다)
         self.help_page = 0
+        # 게임 중 위에 겹쳐 연 게임 방법 창(열려 있는 동안 게임 진행을 멈춥니다)
+        self.help_overlay = False
 
     def handle_event(self, event: pygame.event.Event, state: GameState) -> Optional[Action]:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -49,6 +51,13 @@ class InputHandler:
                 return None
             if action_name == "SHOW_HELP":
                 self.help_page = 0
+            if action_name == "OPEN_HELP":
+                self.help_overlay = True
+                self.help_page = 0
+                return None
+            if action_name == "CLOSE_HELP":
+                self.help_overlay = False
+                return None
             if action_name == "OPEN_START_CONFIRM":
                 self._open_start_flow(state)
                 return None
@@ -110,6 +119,9 @@ class InputHandler:
             if state.phase == GamePhase.TITLE or self.quit_confirm:
                 self.quit_confirm = not self.quit_confirm
                 return None
+            if self.help_overlay:
+                self.help_overlay = False
+                return None
             if self.start_confirm or self.buy_confirm or self.no_tower_warning:
                 self.start_confirm = False
                 self.buy_confirm = False
@@ -118,10 +130,11 @@ class InputHandler:
             if self.boss_warning:
                 return None
             return Action(ActionType.CANCEL if state.phase in {GamePhase.MOVING_TOWER, GamePhase.SELL_CONFIRM} else ActionType.BACK_TO_TITLE)
-        if self._popup_open(state):
-            return None
-        if state.phase == GamePhase.HELP and key in {pygame.K_LEFT, pygame.K_RIGHT}:
+        if (state.phase == GamePhase.HELP or self.help_overlay) and not self.quit_confirm \
+                and key in {pygame.K_LEFT, pygame.K_RIGHT}:
             self._turn_help_page(-1 if key == pygame.K_LEFT else 1)
+            return None
+        if self._popup_open(state):
             return None
         if key == pygame.K_SPACE and state.phase == GamePhase.PREPARATION:
             self._open_start_flow(state)
@@ -133,8 +146,13 @@ class InputHandler:
     def _popup_open(self, state: GameState) -> bool:
         return (
             self.quit_confirm or self.start_confirm or self.buy_confirm
-            or self.no_tower_warning or self.boss_warning
+            or self.no_tower_warning or self.boss_warning or self.help_overlay
         )
+
+    @property
+    def is_paused(self) -> bool:
+        """종료 확인이나 게임 방법 창이 떠 있으면 게임 시간을 진행하지 않습니다."""
+        return self.quit_confirm or self.help_overlay
 
     def _continue_action(self, state: GameState) -> Action:
         """정산에서 계속하기: 다음 소동이 보스 소동이면 넘어간 뒤 큰 소동 예고 팝업을 연다."""

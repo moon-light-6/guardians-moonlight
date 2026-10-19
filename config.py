@@ -30,8 +30,9 @@ CLEAR_GOLD_BONUS_STAGES = frozenset({5, 10, 15, 20, 25, 26, 27, 28, 29, 30})
 
 GRID_ORIGIN = (42, 126)
 CELL_SIZE = 42
-PANEL_X = 930
-PANEL_WIDTH = 310
+# 오른쪽 관리 패널: 맨 오른쪽 슬롯(클릭 영역 x≈959)과 겹치지 않도록 왼쪽 끝을 964로 둡니다.
+PANEL_X = 964
+PANEL_WIDTH = 276
 
 # 맵은 data/map.json에 기록된 원본 이미지 픽셀을 기준으로 합니다. 전투 거리만
 # 기존 밸런스를 유지할 수 있도록 이 값으로 게임 단위로 환산합니다.

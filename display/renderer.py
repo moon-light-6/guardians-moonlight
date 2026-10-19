@@ -19,6 +19,7 @@ from config import (
     COLOR_GREEN,
     COLOR_MINT,
     COLOR_MOON,
+    COLOR_OVERLAY,
     COLOR_PANEL,
     COLOR_PANEL_DARK,
     COLOR_PURPLE,
@@ -60,6 +61,13 @@ from game.tower import Tower, TowerType
 from game.wave import WaveManager
 
 
+# 오른쪽 관리 패널 안쪽 영역(좌우 여백 24px). 패널 폭을 바꾸면 버튼 폭도 함께 맞춰집니다.
+PANEL_INNER_X = PANEL_X + 24
+PANEL_INNER_W = PANEL_WIDTH - 48
+PANEL_HALF_W = (PANEL_INNER_W - 8) // 2
+PANEL_HALF2_X = PANEL_INNER_X + PANEL_HALF_W + 8
+
+
 class Renderer:
     UPGRADE_EFFECT_SECONDS = 0.7
 
@@ -75,6 +83,7 @@ class Renderer:
         self.economy = Economy()
         self.background = self._load_background()
         self.start_background = self._load_start_background()
+        self.help_icon = self._load_help_icon()
         self.show_map_debug = MAP_DEBUG_DEFAULT
         self.debug_show_slots = True
         self.debug_show_route = True
@@ -134,6 +143,13 @@ class Renderer:
         crop.center = scaled.get_rect().center
         return scaled.subsurface(crop).copy()
 
+    def _load_help_icon(self) -> pygame.Surface:
+        """게임 중 오른쪽 위 '게임 방법' 버튼 아이콘(투명 배경 PNG)."""
+        path = Path(__file__).resolve().parents[1] / "assets" / "backgrounds" / "question_mark.png"
+        image = pygame.image.load(str(path)).convert_alpha()
+        icon_size = round(self.HELP_ICON_SIZE * 0.78)  # 원 바탕 안쪽에 여백을 둡니다
+        return pygame.transform.smoothscale(image, (icon_size, icon_size))
+
     def toggle_map_debug(self) -> bool:
         self.show_map_debug = not self.show_map_debug
         return self.show_map_debug
@@ -161,6 +177,7 @@ class Renderer:
         no_tower_warning: bool = False,
         boss_warning: bool = False,
         help_page: int = 0,
+        help_overlay: bool = False,
     ) -> None:
         if state.phase in {GamePhase.TITLE, GamePhase.HELP}:
             self._upgrade_effects.clear()
@@ -183,6 +200,8 @@ class Renderer:
             self._render_buy_popup()
         if no_tower_warning and state.phase == GamePhase.PREPARATION:
             self._render_no_tower_popup()
+        if help_overlay and state.phase not in {GamePhase.TITLE, GamePhase.HELP}:
+            self._render_help_overlay(help_page)
         if quit_confirm:
             self._render_quit_popup()
 
@@ -285,17 +304,27 @@ class Renderer:
     # ===== 게임 방법 (3페이지) =====
 
     HELP_PAGE_TITLES = ("플레이 순서", "사신 4종", "악귀와 보스")
+    HELP_ICON_SIZE = 56
     HELP_GUARDIAN_ORDER = ("LIGHTNING", "ARCHER", "CANNON", "ICE")
 
-    def _render_help(self, page: int = 0) -> None:
+    def _render_help_overlay(self, page: int) -> None:
+        """게임 화면 위에 게임 방법을 겹쳐 띄웁니다(열려 있는 동안 main.py가 진행을 멈춤)."""
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill(COLOR_OVERLAY)
+        self.screen.blit(overlay, (0, 0))
+        self._render_help(page, in_game=True)
+
+    def _render_help(self, page: int = 0, in_game: bool = False) -> None:
         page = max(0, min(HELP_PAGE_COUNT - 1, page))
         panel = pygame.Rect(90, 40, 1100, 760)
         draw_panel(self.screen, panel)
         cx = panel.centerx
         self._text_center("게임 방법", cx, 62, self.font_big, COLOR_MOON)
         draw_title_ornament(self.screen, cx, 104, 220)
-        self._text_center(f"{page + 1} / {HELP_PAGE_COUNT}  ·  {self.HELP_PAGE_TITLES[page]}",
-                          cx, 118, self.font_small, COLOR_GOLD)
+        subtitle = f"{page + 1} / {HELP_PAGE_COUNT}  ·  {self.HELP_PAGE_TITLES[page]}"
+        if in_game:
+            subtitle += "  ·  일시정지 중"
+        self._text_center(subtitle, cx, 118, self.font_small, COLOR_GOLD)
 
         (self._render_help_steps, self._render_help_guardians, self._render_help_enemies)[page]()
 
@@ -309,7 +338,8 @@ class Renderer:
 
         self.buttons.set_buttons([
             Button(pygame.Rect(370, 724, 170, 46), "◀ 이전", "HELP_PREV", page > 0),
-            Button(pygame.Rect(555, 724, 170, 46), "알겠어요", "BACK_TO_TITLE"),
+            Button(pygame.Rect(555, 724, 170, 46), *(("닫고 계속하기", "CLOSE_HELP") if in_game
+                                                     else ("알겠어요", "BACK_TO_TITLE"))),
             Button(pygame.Rect(740, 724, 170, 46), "다음 ▶", "HELP_NEXT", page < HELP_PAGE_COUNT - 1),
         ])
         self.buttons.render(self.screen, self.font_med)
@@ -468,6 +498,12 @@ class Renderer:
         self._render_hud(state)
         # 기존 관리 패널의 코드와 동작을 그대로 유지합니다.
         self._render_side_panel(state)
+        if state.phase not in {GamePhase.SELL_CONFIRM, GamePhase.SETTLEMENT,
+                               GamePhase.GAME_OVER, GamePhase.VICTORY}:
+            size = self.HELP_ICON_SIZE
+            self.buttons.buttons.append(
+                Button(pygame.Rect(PANEL_X + PANEL_WIDTH - size, 32, size, size), "", "OPEN_HELP", image=self.help_icon)
+            )
         if state.phase == GamePhase.SELL_CONFIRM:
             self._render_sell_popup(state)
         elif state.phase == GamePhase.SETTLEMENT:
@@ -936,21 +972,21 @@ class Renderer:
                     self._text(f"{boss.name} · HP {int(boss.health)}/{boss.max_health}", PANEL_X + 24, y + 152, self.font_small, COLOR_MOON)
                 self._render_tower_information(state.towers[selected], y + 186)
                 cost = self.economy.get_upgrade_cost(state, selected)
-                buttons.append(Button(pygame.Rect(PANEL_X + 24, 510, 260, 40), f"강화 {cost} G", "UPGRADE", self.economy.can_upgrade(state, selected)))
+                buttons.append(Button(pygame.Rect(PANEL_INNER_X, 510, PANEL_INNER_W, 40), f"강화 {cost} G", "UPGRADE", self.economy.can_upgrade(state, selected)))
             elif boss:
                 self._text(boss.name, PANEL_X + 24, y + 170, self.font_med, COLOR_MOON)
                 self._text(f"보스 악귀 HP {int(boss.health)} / {boss.max_health}", PANEL_X + 24, y + 204, self.font_small, COLOR_RED)
                 portrait = self.boss_portraits[boss.name, 130]
                 self.screen.blit(portrait, portrait.get_rect(center=(PANEL_X + PANEL_WIDTH // 2, 450)))
                 hp_ratio = max(0, boss.health / boss.max_health)
-                pygame.draw.rect(self.screen, COLOR_PANEL, (PANEL_X + 24, 542, 260, 10))
-                pygame.draw.rect(self.screen, COLOR_PURPLE, (PANEL_X + 24, 542, int(260 * hp_ratio), 10))
+                pygame.draw.rect(self.screen, COLOR_PANEL, (PANEL_INNER_X, 542, PANEL_INNER_W, 10))
+                pygame.draw.rect(self.screen, COLOR_PURPLE, (PANEL_INNER_X, 542, int(PANEL_INNER_W * hp_ratio), 10))
             buttons.extend([
-                Button(pygame.Rect(PANEL_X + 24, 558, 126, 40), "이동", "BEGIN_RELOCATE", False),
-                Button(pygame.Rect(PANEL_X + 158, 558, 126, 40), "판매", "SELL", False),
-                Button(pygame.Rect(PANEL_X + 24, 606, 260, 40), "랜덤 사신 소환 100 G", "OPEN_BUY_CONFIRM", False),
+                Button(pygame.Rect(PANEL_INNER_X, 558, PANEL_HALF_W, 40), "이동", "BEGIN_RELOCATE", False),
+                Button(pygame.Rect(PANEL_HALF2_X, 558, PANEL_HALF_W, 40), "판매", "SELL", False),
+                Button(pygame.Rect(PANEL_INNER_X, 606, PANEL_INNER_W, 40), "랜덤 사신 소환 100 G", "OPEN_BUY_CONFIRM", False),
             ])
-            buttons.append(Button(pygame.Rect(PANEL_X + 24, 672, 260, 42), f"배속 ×{state.combat_speed:g}", "CYCLE_SPEED"))
+            buttons.append(Button(pygame.Rect(PANEL_INNER_X, 672, PANEL_INNER_W, 42), f"배속 ×{state.combat_speed:g}", "CYCLE_SPEED"))
         elif state.phase == GamePhase.SETTLEMENT:
             self._text("정산 중", PANEL_X + 24, y, self.font_med, COLOR_WHITE)
             self._text("소동 해결 결과를 확인하세요", PANEL_X + 24, y + 34, self.font_small, COLOR_GRAY)
@@ -976,7 +1012,7 @@ class Renderer:
         if state.phase == GamePhase.MOVING_TOWER:
             self._text("사신 이동", PANEL_X + 24, y, self.font_med, COLOR_WHITE)
             self._text("옮길 빈 슬롯을 선택하세요", PANEL_X + 24, y + 38, self.font_small, COLOR_GRAY)
-            buttons.append(Button(pygame.Rect(PANEL_X + 24, 666, 260, 40), "취소", "CANCEL"))
+            buttons.append(Button(pygame.Rect(PANEL_INNER_X, 666, PANEL_INNER_W, 40), "취소", "CANCEL"))
             return
         if state.phase == GamePhase.SELL_CONFIRM and selected is not None and state.has_tower(selected):
             tower = state.towers[selected]
@@ -988,7 +1024,7 @@ class Renderer:
         self._text("사신 소환", PANEL_X + 24, y, self.font_med, COLOR_WHITE)
         self._text("빈 슬롯 선택 후 랜덤 소환", PANEL_X + 24, y + 34, self.font_small, COLOR_GRAY)
         self._text("청룡 · 백호 · 주작 · 현무 각 25%", PANEL_X + 24, y + 66, self.font_small, COLOR_MOON)
-        buttons.append(Button(pygame.Rect(PANEL_X + 24, y + 102, 260, 40), "랜덤 사신 소환 100 G", "OPEN_BUY_CONFIRM", selected is not None and self.economy.can_buy(state, selected)))
+        buttons.append(Button(pygame.Rect(PANEL_INNER_X, y + 102, PANEL_INNER_W, 40), "랜덤 사신 소환 100 G", "OPEN_BUY_CONFIRM", selected is not None and self.economy.can_buy(state, selected)))
 
         if selected is not None and state.has_tower(selected):
             tower = state.towers[selected]
@@ -996,14 +1032,21 @@ class Renderer:
             self._render_tower_information(tower, y + 170)
             self._text(f"판매 환급 {refund} G", PANEL_X + 24, y + 330, self.font_small, COLOR_GOLD)
             cost = self.economy.get_upgrade_cost(state, selected)
-            buttons.append(Button(pygame.Rect(PANEL_X + 24, y + 370, 260, 40), f"강화 {cost} G", "UPGRADE", self.economy.can_upgrade(state, selected)))
-            buttons.append(Button(pygame.Rect(PANEL_X + 24, y + 418, 126, 40), "이동", "BEGIN_RELOCATE", self.economy.can_take_preparation_action(state)))
-            buttons.append(Button(pygame.Rect(PANEL_X + 158, y + 418, 126, 40), "판매", "SELL", self.economy.can_sell(state, selected)))
+            buttons.append(Button(pygame.Rect(PANEL_INNER_X, y + 370, PANEL_INNER_W, 40), f"강화 {cost} G", "UPGRADE", self.economy.can_upgrade(state, selected)))
+            buttons.append(Button(pygame.Rect(PANEL_INNER_X, y + 418, PANEL_HALF_W, 40), "이동", "BEGIN_RELOCATE", self.economy.can_take_preparation_action(state)))
+            buttons.append(Button(pygame.Rect(PANEL_HALF2_X, y + 418, PANEL_HALF_W, 40), "판매", "SELL", self.economy.can_sell(state, selected)))
 
         desc = WaveManager().describe_stage(state.current_stage)
-        self._text("다음 소동", PANEL_X + 24, 624, self.font_small, COLOR_GRAY)
-        self._text(desc, PANEL_X + 24, 650, self.font_small, COLOR_WHITE)
-        buttons.append(Button(pygame.Rect(PANEL_X + 24, 682, 260, 40), f"{state.current_stage}번째 수호 시작", "OPEN_START_CONFIRM"))
+        # 보스 소동 설명은 패널 폭보다 길 수 있어 " · " 기준으로 두 줄로 나눕니다.
+        # 이동/판매 버튼(아래 끝 y=612)과 수호 시작 버튼(y=682) 사이 70px 안에 들어가도록 배치합니다.
+        if self.font_small.size(desc)[0] <= PANEL_INNER_W:
+            self._text("다음 소동", PANEL_INNER_X, 624, self.font_small, COLOR_GRAY)
+            self._text(desc, PANEL_INNER_X, 650, self.font_small, COLOR_WHITE)
+        else:
+            self._text("다음 소동", PANEL_INNER_X, 616, self.font_small, COLOR_GRAY)
+            for i, line in enumerate(desc.split(" · ")):
+                self._text(line, PANEL_INNER_X, 638 + i * 21, self.font_small, COLOR_WHITE)
+        buttons.append(Button(pygame.Rect(PANEL_INNER_X, 682, PANEL_INNER_W, 40), f"{state.current_stage}번째 수호 시작", "OPEN_START_CONFIRM"))
 
     def _render_result(self, state: GameState) -> None:
         if state.phase == GamePhase.GAME_OVER:

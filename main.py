@@ -47,7 +47,7 @@ def main():
         if input_handler.should_quit:
             running = False
 
-        if not input_handler.quit_confirm:
+        if not input_handler.is_paused:
             game.update(dt)
         state = game.get_state()
         renderer.render(
@@ -58,6 +58,7 @@ def main():
             input_handler.no_tower_warning,
             input_handler.boss_warning,
             help_page=input_handler.help_page,
+            help_overlay=input_handler.help_overlay,
         )
         pygame.display.flip()
 

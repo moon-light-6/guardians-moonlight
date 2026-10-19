@@ -765,5 +765,68 @@ class TestPygameUI(unittest.TestCase):
             self.assertEqual(ring.size, (25, 12))
 
 
+    # ===== 게임 중 게임 방법 버튼(일시정지) =====
+
+    def key(self, key):
+        return self.input.handle_event(pygame.event.Event(pygame.KEYDOWN, key=key), self.game.state)
+
+    def test_in_game_help_button_opens_overlay_without_changing_phase(self):
+        self.render()
+        button = next(b for b in self.renderer.buttons.buttons if b.action == "OPEN_HELP")
+        self.assertGreaterEqual(button.rect.left, PANEL_X)
+        self.assertLess(button.rect.bottom, 126)
+        self.input.help_page = 2
+        self.assertIsNone(self.press("OPEN_HELP"))
+        self.assertTrue(self.input.help_overlay)
+        self.assertTrue(self.input.is_paused)
+        self.assertEqual(self.input.help_page, 0)
+        self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
+
+    def test_in_game_help_freezes_wave_until_closed(self):
+        self.game.step(Action(ActionType.BUY, slot_id=0))
+        self.game.step(Action(ActionType.START_WAVE))
+        for _ in range(240):
+            self.game.update(1 / 60)
+        self.assertEqual(self.game.state.phase, GamePhase.WAVE_ACTIVE)
+        self.assertIsNone(self.press("OPEN_HELP"))
+        before = (self.game.state.wave_elapsed,
+                  [enemy.distance_travelled for enemy in self.game.state.enemies])
+        for _ in range(120):
+            if not self.input.is_paused:  # main.py와 같은 조건
+                self.game.update(1 / 60)
+        self.assertEqual(before, (self.game.state.wave_elapsed,
+                                  [enemy.distance_travelled for enemy in self.game.state.enemies]))
+
+        self.renderer.render(self.game.state, help_page=0, help_overlay=True)
+        close = next(b for b in self.renderer.buttons.buttons if b.action == "CLOSE_HELP")
+        event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=close.rect.center)
+        self.assertIsNone(self.input.handle_event(event, self.game.state))
+        self.assertFalse(self.input.is_paused)
+        self.game.update(1 / 60)
+        self.assertGreater(self.game.state.wave_elapsed, before[0])
+
+    def test_in_game_help_blocks_game_input_and_supports_keys(self):
+        self.assertIsNone(self.press("OPEN_HELP"))
+        self.assertIsNone(self.key(pygame.K_SPACE))
+        self.assertFalse(self.input.start_confirm)
+        slot_pos = self.renderer.projection.game_to_pixel(self.game.map.get_slot_position(0))
+        event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=slot_pos)
+        self.assertIsNone(self.input.handle_event(event, self.game.state))
+        self.key(pygame.K_RIGHT)
+        self.assertEqual(self.input.help_page, 1)
+        self.key(pygame.K_LEFT)
+        self.assertEqual(self.input.help_page, 0)
+        self.assertIsNone(self.key(pygame.K_ESCAPE))
+        self.assertFalse(self.input.help_overlay)
+        self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
+
+    def test_in_game_help_button_hidden_during_result_popups(self):
+        for phase in (GamePhase.GAME_OVER, GamePhase.VICTORY):
+            with self.subTest(phase=phase):
+                self.game.state.phase = phase
+                self.render()
+                self.assertNotIn("OPEN_HELP", [b.action for b in self.renderer.buttons.buttons])
+
+
 if __name__ == "__main__":
     unittest.main()
