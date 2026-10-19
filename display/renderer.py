@@ -136,6 +136,7 @@ class Renderer:
         no_tower_warning: bool = False,
         boss_warning: bool = False,
         board_view: bool = False,
+        give_up_confirm: bool = False,
     ) -> None:
         if state.phase in {GamePhase.TITLE, GamePhase.HELP}:
             self._upgrade_effects.clear()
@@ -155,6 +156,8 @@ class Renderer:
             self._render_buy_popup()
         if no_tower_warning and state.phase == GamePhase.PREPARATION:
             self._render_no_tower_popup()
+        if give_up_confirm and state.phase in {GamePhase.WAVE_ACTIVE, GamePhase.PREPARATION, GamePhase.SETTLEMENT}:
+            self._render_give_up_popup()
         if quit_confirm:
             self._render_quit_popup()
 
@@ -240,6 +243,29 @@ class Renderer:
 
         self.buttons.set_buttons([
             Button(pygame.Rect(panel.centerx - 110, panel.bottom - 76, 220, 46), "알겠어!", "CLOSE_NO_TOWER_WARNING"),
+        ])
+        self.buttons.render(self.screen, self.font_med)
+
+    def _render_give_up_popup(self) -> None:
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        self.screen.blit(overlay, (0, 0))
+
+        width, height = 520, 260
+        panel = pygame.Rect((SCREEN_WIDTH - width) // 2, (SCREEN_HEIGHT - height) // 2, width, height)
+        draw_panel(self.screen, panel)
+
+        title = self.font_big.render("수호를 포기할거야?", True, COLOR_RED)
+        self.screen.blit(title, title.get_rect(center=(panel.centerx, panel.y + 66)))
+        body = self.font_med.render("아직 결계를 지키고 있어! 정말 나갈 거야?", True, COLOR_WHITE)
+        self.screen.blit(body, body.get_rect(center=(panel.centerx, panel.y + 126)))
+
+        button_w, gap = 200, 20
+        left_x = panel.centerx - (button_w * 2 + gap) // 2
+        button_y = panel.bottom - 76
+        self.buttons.set_buttons([
+            Button(pygame.Rect(left_x, button_y, button_w, 46), "수호 포기하기", "GIVE_UP_YES", secondary=True),
+            Button(pygame.Rect(left_x + button_w + gap, button_y, button_w, 46), "계속 수호하기", "GIVE_UP_NO"),
         ])
         self.buttons.render(self.screen, self.font_med)
 

@@ -13,6 +13,9 @@ from game.wave import WaveManager
 # 정산·패배·승리 때만 팝업을 잠시 치우고 게임판을 볼 수 있다(화면 표시 방식이라 엔진은 모른다).
 _RESULT_PHASES = {GamePhase.SETTLEMENT, GamePhase.GAME_OVER, GamePhase.VICTORY}
 
+# Esc로 나가기 전에 한 번 더 묻는 단계. 이동·판매 확인 중의 Esc는 기존처럼 그 동작을 취소한다.
+_GIVE_UP_PHASES = {GamePhase.WAVE_ACTIVE, GamePhase.PREPARATION, GamePhase.SETTLEMENT}
+
 
 class InputHandler:
     def __init__(self, buttons: ButtonLayer, projection: MapProjection):
@@ -25,7 +28,13 @@ class InputHandler:
         self.no_tower_warning = False
         self.boss_warning = False
         self.board_view = False
+        self.give_up_confirm = False
         self.should_quit = False
+
+    @property
+    def paused(self) -> bool:
+        """이 팝업이 떠 있는 동안 화면 루프는 게임 시간을 진행시키지 않는다."""
+        return self.quit_confirm or self.give_up_confirm
 
     def handle_event(self, event: pygame.event.Event, state: GameState) -> Optional[Action]:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -55,6 +64,12 @@ class InputHandler:
             if action_name == "CLOSE_BOSS_WARNING":
                 self.boss_warning = False
                 return None
+            if action_name == "GIVE_UP_NO":
+                self.give_up_confirm = False  # 멈춘 시점부터 그대로 재개
+                return None
+            if action_name == "GIVE_UP_YES":
+                self.give_up_confirm = False
+                return Action(ActionType.BACK_TO_TITLE)
             if action_name == "OPEN_BOARD_VIEW":
                 self.board_view = state.phase in _RESULT_PHASES
                 return None
@@ -115,6 +130,10 @@ class InputHandler:
             if state.phase == GamePhase.TITLE or self.quit_confirm:
                 self.quit_confirm = not self.quit_confirm
                 return None
+            if self.give_up_confirm:
+                # 포기 확인 중 Esc는 '계속 수호하기'와 같다.
+                self.give_up_confirm = False
+                return None
             if self.start_confirm or self.buy_confirm or self.no_tower_warning:
                 self.start_confirm = False
                 self.buy_confirm = False
@@ -125,6 +144,11 @@ class InputHandler:
             if self.board_view:
                 # 배치 확인 중 Esc는 타이틀로 나가지 않고 결과 팝업으로 돌아온다.
                 self.board_view = False
+                return None
+            if state.phase in _GIVE_UP_PHASES:
+                # 소동 도중·준비·정산 단계의 Esc는 바로 나가지 않고 포기 확인 팝업을 띄운다.
+                # (소동 도중이면 화면 루프가 게임 시간도 멈춘다.)
+                self.give_up_confirm = True
                 return None
             return Action(ActionType.CANCEL if state.phase in {GamePhase.MOVING_TOWER, GamePhase.SELL_CONFIRM} else ActionType.BACK_TO_TITLE)
         if self._popup_open(state):
@@ -139,7 +163,7 @@ class InputHandler:
     def _popup_open(self, state: GameState) -> bool:
         return (
             self.quit_confirm or self.start_confirm or self.buy_confirm
-            or self.no_tower_warning or self.boss_warning
+            or self.no_tower_warning or self.boss_warning or self.give_up_confirm
         )
 
     def _continue_action(self, state: GameState) -> Action:
