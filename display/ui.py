@@ -3,7 +3,19 @@ from typing import List, Optional, Tuple
 
 import pygame
 
-from config import COLOR_BLUE, COLOR_GRAY, COLOR_PANEL_DARK, COLOR_WHITE
+from config import (
+    COLOR_BUTTON,
+    COLOR_BUTTON_HOVER,
+    COLOR_FRAME_GOLD,
+    COLOR_FRAME_INNER,
+    COLOR_GRAY,
+    COLOR_MOON,
+    COLOR_PANEL_DARK,
+)
+
+
+# 게임 방법 화면 페이지 수 (renderer와 input_handler가 함께 사용)
+HELP_PAGE_COUNT = 3
 
 
 @dataclass
@@ -14,13 +26,16 @@ class Button:
     enabled: bool = True
 
     def render(self, screen: pygame.Surface, font: pygame.font.Font) -> None:
-        color = COLOR_BLUE if self.enabled else (67, 73, 91)
-        mouse_pos = pygame.mouse.get_pos()
-        if self.enabled and self.rect.collidepoint(mouse_pos):
-            color = (105, 162, 215)
-        pygame.draw.rect(screen, color, self.rect, border_radius=8)
-        pygame.draw.rect(screen, (156, 178, 205), self.rect, 1, border_radius=8)
-        text = font.render(self.text, True, COLOR_WHITE if self.enabled else COLOR_GRAY)
+        hovered = self.enabled and self.rect.collidepoint(pygame.mouse.get_pos())
+        if not self.enabled:
+            fill, border, text_color = (30, 34, 48), (70, 74, 88), COLOR_GRAY
+        elif hovered:
+            fill, border, text_color = COLOR_BUTTON_HOVER, COLOR_MOON, COLOR_MOON
+        else:
+            fill, border, text_color = COLOR_BUTTON, COLOR_FRAME_GOLD, COLOR_MOON
+        pygame.draw.rect(screen, fill, self.rect, border_radius=8)
+        pygame.draw.rect(screen, border, self.rect, 1, border_radius=8)
+        text = font.render(self.text, True, text_color)
         screen.blit(text, text.get_rect(center=self.rect.center))
 
     def hit(self, pos: Tuple[int, int]) -> Optional[str]:
@@ -53,5 +68,30 @@ def panel_rect(x: int, y: int, w: int, h: int) -> pygame.Rect:
 
 
 def draw_panel(screen: pygame.Surface, rect: pygame.Rect) -> None:
-    pygame.draw.rect(screen, COLOR_PANEL_DARK, rect, border_radius=8)
-    pygame.draw.rect(screen, (70, 86, 120), rect, 1, border_radius=8)
+    # 반투명 남색 바탕 + 금빛 이중 테두리 + 모서리 꺾쇠(단청 액자 느낌)
+    surface = pygame.Surface(rect.size, pygame.SRCALPHA)
+    pygame.draw.rect(surface, (*COLOR_PANEL_DARK, 235), surface.get_rect(), border_radius=10)
+    screen.blit(surface, rect.topleft)
+    pygame.draw.rect(screen, COLOR_FRAME_GOLD, rect, 2, border_radius=10)
+    pygame.draw.rect(screen, COLOR_FRAME_INNER, rect.inflate(-10, -10), 1, border_radius=7)
+
+    size = min(14, rect.width // 6, rect.height // 6)
+    inset = 6
+    corners = (
+        ((rect.left + inset, rect.top + inset), (1, 1)),
+        ((rect.right - inset - 1, rect.top + inset), (-1, 1)),
+        ((rect.left + inset, rect.bottom - inset - 1), (1, -1)),
+        ((rect.right - inset - 1, rect.bottom - inset - 1), (-1, -1)),
+    )
+    for (x, y), (dx, dy) in corners:
+        pygame.draw.lines(screen, COLOR_FRAME_GOLD, False,
+                          [(x, y + dy * size), (x, y), (x + dx * size, y)], 2)
+
+
+def draw_title_ornament(screen: pygame.Surface, center_x: int, y: int, width: int = 160) -> None:
+    """제목 아래 장식선: ── ◆ ──"""
+    half = width // 2
+    pygame.draw.line(screen, COLOR_FRAME_GOLD, (center_x - half, y), (center_x - 10, y), 1)
+    pygame.draw.line(screen, COLOR_FRAME_GOLD, (center_x + 10, y), (center_x + half, y), 1)
+    pygame.draw.polygon(screen, COLOR_FRAME_GOLD,
+                        [(center_x, y - 5), (center_x + 5, y), (center_x, y + 5), (center_x - 5, y)])

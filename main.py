@@ -33,7 +33,7 @@ def main():
         if not input_handler.quit_confirm:
             game.update(dt)
         state = game.get_state()
-        renderer.render(state, input_handler.quit_confirm)
+        renderer.render(state, input_handler.quit_confirm, input_handler.help_page)
         pygame.display.flip()
 
     pygame.quit()

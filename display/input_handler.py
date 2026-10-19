@@ -2,7 +2,7 @@ from typing import Optional
 
 import pygame
 
-from display.ui import ButtonLayer
+from display.ui import HELP_PAGE_COUNT, ButtonLayer
 from game.actions import Action, ActionType
 from game.map import GameMap
 from game.state import GamePhase, GameState
@@ -14,6 +14,8 @@ class InputHandler:
         self.map = GameMap()
         self.quit_confirm = False
         self.should_quit = False
+        # 게임 방법 화면의 현재 페이지(화면 전용 상태라 게임 상태에 넣지 않습니다)
+        self.help_page = 0
 
     def handle_event(self, event: pygame.event.Event, state: GameState) -> Optional[Action]:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -34,6 +36,11 @@ class InputHandler:
             if action_name == "QUIT_YES":
                 self.should_quit = True
                 return None
+            if action_name in {"HELP_PREV", "HELP_NEXT"}:
+                self._turn_help_page(-1 if action_name == "HELP_PREV" else 1)
+                return None
+            if action_name == "SHOW_HELP":
+                self.help_page = 0
             mapping = {
                 "START_GAME": Action(ActionType.START_GAME),
                 "SHOW_HELP": Action(ActionType.SHOW_HELP),
@@ -72,8 +79,14 @@ class InputHandler:
             return Action(ActionType.CANCEL if state.phase in {GamePhase.MOVING_TOWER, GamePhase.SELL_CONFIRM} else ActionType.BACK_TO_TITLE)
         if self.quit_confirm:
             return None
+        if state.phase == GamePhase.HELP and key in {pygame.K_LEFT, pygame.K_RIGHT}:
+            self._turn_help_page(-1 if key == pygame.K_LEFT else 1)
+            return None
         if key == pygame.K_SPACE and state.phase == GamePhase.PREPARATION:
             return Action(ActionType.START_WAVE)
         if key == pygame.K_RETURN and state.phase == GamePhase.SETTLEMENT:
             return Action(ActionType.CONTINUE)
         return None
+
+    def _turn_help_page(self, step: int) -> None:
+        self.help_page = max(0, min(HELP_PAGE_COUNT - 1, self.help_page + step))
