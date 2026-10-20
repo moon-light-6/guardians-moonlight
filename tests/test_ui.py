@@ -10,7 +10,17 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 
 import pygame
 
-from config import COLOR_GOLD, PANEL_X, SCREEN_HEIGHT, SCREEN_WIDTH
+from config import (
+    BOSS_KILL_GOLD,
+    CLEAR_GOLD_BASE,
+    CLEAR_GOLD_BONUS,
+    CLEAR_GOLD_PER_STAGE,
+    COLOR_GOLD,
+    KILL_GOLD,
+    PANEL_X,
+    SCREEN_HEIGHT,
+    SCREEN_WIDTH,
+)
 from display.input_handler import InputHandler
 from display.renderer import Renderer
 from display.render_sizes import TOWER_BOTTOM_OFFSET, TOWER_LEVEL_GAP, TOWER_Y_OFFSETS
@@ -1065,9 +1075,12 @@ class TestPygameUI(unittest.TestCase):
         with patch.object(self.renderer, "_text", wraps=self.renderer._text) as draw_text:
             self.render("settlement-rewards-integrated")
         values = [call.args[0] for call in draw_text.call_args_list]
-        for value in ("일반 악귀 1마리 처치 보상", "보스 악귀 1마리 처치 보상", "5 G", "100 G", "225 G", "330 G"):
+        clear_gold = CLEAR_GOLD_BASE + 5 * CLEAR_GOLD_PER_STAGE + CLEAR_GOLD_BONUS  # 5소동은 추가 보상 대상
+        total = KILL_GOLD + BOSS_KILL_GOLD + clear_gold
+        for value in ("일반 악귀 1마리 처치 보상", "보스 악귀 1마리 처치 보상",
+                      f"{KILL_GOLD} G", f"{BOSS_KILL_GOLD} G", f"{clear_gold} G", f"{total} G"):
             self.assertIn(value, values)
-        self.assertEqual(state.gold, 530)
+        self.assertEqual(state.gold, 200 + total)
 
     def test_ice_field_plays_twelve_frames_with_loop_then_disappears(self):
         animator = self.renderer.effect_animator
