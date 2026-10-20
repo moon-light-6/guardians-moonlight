@@ -949,10 +949,15 @@ class Renderer:
 
     def _draw_enemy(self, enemy, animation_time: float = 0.0) -> None:
         pos = self.projection.game_to_pixel(enemy.get_current_position())
+
+        # 전체 몬스터 위치를 아래로 10px 이동
+        pos = (pos[0], pos[1] + 10)
+
         if enemy.is_boss:
             sprite_rect = self.boss_animator.draw(self.screen, enemy, pos, animation_time)
         else:
             sprite_rect = self.enemy_animator.draw(self.screen, enemy, pos, animation_time)
+
         hp_ratio = max(0, enemy.health / enemy.max_health)
         hp_top = sprite_rect.top - 14
         pygame.draw.rect(self.screen, COLOR_RED, (pos[0] - 18, hp_top, 36, 4))
