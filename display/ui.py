@@ -24,6 +24,8 @@ class Button:
     text: str
     action: str
     enabled: bool = True
+    # 보조 버튼은 주 버튼보다 눈에 덜 띄는 톤(어두운 바탕 + 은은한 테두리)으로 그립니다.
+    secondary: bool = False
     image: Optional[pygame.Surface] = None  # 있으면 글자 대신 아이콘 버튼으로 그립니다
     # (기본, 마우스 올림) 이미지 한 쌍. 있으면 사각형 대신 이미지 위에 글씨를 씁니다.
     skin: Optional[Tuple[pygame.Surface, pygame.Surface]] = None
@@ -46,6 +48,10 @@ class Button:
             return
         if not self.enabled:
             fill, border, text_color = (30, 34, 48), (70, 74, 88), COLOR_GRAY
+        elif self.secondary:
+            fill = (36, 42, 62) if hovered else COLOR_PANEL_DARK
+            border = COLOR_FRAME_GOLD if hovered else COLOR_FRAME_INNER
+            text_color = COLOR_MOON if hovered else (196, 190, 160)
         elif hovered:
             fill, border, text_color = COLOR_BUTTON_HOVER, COLOR_MOON, COLOR_MOON
         else:
