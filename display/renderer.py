@@ -185,7 +185,12 @@ class Renderer:
         return self.show_map_debug
 
     def _font(self, size: int) -> pygame.font.Font:
-        # 한국어 글씨체 - 맥북 운영체제
+        # 게임에 포함한 글꼴을 우선 사용해 어떤 운영체제에서도 같은 모양을 유지합니다.
+        bundled_font = Path(__file__).resolve().parents[1] / "assets" / "fonts" / "LevelUp-Regular.ttf"
+        if bundled_font.is_file():
+            return pygame.font.Font(str(bundled_font), size)
+
+        # 한국어 글씨체 - 폰트 파일이 없을 때의 운영체제별 대체 글꼴
         for font_name in (
             "Apple SD Gothic Neo",  # macOS
             "AppleGothic",          # older macOS versions
