@@ -1,6 +1,6 @@
 [
   {
-    "name": "NW_0.png",
+    "name": "NE_0.png",
     "row": 0,
     "col": 0,
     "bounds": [
@@ -15,7 +15,7 @@
     ]
   },
   {
-    "name": "NW_1.png",
+    "name": "NE_1.png",
     "row": 0,
     "col": 1,
     "bounds": [
@@ -30,7 +30,7 @@
     ]
   },
   {
-    "name": "NW_2.png",
+    "name": "NE_2.png",
     "row": 0,
     "col": 2,
     "bounds": [
@@ -45,7 +45,7 @@
     ]
   },
   {
-    "name": "NW_3.png",
+    "name": "NE_3.png",
     "row": 0,
     "col": 3,
     "bounds": [
@@ -60,7 +60,7 @@
     ]
   },
   {
-    "name": "NE_0.png",
+    "name": "NW_0.png",
     "row": 1,
     "col": 0,
     "bounds": [
@@ -75,7 +75,7 @@
     ]
   },
   {
-    "name": "NE_1.png",
+    "name": "NW_1.png",
     "row": 1,
     "col": 1,
     "bounds": [
@@ -90,7 +90,7 @@
     ]
   },
   {
-    "name": "NE_2.png",
+    "name": "NW_2.png",
     "row": 1,
     "col": 2,
     "bounds": [
@@ -105,7 +105,7 @@
     ]
   },
   {
-    "name": "NE_3.png",
+    "name": "NW_3.png",
     "row": 1,
     "col": 3,
     "bounds": [
