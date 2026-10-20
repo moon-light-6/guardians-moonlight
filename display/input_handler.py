@@ -3,7 +3,7 @@ from typing import Optional
 import pygame
 
 from config import PANEL_X
-from display.ui import ButtonLayer
+from display.ui import HELP_PAGE_COUNT, ButtonLayer
 from display.map_projection import MapProjection
 from game.actions import Action, ActionType
 from game.economy import Economy
@@ -30,11 +30,15 @@ class InputHandler:
         self.board_view = False
         self.give_up_confirm = False
         self.should_quit = False
+        # 게임 방법 화면의 현재 페이지(화면 전용 상태라 게임 상태에 넣지 않습니다)
+        self.help_page = 0
+        # 게임 중 위에 겹쳐 연 게임 방법 창(열려 있는 동안 게임 진행을 멈춥니다)
+        self.help_overlay = False
 
     @property
     def paused(self) -> bool:
-        """이 팝업이 떠 있는 동안 화면 루프는 게임 시간을 진행시키지 않는다."""
-        return self.quit_confirm or self.give_up_confirm
+        """종료·수호 포기 확인이나 게임 방법 창이 떠 있는 동안 화면 루프는 게임 시간을 진행시키지 않는다."""
+        return self.quit_confirm or self.give_up_confirm or self.help_overlay
 
     def handle_event(self, event: pygame.event.Event, state: GameState) -> Optional[Action]:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -54,6 +58,18 @@ class InputHandler:
                 return None
             if action_name == "QUIT_YES":
                 self.should_quit = True
+                return None
+            if action_name in {"HELP_PREV", "HELP_NEXT"}:
+                self._turn_help_page(-1 if action_name == "HELP_PREV" else 1)
+                return None
+            if action_name == "SHOW_HELP":
+                self.help_page = 0
+            if action_name == "OPEN_HELP":
+                self.help_overlay = True
+                self.help_page = 0
+                return None
+            if action_name == "CLOSE_HELP":
+                self.help_overlay = False
                 return None
             if action_name == "OPEN_START_CONFIRM":
                 self._open_start_flow(state)
@@ -111,6 +127,10 @@ class InputHandler:
 
         if self._popup_open(state):
             return None
+        if state.phase in {GamePhase.GAME_OVER, GamePhase.VICTORY} and not self.board_view:
+            # 성공/실패 화면은 '배치 확인' 버튼 말고 아무 곳이나 누르면 시작 화면으로 돌아갑니다.
+            # 배치 확인으로 게임판을 보는 중에는 실수로 나가지 않도록 '처음으로' 버튼만 씁니다.
+            return Action(ActionType.BACK_TO_TITLE)
         slot_id = self.projection.pixel_to_slot(pos)
         if state.phase == GamePhase.WAVE_ACTIVE and slot_id is None:
             # 전투 중 어떤 돌판도 아닌 배경(오른쪽 패널 제외)을 누르면 선택을 해제한다.
@@ -129,6 +149,9 @@ class InputHandler:
         if key == pygame.K_ESCAPE:
             if state.phase == GamePhase.TITLE or self.quit_confirm:
                 self.quit_confirm = not self.quit_confirm
+                return None
+            if self.help_overlay:
+                self.help_overlay = False
                 return None
             if self.give_up_confirm:
                 # 포기 확인 중 Esc는 '계속 수호하기'와 같다.
@@ -151,6 +174,10 @@ class InputHandler:
                 self.give_up_confirm = True
                 return None
             return Action(ActionType.CANCEL if state.phase in {GamePhase.MOVING_TOWER, GamePhase.SELL_CONFIRM} else ActionType.BACK_TO_TITLE)
+        if (state.phase == GamePhase.HELP or self.help_overlay) and not self.quit_confirm \
+                and key in {pygame.K_LEFT, pygame.K_RIGHT}:
+            self._turn_help_page(-1 if key == pygame.K_LEFT else 1)
+            return None
         if self._popup_open(state):
             return None
         if key == pygame.K_SPACE and state.phase == GamePhase.PREPARATION:
@@ -164,6 +191,7 @@ class InputHandler:
         return (
             self.quit_confirm or self.start_confirm or self.buy_confirm
             or self.no_tower_warning or self.boss_warning or self.give_up_confirm
+            or self.help_overlay
         )
 
     def _continue_action(self, state: GameState) -> Action:
@@ -181,3 +209,6 @@ class InputHandler:
             self.start_confirm = True
         else:
             self.no_tower_warning = True
+
+    def _turn_help_page(self, step: int) -> None:
+        self.help_page = max(0, min(HELP_PAGE_COUNT - 1, self.help_page + step))

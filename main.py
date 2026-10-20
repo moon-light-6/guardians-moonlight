@@ -68,8 +68,10 @@ def main():
             input_handler.buy_confirm,
             input_handler.no_tower_warning,
             input_handler.boss_warning,
-            input_handler.board_view,
-            input_handler.give_up_confirm,
+            board_view=input_handler.board_view,
+            give_up_confirm=input_handler.give_up_confirm,
+            help_page=input_handler.help_page,
+            help_overlay=input_handler.help_overlay,
         )
         pygame.display.flip()
 

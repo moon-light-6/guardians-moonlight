@@ -10,7 +10,17 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 
 import pygame
 
-from config import COLOR_GOLD, PANEL_X, SCREEN_HEIGHT, SCREEN_WIDTH
+from config import (
+    BOSS_KILL_GOLD,
+    CLEAR_GOLD_BASE,
+    CLEAR_GOLD_BONUS,
+    CLEAR_GOLD_PER_STAGE,
+    COLOR_GOLD,
+    KILL_GOLD,
+    PANEL_X,
+    SCREEN_HEIGHT,
+    SCREEN_WIDTH,
+)
 from display.input_handler import InputHandler
 from display.renderer import Renderer
 from display.render_sizes import TOWER_BOTTOM_OFFSET, TOWER_LEVEL_GAP, TOWER_Y_OFFSETS
@@ -444,8 +454,49 @@ class TestPygameUI(unittest.TestCase):
             self.click("CYCLE_SPEED")
         self.game.state.phase = GamePhase.GAME_OVER
         self.render("defeat")
-        self.click("BACK_TO_TITLE")
+        self.click_anywhere((640, 420))
+        self.assertEqual(self.game.state.phase, GamePhase.TITLE)
         self.assertEqual(self.game.state.combat_speed, 1)
+
+    def click_anywhere(self, pos):
+        event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=pos)
+        action = self.input.handle_event(event, self.game.state)
+        self.assertIsNotNone(action)
+        _apply_action(self.game, self.renderer, action)
+
+    def test_result_screens_show_image_and_any_click_returns_to_title(self):
+        for phase, name in ((GamePhase.GAME_OVER, "defeat-image"), (GamePhase.VICTORY, "victory-image")):
+            for pos in ((640, 340), (10, 10), (1200, 800)):
+                with self.subTest(phase=phase, pos=pos):
+                    self.game.reset(start_at_title=False)
+                    self.game.state.phase = phase
+                    with patch.object(self.renderer, "_blit_center", wraps=self.renderer._blit_center) as blit:
+                        self.render(name)
+                    self.assertIs(blit.call_args_list[0].args[0], self.renderer.result_images[phase])
+                    self.assertEqual([b.action for b in self.renderer.buttons.buttons], ["OPEN_BOARD_VIEW"])
+                    self.click_anywhere(pos)
+                    self.assertEqual(self.game.state.phase, GamePhase.TITLE)
+
+    def test_result_screen_board_view_button_does_not_leave_and_board_clicks_stay(self):
+        for phase in (GamePhase.GAME_OVER, GamePhase.VICTORY):
+            with self.subTest(phase=phase):
+                self.game.reset(start_at_title=False)
+                self.input.board_view = False
+                self.game.state.phase = phase
+                self.assertIsNone(self.press("OPEN_BOARD_VIEW"))
+                self.assertTrue(self.input.board_view)
+                self.render()
+                # 배치 확인 중에는 게임판을 눌러도 처음 화면으로 나가지 않는다.
+                event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(300, 400))
+                self.assertIsNone(self.input.handle_event(event, self.game.state))
+                self.assertEqual(self.game.state.phase, phase)
+
+    def test_result_screen_click_is_ignored_while_quit_popup_is_open(self):
+        self.game.state.phase = GamePhase.GAME_OVER
+        self.input.quit_confirm = True
+        event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(100, 100))
+        self.assertIsNone(self.input.handle_event(event, self.game.state))
+        self.assertEqual(self.game.state.phase, GamePhase.GAME_OVER)
 
     def test_six_boss_screens_use_distinct_artwork(self):
         for stage in WaveManager.BOSSES:
@@ -571,7 +622,9 @@ class TestPygameUI(unittest.TestCase):
                 self.input.board_view = False
                 self.set_result_phase(phase)
                 self.render(f"result-{phase.value}")
-                self.assertEqual(self.action_names(), ["OPEN_BOARD_VIEW", primary])
+                # 성공·실패 화면은 '배치 확인'만 두고, 나머지 아무 곳을 누르면 처음 화면으로 간다.
+                expected = ["OPEN_BOARD_VIEW", primary] if phase == GamePhase.SETTLEMENT else ["OPEN_BOARD_VIEW"]
+                self.assertEqual(self.action_names(), expected)
 
     def test_board_view_hides_popup_and_shows_side_panel_controls(self):
         for phase, primary in self.RESULT_PHASES:
@@ -602,7 +655,7 @@ class TestPygameUI(unittest.TestCase):
         self.assertIsNone(self.press("CLOSE_BOARD_VIEW"))
         self.assertFalse(self.input.board_view)
         self.render()
-        self.assertEqual(self.action_names(), ["OPEN_BOARD_VIEW", "BACK_TO_TITLE"])
+        self.assertEqual(self.action_names(), ["OPEN_BOARD_VIEW"])
 
     def test_settlement_continue_from_board_view_turns_view_off(self):
         state = self.set_result_phase(GamePhase.SETTLEMENT, stage=3)
@@ -1022,9 +1075,12 @@ class TestPygameUI(unittest.TestCase):
         with patch.object(self.renderer, "_text", wraps=self.renderer._text) as draw_text:
             self.render("settlement-rewards-integrated")
         values = [call.args[0] for call in draw_text.call_args_list]
-        for value in ("일반 악귀 1마리 처치 보상", "보스 악귀 1마리 처치 보상", "5 G", "100 G", "225 G", "330 G"):
+        clear_gold = CLEAR_GOLD_BASE + 5 * CLEAR_GOLD_PER_STAGE + CLEAR_GOLD_BONUS  # 5소동은 추가 보상 대상
+        total = KILL_GOLD + BOSS_KILL_GOLD + clear_gold
+        for value in ("일반 악귀 1마리 처치 보상", "보스 악귀 1마리 처치 보상",
+                      f"{KILL_GOLD} G", f"{BOSS_KILL_GOLD} G", f"{clear_gold} G", f"{total} G"):
             self.assertIn(value, values)
-        self.assertEqual(state.gold, 530)
+        self.assertEqual(state.gold, 200 + total)
 
     def test_ice_field_plays_twelve_frames_with_loop_then_disappears(self):
         animator = self.renderer.effect_animator
@@ -1110,6 +1166,68 @@ class TestPygameUI(unittest.TestCase):
             ring = ring_pixels.get_bounding_rects()[0]
             self.assertEqual(ring.center, anchor)
             self.assertEqual(ring.size, (25, 12))
+
+
+    # ===== 게임 중 게임 방법 버튼(일시정지) =====
+
+    def key(self, key):
+        return self.input.handle_event(pygame.event.Event(pygame.KEYDOWN, key=key), self.game.state)
+
+    def test_in_game_help_button_opens_overlay_without_changing_phase(self):
+        self.render()
+        button = next(b for b in self.renderer.buttons.buttons if b.action == "OPEN_HELP")
+        self.assertGreaterEqual(button.rect.left, PANEL_X)
+        self.assertLess(button.rect.bottom, 126)
+        self.input.help_page = 2
+        self.assertIsNone(self.press("OPEN_HELP"))
+        self.assertTrue(self.input.help_overlay)
+        self.assertTrue(self.input.paused)
+        self.assertEqual(self.input.help_page, 0)
+        self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
+
+    def test_in_game_help_freezes_wave_until_closed(self):
+        self.game.step(Action(ActionType.BUY, slot_id=0))
+        self.game.step(Action(ActionType.START_WAVE))
+        for _ in range(240):
+            self.game.update(1 / 60)
+        self.assertEqual(self.game.state.phase, GamePhase.WAVE_ACTIVE)
+        self.assertIsNone(self.press("OPEN_HELP"))
+        before = (self.game.state.wave_elapsed,
+                  [enemy.distance_travelled for enemy in self.game.state.enemies])
+        for _ in range(120):
+            _advance_game(self.game, self.input, 1 / 60)  # main.py와 같은 진행 함수
+        self.assertEqual(before, (self.game.state.wave_elapsed,
+                                  [enemy.distance_travelled for enemy in self.game.state.enemies]))
+
+        self.renderer.render(self.game.state, help_page=0, help_overlay=True)
+        close = next(b for b in self.renderer.buttons.buttons if b.action == "CLOSE_HELP")
+        event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=close.rect.center)
+        self.assertIsNone(self.input.handle_event(event, self.game.state))
+        self.assertFalse(self.input.paused)
+        self.game.update(1 / 60)
+        self.assertGreater(self.game.state.wave_elapsed, before[0])
+
+    def test_in_game_help_blocks_game_input_and_supports_keys(self):
+        self.assertIsNone(self.press("OPEN_HELP"))
+        self.assertIsNone(self.key(pygame.K_SPACE))
+        self.assertFalse(self.input.start_confirm)
+        slot_pos = self.renderer.projection.game_to_pixel(self.game.map.get_slot_position(0))
+        event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=slot_pos)
+        self.assertIsNone(self.input.handle_event(event, self.game.state))
+        self.key(pygame.K_RIGHT)
+        self.assertEqual(self.input.help_page, 1)
+        self.key(pygame.K_LEFT)
+        self.assertEqual(self.input.help_page, 0)
+        self.assertIsNone(self.key(pygame.K_ESCAPE))
+        self.assertFalse(self.input.help_overlay)
+        self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
+
+    def test_in_game_help_button_hidden_during_result_popups(self):
+        for phase in (GamePhase.GAME_OVER, GamePhase.VICTORY):
+            with self.subTest(phase=phase):
+                self.game.state.phase = phase
+                self.render()
+                self.assertNotIn("OPEN_HELP", [b.action for b in self.renderer.buttons.buttons])
 
 
 if __name__ == "__main__":

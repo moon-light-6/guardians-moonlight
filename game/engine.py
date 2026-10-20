@@ -46,6 +46,7 @@ class Game:
 
         if kind == ActionType.START_GAME:
             self._new_run()
+            
         elif kind == ActionType.SHOW_HELP:
             self.state.phase = GamePhase.HELP
         elif kind == ActionType.BACK_TO_TITLE:

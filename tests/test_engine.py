@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch
 
+from config import BOSS_KILL_GOLD, CLEAR_GOLD_BASE, CLEAR_GOLD_BONUS, CLEAR_GOLD_PER_STAGE, KILL_GOLD
 from game.actions import Action, ActionType
 from game.engine import Game
 from game.enemy import Enemy, EnemyType
@@ -121,11 +122,12 @@ class TestGameEngine(unittest.TestCase):
                         if self.state.phase != GamePhase.WAVE_ACTIVE:
                             break
                     self.assertEqual(self.state.phase, GamePhase.SETTLEMENT)
-                    expected_gold += WaveManager.STAGE_COUNTS[stage] * 5 + 100 + stage * 5
+                    expected_gold += (WaveManager.STAGE_COUNTS[stage] * KILL_GOLD
+                                      + CLEAR_GOLD_BASE + stage * CLEAR_GOLD_PER_STAGE)
                     if stage % 5 == 0:
-                        expected_gold += 100  # 보스 악귀 처치 보상
+                        expected_gold += BOSS_KILL_GOLD  # 보스 악귀 처치 보상
                     if stage % 5 == 0 or 26 <= stage <= 29:
-                        expected_gold += 100  # 추가 클리어 보상
+                        expected_gold += CLEAR_GOLD_BONUS  # 추가 클리어 보상
                     self.assertEqual(self.state.gold, expected_gold)
                     self.assertEqual(self.state.wave_result.normal_kills, WaveManager.STAGE_COUNTS[stage])
                     self.assertEqual(self.state.wave_result.boss_kills, int(stage % 5 == 0))
