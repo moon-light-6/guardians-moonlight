@@ -1,11 +1,24 @@
 import unittest
 from unittest.mock import patch
 
+from config import (
+    BOSS_KILL_GOLD,
+    CLEAR_GOLD_BASE,
+    CLEAR_GOLD_BONUS,
+    CLEAR_GOLD_BONUS_STAGES,
+    CLEAR_GOLD_PER_STAGE,
+    KILL_GOLD,
+)
 from game.actions import Action, ActionType
 from game.economy import Economy
 from game.enemy import Enemy, EnemyType
 from game.engine import Game
 from game.state import GamePhase, GameState
+
+
+def clear_reward(stage):
+    """config.py 보상 수치로 계산한 소동 해결 보상(수치를 조정해도 테스트가 따라간다)."""
+    return CLEAR_GOLD_BASE + stage * CLEAR_GOLD_PER_STAGE + (CLEAR_GOLD_BONUS if stage in CLEAR_GOLD_BONUS_STAGES else 0)
 
 
 class TestRewards(unittest.TestCase):
@@ -49,9 +62,10 @@ class TestRewards(unittest.TestCase):
                 self.assertEqual((state.enemies_killed, state.bosses_killed), (0, 0))
 
     def test_clear_callback_uses_current_stage_and_pays_once_without_advancing(self):
-        for stage, reward in ((1, 105), (5, 225), (10, 250), (15, 275), (20, 300),
-                              (24, 220), (25, 325), (26, 330), (27, 335), (28, 340),
-                              (29, 345), (30, 350)):
+        # 5의 배수와 26~29소동만 추가 클리어 보상을 받는다(24소동은 받지 않음).
+        self.assertEqual(CLEAR_GOLD_BONUS_STAGES, frozenset({5, 10, 15, 20, 25, 26, 27, 28, 29, 30}))
+        for stage in (1, 5, 10, 15, 20, 24, 25, 26, 27, 28, 29, 30):
+            reward = clear_reward(stage)
             with self.subTest(stage=stage):
                 state = GameState(phase=GamePhase.WAVE_ACTIVE, current_stage=stage)
                 self.assertTrue(Economy().on_stage_clear(state))
@@ -89,28 +103,30 @@ class TestRewards(unittest.TestCase):
                 game.update(1 / 60)
                 self.assertEqual(kill_callback.call_count, 4)
                 clear_callback.assert_called_once_with(state)
+        total = KILL_GOLD + BOSS_KILL_GOLD + clear_reward(5)
         self.assertEqual(state.phase, GamePhase.SETTLEMENT)
-        self.assertEqual(state.gold, 530)
+        self.assertEqual(state.gold, 200 + total)
         self.assertEqual((state.enemies_killed, state.bosses_killed), (1, 1))
         result = state.wave_result
         self.assertEqual((result.stage, result.normal_kills, result.boss_kills), (5, 1, 1))
-        self.assertEqual((result.kill_gold, result.boss_gold, result.clear_gold, result.total_gold), (5, 100, 225, 330))
+        self.assertEqual((result.kill_gold, result.boss_gold, result.clear_gold, result.total_gold),
+                         (KILL_GOLD, BOSS_KILL_GOLD, clear_reward(5), total))
         state.enemies = [normal, boss]
         game._collect_dead_enemies()
         game._transition_to_settlement()
         self.assertFalse(game.economy.on_stage_clear(state))
-        self.assertEqual(state.gold, 530)
+        self.assertEqual(state.gold, 200 + total)
         self.assertIs(state.wave_result, result)
         game.step(Action(ActionType.CONTINUE))
         self.assertEqual(state.current_stage, 6)
-        self.assertEqual(state.gold, 530)
+        self.assertEqual(state.gold, 200 + total)
         game.step(Action(ActionType.START_WAVE))
         self.assertEqual((state.wave_kill_gold, state.wave_boss_gold, state.wave_clear_gold), (0, 0, 0))
         game.wave_manager.spawn_queue = []
         game.update(1 / 60)
         self.assertEqual(state.phase, GamePhase.SETTLEMENT)
-        self.assertEqual(state.gold, 660)
-        self.assertEqual(state.wave_result.clear_gold, 130)
+        self.assertEqual(state.gold, 200 + total + clear_reward(6))
+        self.assertEqual(state.wave_result.clear_gold, clear_reward(6))
         self.assertEqual(state.clear_rewarded_stages, {5, 6})
 
     def test_engine_does_not_clear_before_pending_spawns(self):
@@ -128,14 +144,14 @@ class TestRewards(unittest.TestCase):
         game.step(Action(ActionType.START_WAVE))
         game.wave_manager.spawn_queue = []
         game.update(1 / 60)
-        self.assertEqual(game.state.gold, 305)
+        self.assertEqual(game.state.gold, 200 + clear_reward(1))
         self.assertEqual(game.state.clear_rewarded_stages, {1})
         game.step(Action(ActionType.RESTART))
         self.assertEqual(game.state.clear_rewarded_stages, set())
         game.step(Action(ActionType.START_WAVE))
         game.wave_manager.spawn_queue = []
         game.update(1 / 60)
-        self.assertEqual(game.state.gold, 305)
+        self.assertEqual(game.state.gold, 200 + clear_reward(1))
 
 
 if __name__ == "__main__":
