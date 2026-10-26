@@ -1,3 +1,4 @@
+import math
 from typing import Optional
 
 import pygame
@@ -15,6 +16,9 @@ _RESULT_PHASES = {GamePhase.SETTLEMENT, GamePhase.GAME_OVER, GamePhase.VICTORY}
 
 # Esc로 나가기 전에 한 번 더 묻는 단계. 이동·판매 확인 중의 Esc는 기존처럼 그 동작을 취소한다.
 _GIVE_UP_PHASES = {GamePhase.WAVE_ACTIVE, GamePhase.PREPARATION, GamePhase.SETTLEMENT}
+
+# 이만큼(px) 움직이기 전에는 드래그가 아니라 클릭(선택)으로 본다.
+DRAG_THRESHOLD = 8
 
 
 class InputHandler:
@@ -35,6 +39,16 @@ class InputHandler:
         self.help_page = 0
         # 게임 중 위에 겹쳐 연 게임 방법 창(열려 있는 동안 게임 진행을 멈춥니다)
         self.help_overlay = False
+        # 사신 드래그 이동(화면 전용 상태). 누른 사신과 위치를 기억했다가 충분히 움직이면 드래그로 본다.
+        self.drag_from_slot: Optional[int] = None
+        self.drag_start: Optional[tuple] = None
+        self.drag_pos: Optional[tuple] = None
+        self.dragging = False
+
+    @property
+    def drag(self) -> Optional[tuple]:
+        """드래그 중이면 (옮기는 사신의 슬롯, 마우스 위치)를 돌려준다."""
+        return (self.drag_from_slot, self.drag_pos) if self.dragging else None
 
     @property
     def paused(self) -> bool:
@@ -43,7 +57,13 @@ class InputHandler:
 
     def handle_event(self, event: pygame.event.Event, state: GameState) -> Optional[Action]:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            self._cancel_drag()
             return self._handle_mouse_down(event.pos, state)
+        if event.type == pygame.MOUSEMOTION:
+            self._handle_mouse_motion(event.pos, state)
+            return None
+        if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            return self._handle_mouse_up(event.pos, state)
         if event.type == pygame.KEYDOWN:
             return self._handle_key_down(event.key, state)
         return None
@@ -149,14 +169,57 @@ class InputHandler:
             return None
         if state.phase == GamePhase.MOVING_TOWER:
             return Action(ActionType.RELOCATE, from_slot_id=state.moving_from_slot, to_slot_id=slot_id)
+        if self._can_drag(state, slot_id):
+            # 일단 선택하고, 누른 채로 움직이면 드래그 이동으로 이어진다.
+            self.drag_from_slot = slot_id
+            self.drag_start = pos
         if state.phase == GamePhase.PREPARATION or (
             state.phase == GamePhase.WAVE_ACTIVE and state.has_tower(slot_id)
         ):
             return Action(ActionType.SELECT_SLOT, slot_id=slot_id)
         return None
 
+    def _can_drag(self, state: GameState, slot_id: Optional[int]) -> bool:
+        """준비 단계에서 소환이 끝난 사신만 끌어 옮길 수 있다(소환 중 제한은 화면 규칙)."""
+        return (
+            state.phase == GamePhase.PREPARATION
+            and state.has_tower(slot_id)
+            and not state.towers[slot_id].get("summoning")
+            and self.economy.can_take_preparation_action(state)
+        )
+
+    def _handle_mouse_motion(self, pos: tuple, state: GameState) -> None:
+        if self.drag_from_slot is None:
+            return
+        if self._popup_open(state) or not self._can_drag(state, self.drag_from_slot):
+            self._cancel_drag()
+            return
+        if not self.dragging and math.dist(pos, self.drag_start) < DRAG_THRESHOLD:
+            return
+        self.dragging = True
+        self.drag_pos = pos
+
+    def _handle_mouse_up(self, pos: tuple, state: GameState) -> Optional[Action]:
+        from_slot, dragging = self.drag_from_slot, self.dragging
+        self._cancel_drag()
+        if not dragging or self._popup_open(state) or not self._can_drag(state, from_slot):
+            return None
+        to_slot = self.projection.pixel_to_slot(pos)
+        if not self.economy.can_relocate(state, from_slot, to_slot):
+            return None  # 빈 돌판이 아닌 곳에 놓으면 제자리로 돌아간다
+        return Action(ActionType.RELOCATE, from_slot_id=from_slot, to_slot_id=to_slot)
+
+    def _cancel_drag(self) -> None:
+        self.drag_from_slot = None
+        self.drag_start = None
+        self.drag_pos = None
+        self.dragging = False
+
     def _handle_key_down(self, key: int, state: GameState) -> Optional[Action]:
         if key == pygame.K_ESCAPE:
+            if self.dragging:
+                self._cancel_drag()
+                return None
             if state.phase == GamePhase.TITLE or self.quit_confirm:
                 self.quit_confirm = not self.quit_confirm
                 return None

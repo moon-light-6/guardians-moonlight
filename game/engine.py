@@ -77,6 +77,9 @@ class Game:
                 self._begin_sell(action.slot_id)
             elif kind == ActionType.BEGIN_RELOCATE:
                 self._begin_relocate(action.slot_id)
+            elif kind == ActionType.RELOCATE:
+                # 행동 목록(get_all_valid_actions)처럼 준비 단계에서 바로 옮기는 것도 허용한다(드래그 이동).
+                self._handle_relocate(action.from_slot_id, action.to_slot_id)
             elif kind == ActionType.START_WAVE:
                 self._start_wave()
         elif self.state.phase == GamePhase.SELL_CONFIRM and kind == ActionType.CONFIRM_SELL:

@@ -2,7 +2,7 @@
 from pathlib import Path
 import math
 from time import perf_counter
-from typing import List
+from typing import List, Optional
 
 import pygame
 
@@ -216,6 +216,7 @@ class Renderer:
         restart_confirm: bool = False,
         help_page: int = 0,
         help_overlay: bool = False,
+        drag: Optional[tuple] = None,
     ) -> None:
         if state.phase in {GamePhase.TITLE, GamePhase.HELP}:
             self._upgrade_effects.clear()
@@ -229,7 +230,7 @@ class Renderer:
         elif state.phase == GamePhase.HELP:
             self._render_help(help_page)
         else:
-            self._render_game(state, board_view)
+            self._render_game(state, board_view, drag)
         if start_confirm and state.phase == GamePhase.PREPARATION:
             self._render_start_popup(state)
         if boss_warning and state.phase == GamePhase.PREPARATION:
@@ -585,9 +586,9 @@ class Renderer:
         """배치 확인은 정산·패배·승리 때만 의미가 있다. 다른 단계에서는 무시한다."""
         return board_view and state.phase in {GamePhase.SETTLEMENT, GamePhase.GAME_OVER, GamePhase.VICTORY}
 
-    def _render_game(self, state: GameState, board_view: bool = False) -> None:
+    def _render_game(self, state: GameState, board_view: bool = False, drag: Optional[tuple] = None) -> None:
         viewing_board = self._is_board_view(state, board_view)
-        self._render_board(state)
+        self._render_board(state, drag)
         self._render_hud(state)
         # 기존 관리 패널의 코드와 동작을 그대로 유지합니다.
         self._render_side_panel(state, viewing_board)
@@ -705,12 +706,20 @@ class Renderer:
             cx += text.get_width() + gap
         return x + width + 7
 
-    def _render_board(self, state: GameState) -> None:
+    def _render_board(self, state: GameState, drag: Optional[tuple] = None) -> None:
         # 길·포털·기본 사신 받침은 map_background.png에 완성돼 있습니다. 예전
         # 격자, 길 타일, 커브/커넥터, 받침 본체는 여기에서 다시 그리지 않습니다.
 
         if self.show_map_debug:
             self._draw_map_debug()
+
+        # 드래그 중이면 놓을 수 있는 빈 돌판을 표시하고, 마우스 아래 돌판을 강조한다.
+        drag_slot, drag_pos = drag if drag and state.has_tower(drag[0]) else (None, None)
+        drop_slot = None
+        if drag_slot is not None:
+            hovered = self.projection.pixel_to_slot(drag_pos)
+            if self.economy.can_relocate(state, drag_slot, hovered):
+                drop_slot = hovered
 
         # Resolve moving targets once; retain logical coordinates for attack poses.
         target_positions = {enemy.enemy_id: enemy.get_current_position()
@@ -720,11 +729,19 @@ class Renderer:
         pending_slots = {summon["slot_id"] for summon in state.summons}
         for slot_id in self.map.slots:
             # Occupied selections use the actual range ring, without a second ring.
-            selected = state.selected_slot == slot_id and not state.has_tower(slot_id)
-            moving = state.phase == GamePhase.MOVING_TOWER and state.is_slot_empty(slot_id)
+            selected = slot_id == drop_slot or (
+                state.selected_slot == slot_id and not state.has_tower(slot_id))
+            moving = (state.phase == GamePhase.MOVING_TOWER or drag_slot is not None) \
+                and state.is_slot_empty(slot_id) and slot_id != drop_slot
             self._draw_slot_tile(slot_id, selected, moving)
 
-        if (state.selected_slot is not None
+        if drag_slot is not None:
+            # 사거리는 놓을 자리 기준으로 미리 보여 준다.
+            if drop_slot is not None:
+                stats = Tower.from_data(state.towers[drag_slot]).get_stats()
+                self._draw_projected_range(
+                    self.projection.game_to_pixel(self.map.get_slot_position(drop_slot)), stats["range"])
+        elif (state.selected_slot is not None
                 and state.has_tower(state.selected_slot)
                 and state.selected_slot not in pending_slots):
             tower_data = state.towers[state.selected_slot]
@@ -742,8 +759,11 @@ class Renderer:
             self._draw_summon_effect(summon)
         self._draw_upgrade_effects(state)
         for slot_id, tower_data in state.towers.items():
-            if slot_id not in pending_slots:
+            if slot_id not in pending_slots and slot_id != drag_slot:
                 self._draw_tower(slot_id, tower_data, effects)
+        if drag_slot is not None:
+            # 끌고 있는 사신은 다른 사신보다 위에, 마우스를 따라 그린다.
+            self._draw_tower(drag_slot, state.towers[drag_slot], effects, pixel_pos=drag_pos)
 
     def _draw_slot_tile(self, slot_id: int, selected: bool, moving: bool) -> None:
         """배경의 기본 받침을 덮지 않는 선택·이동 테두리 오버레이입니다."""
@@ -903,12 +923,14 @@ class Renderer:
         slot_id: int,
         tower_data: dict,
         effects: list,
+        pixel_pos: Optional[tuple] = None,
     ) -> None:
         tower_pos = self.map.get_slot_position(slot_id)
         tower_type = tower_data["type"]
         # 대기/공격 스프라이트와 레벨 표시가 공유하는 화면상 기준 좌표만 이동
         # 애니메이션과 레벨 표시는 각각 TOWER_BOTTOM_OFFSET을 한 번씩 적용
-        pos = self._tower_pixel_position(slot_id, tower_type)
+        # (드래그 중에는 pixel_pos로 마우스 위치에 그린다)
+        pos = pixel_pos or self._tower_pixel_position(slot_id, tower_type)
 
         # PNG 프레임 애니메이션 출력
         animated = self.tower_animator.draw(
@@ -1188,7 +1210,9 @@ class Renderer:
             self._text(f"판매 환급 {refund} G", PANEL_X + 24, y + 330, self.font_small, COLOR_GOLD)
             cost = self.economy.get_upgrade_cost(state, selected)
             buttons.append(Button(pygame.Rect(PANEL_INNER_X, y + 370, PANEL_INNER_W, 40), f"강화 {cost} G", "UPGRADE", self.economy.can_upgrade(state, selected)))
-            buttons.append(Button(pygame.Rect(PANEL_INNER_X, y + 418, PANEL_HALF_W, 40), "이동", "BEGIN_RELOCATE", self.economy.can_take_preparation_action(state)))
+            # 소환이 끝난 사신만 옮길 수 있다(화면 규칙, 드래그 이동과 같다).
+            can_move = self.economy.can_take_preparation_action(state) and not tower.get("summoning")
+            buttons.append(Button(pygame.Rect(PANEL_INNER_X, y + 418, PANEL_HALF_W, 40), "이동", "BEGIN_RELOCATE", can_move))
             buttons.append(Button(pygame.Rect(PANEL_HALF2_X, y + 418, PANEL_HALF_W, 40), "판매", "SELL", self.economy.can_sell(state, selected)))
 
         desc = WaveManager().describe_stage(state.current_stage)

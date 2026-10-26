@@ -73,6 +73,7 @@ def main():
             restart_confirm=input_handler.restart_confirm,
             help_page=input_handler.help_page,
             help_overlay=input_handler.help_overlay,
+            drag=input_handler.drag,
         )
         pygame.display.flip()
 

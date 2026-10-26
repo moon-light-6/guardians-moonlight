@@ -5,7 +5,7 @@ from config import (
     BOSS_KILL_GOLD, CLEAR_GOLD_BASE, CLEAR_GOLD_BONUS, CLEAR_GOLD_PER_STAGE, KILL_GOLD, SIMULATION_STEP,
     WAVE_CLEAR_DELAY,
 )
-from game.actions import Action, ActionType
+from game.actions import Action, ActionType, ActionValidator
 from game.engine import Game
 from game.enemy import Enemy, EnemyType
 from game.state import GamePhase
@@ -112,6 +112,23 @@ class TestGameEngine(unittest.TestCase):
         self.game.step(Action(ActionType.CONTINUE))
         self.game.step(Action(ActionType.START_WAVE))
         self.assertIsNone(self.state.wave_clear_elapsed)
+
+    def test_relocate_in_preparation_matches_valid_action_list(self):
+        self.game.step(Action(ActionType.BUY, slot_id=0))
+        relocate = Action(ActionType.RELOCATE, from_slot_id=0, to_slot_id=1)
+        self.assertTrue(any(
+            (a.action_type, a.from_slot_id, a.to_slot_id) == (ActionType.RELOCATE, 0, 1)
+            for a in ActionValidator.get_all_valid_actions(self.state)
+        ))
+        self.game.step(relocate)
+        self.assertEqual(self.state.phase, GamePhase.PREPARATION)
+        self.assertTrue(self.state.has_tower(1))
+        self.assertTrue(self.state.is_slot_empty(0))
+        self.assertEqual(self.state.actions_taken_this_wave, 2)
+        # 같은 행동을 다시 보내면 옮길 사신이 없어 아무것도 바뀌지 않는다.
+        self.game.step(relocate)
+        self.assertTrue(self.state.has_tower(1))
+        self.assertEqual(self.state.actions_taken_this_wave, 2)
 
     def test_restart_from_title(self):
         state = self.game.reset(seed=1)
