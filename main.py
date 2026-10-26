@@ -70,6 +70,7 @@ def main():
             input_handler.boss_warning,
             board_view=input_handler.board_view,
             give_up_confirm=input_handler.give_up_confirm,
+            restart_confirm=input_handler.restart_confirm,
             help_page=input_handler.help_page,
             help_overlay=input_handler.help_overlay,
         )

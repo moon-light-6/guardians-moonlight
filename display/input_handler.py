@@ -29,6 +29,7 @@ class InputHandler:
         self.boss_warning = False
         self.board_view = False
         self.give_up_confirm = False
+        self.restart_confirm = False
         self.should_quit = False
         # 게임 방법 화면의 현재 페이지(화면 전용 상태라 게임 상태에 넣지 않습니다)
         self.help_page = 0
@@ -37,8 +38,8 @@ class InputHandler:
 
     @property
     def paused(self) -> bool:
-        """종료·수호 포기 확인이나 게임 방법 창이 떠 있는 동안 화면 루프는 게임 시간을 진행시키지 않는다."""
-        return self.quit_confirm or self.give_up_confirm or self.help_overlay
+        """종료·수호 포기·재시작 확인이나 게임 방법 창이 떠 있는 동안 화면 루프는 게임 시간을 진행시키지 않는다."""
+        return self.quit_confirm or self.give_up_confirm or self.restart_confirm or self.help_overlay
 
     def handle_event(self, event: pygame.event.Event, state: GameState) -> Optional[Action]:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -86,6 +87,15 @@ class InputHandler:
             if action_name == "GIVE_UP_YES":
                 self.give_up_confirm = False
                 return Action(ActionType.BACK_TO_TITLE)
+            if action_name == "OPEN_RESTART_CONFIRM":
+                self.restart_confirm = state.phase == GamePhase.PREPARATION
+                return None
+            if action_name == "RESTART_NO":
+                self.restart_confirm = False
+                return None
+            if action_name == "RESTART_YES":
+                self.restart_confirm = False
+                return Action(ActionType.RESTART)
             if action_name == "OPEN_BOARD_VIEW":
                 self.board_view = state.phase in _RESULT_PHASES
                 return None
@@ -157,6 +167,10 @@ class InputHandler:
                 # 포기 확인 중 Esc는 '계속 수호하기'와 같다.
                 self.give_up_confirm = False
                 return None
+            if self.restart_confirm:
+                # 재시작 확인 중 Esc는 '계속 수호하기'와 같다.
+                self.restart_confirm = False
+                return None
             if self.start_confirm or self.buy_confirm or self.no_tower_warning:
                 self.start_confirm = False
                 self.buy_confirm = False
@@ -191,7 +205,7 @@ class InputHandler:
         return (
             self.quit_confirm or self.start_confirm or self.buy_confirm
             or self.no_tower_warning or self.boss_warning or self.give_up_confirm
-            or self.help_overlay
+            or self.restart_confirm or self.help_overlay
         )
 
     def _continue_action(self, state: GameState) -> Action:

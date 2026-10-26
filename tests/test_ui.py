@@ -16,6 +16,7 @@ from config import (
     CLEAR_GOLD_BONUS,
     CLEAR_GOLD_PER_STAGE,
     COLOR_GOLD,
+    INITIAL_GOLD,
     KILL_GOLD,
     PANEL_X,
     SCREEN_HEIGHT,
@@ -58,6 +59,7 @@ class TestPygameUI(unittest.TestCase):
             boss_warning=self.input.boss_warning,
             board_view=self.input.board_view,
             give_up_confirm=self.input.give_up_confirm,
+            restart_confirm=self.input.restart_confirm,
         )
         bounds = self.screen.get_rect()
         for button in self.renderer.buttons.buttons:
@@ -443,6 +445,63 @@ class TestPygameUI(unittest.TestCase):
         self.game.step(self.input.handle_event(event, self.game.state))
         self.click("BUY")
         self.assertTrue(self.game.state.has_tower(0))
+
+    def sell_last_tower_with_last_action(self):
+        """20번째 행동으로 하나뿐인 사신을 팔아 소환도 시작도 못 하는 상태를 만든다."""
+        self.select_empty_slot()
+        self.click("BUY")
+        self.game.state.actions_taken_this_wave = 19
+        self.click("SELL")
+        self.click("CONFIRM_SELL")
+        self.select_empty_slot()
+        self.assertFalse(self.game.state.towers)
+        self.assertEqual(self.game.state.actions_taken_this_wave, 20)
+        self.render()
+        buy = next(b for b in self.renderer.buttons.buttons if b.action == "OPEN_BUY_CONFIRM")
+        self.assertFalse(buy.enabled)
+
+    def test_restart_button_recovers_from_selling_last_tower_on_last_action(self):
+        self.sell_last_tower_with_last_action()
+        self.render("softlock-restart-button")
+        restart = next(b for b in self.renderer.buttons.buttons if b.action == "OPEN_RESTART_CONFIRM")
+        self.assertTrue(restart.enabled)
+        self.assertIsNone(self.press("OPEN_RESTART_CONFIRM"))
+        self.assertTrue(self.input.restart_confirm)
+        self.assertTrue(self.input.paused)
+        self.render("restart-confirm")
+        self.assertEqual({b.action for b in self.renderer.buttons.buttons}, {"RESTART_YES", "RESTART_NO"})
+        self.click("RESTART_YES")
+        self.assertFalse(self.input.restart_confirm)
+        self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
+        self.assertEqual(self.game.state.current_stage, 1)
+        self.assertEqual(self.game.state.actions_taken_this_wave, 0)
+        self.assertEqual(self.game.state.gold, INITIAL_GOLD)
+        self.select_empty_slot()
+        self.click("BUY")
+        self.assertTrue(self.game.state.has_tower(0))
+
+    def test_restart_confirm_no_and_escape_keep_current_run(self):
+        self.select_empty_slot()
+        self.click("BUY")
+        before = copy.deepcopy(self.game.state)
+        self.press("OPEN_RESTART_CONFIRM")
+        self.assertIsNone(self.press("RESTART_NO"))
+        self.assertFalse(self.input.restart_confirm)
+        self.press("OPEN_RESTART_CONFIRM")
+        escape = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE)
+        self.assertIsNone(self.input.handle_event(escape, self.game.state))
+        self.assertFalse(self.input.restart_confirm)
+        self.assertFalse(self.input.give_up_confirm)
+        self.assertEqual(self.game.state, before)
+
+    def test_restart_button_is_only_shown_while_preparing(self):
+        self.render()
+        self.assertIn("OPEN_RESTART_CONFIRM", {b.action for b in self.renderer.buttons.buttons})
+        self.select_empty_slot()
+        self.click("BUY")
+        self.click("START_WAVE")
+        self.render()
+        self.assertNotIn("OPEN_RESTART_CONFIRM", {b.action for b in self.renderer.buttons.buttons})
 
     def test_speed_button_cycle_and_back_to_title(self):
         self.click("START_WAVE")

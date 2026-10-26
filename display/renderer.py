@@ -213,6 +213,7 @@ class Renderer:
         boss_warning: bool = False,
         board_view: bool = False,
         give_up_confirm: bool = False,
+        restart_confirm: bool = False,
         help_page: int = 0,
         help_overlay: bool = False,
     ) -> None:
@@ -241,6 +242,8 @@ class Renderer:
             self._render_help_overlay(help_page)
         if give_up_confirm and state.phase in {GamePhase.WAVE_ACTIVE, GamePhase.PREPARATION, GamePhase.SETTLEMENT}:
             self._render_give_up_popup()
+        if restart_confirm and state.phase == GamePhase.PREPARATION:
+            self._render_restart_popup()
         if quit_confirm:
             self._render_quit_popup()
 
@@ -346,6 +349,29 @@ class Renderer:
         self.buttons.set_buttons([
             Button(pygame.Rect(left_x, button_y, button_w, 46), "수호 포기하기", "GIVE_UP_YES", secondary=True),
             Button(pygame.Rect(left_x + button_w + gap, button_y, button_w, 46), "계속 수호하기", "GIVE_UP_NO"),
+        ])
+        self.buttons.render(self.screen, self.font_med)
+
+    def _render_restart_popup(self) -> None:
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        self.screen.blit(overlay, (0, 0))
+
+        width, height = 520, 260
+        panel = pygame.Rect((SCREEN_WIDTH - width) // 2, (SCREEN_HEIGHT - height) // 2, width, height)
+        draw_panel(self.screen, panel)
+
+        title = self.font_big.render("처음부터 다시 할까?", True, COLOR_GOLD)
+        self.screen.blit(title, title.get_rect(center=(panel.centerx, panel.y + 66)))
+        body = self.font_med.render("지금까지의 소동과 사신은 모두 사라져!", True, COLOR_WHITE)
+        self.screen.blit(body, body.get_rect(center=(panel.centerx, panel.y + 126)))
+
+        button_w, gap = 200, 20
+        left_x = panel.centerx - (button_w * 2 + gap) // 2
+        button_y = panel.bottom - 76
+        self.buttons.set_buttons([
+            Button(pygame.Rect(left_x, button_y, button_w, 46), "다시 시작하기", "RESTART_YES", secondary=True),
+            Button(pygame.Rect(left_x + button_w + gap, button_y, button_w, 46), "계속 수호하기", "RESTART_NO"),
         ])
         self.buttons.render(self.screen, self.font_med)
 
@@ -1176,6 +1202,8 @@ class Renderer:
             for i, line in enumerate(desc.split(" · ")):
                 self._text(line, PANEL_INNER_X, 638 + i * 21, self.font_small, COLOR_WHITE)
         buttons.append(Button(pygame.Rect(PANEL_INNER_X, 682, PANEL_INNER_W, 40), f"{state.current_stage}번째 수호 시작", "OPEN_START_CONFIRM"))
+        # 행동 횟수를 다 쓴 뒤 마지막 사신을 팔면 소환도 시작도 못 하므로, 패널 아래에 재시작 버튼을 둔다.
+        buttons.append(Button(pygame.Rect(PANEL_INNER_X, 772, PANEL_INNER_W, 40), "다시 시작", "OPEN_RESTART_CONFIRM", secondary=True))
 
     def _render_result(self, state: GameState) -> None:
         """패배/승리 화면: 성공·실패 이미지만 띄우고, 화면 아무 곳이나 누르면 시작 화면으로 갑니다(input_handler)."""
