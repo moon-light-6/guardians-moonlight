@@ -290,7 +290,7 @@ class TestEffectTracking(unittest.TestCase):
         self.animator.draw(previous, expected, self.renderer.projection)
         self.assertEqual(pygame.image.tobytes(current, "RGBA"), pygame.image.tobytes(previous, "RGBA"))
         self.assertEqual((field["ttl"], field["slow_ttl"]), (2, 2))
-        self.assertEqual(Combat.get_field_speed_modifier(field["cell"], [field]), 0.7)
+        self.assertEqual(Combat.get_field_speed_modifier(field["cell"], [field]), field["factor"])
 
     def test_legacy_coordinate_only_events_keep_their_original_locations(self):
         for effect in ({"kind": "claw", "to": (1, 2)},

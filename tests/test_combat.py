@@ -6,7 +6,7 @@ from game.map import GameMap
 from game.actions import Action, ActionType
 from game.engine import Game
 from game.state import GamePhase
-from game.tower import Tower
+from game.tower import Tower, TowerType
 from config import SIMULATION_STEP
 
 
@@ -35,7 +35,8 @@ class TestCombat(unittest.TestCase):
     def test_upgrade_changes_next_attack_without_resetting_or_pausing_combat(self):
         for kind, damage, interval, effect_kind in (
             ("ARCHER", 15, 0.5, "claw"), ("CANNON", 40, 2, "fire"),
-            ("ICE", 10, 4, "water"), ("LIGHTNING", 25, 1.5, "lightning"),
+            ("ICE", Tower.BASE_STATS[TowerType.ICE]["damage"],
+             Tower.BASE_STATS[TowerType.ICE]["attack_interval"], "water"), ("LIGHTNING", 25, 1.5, "lightning"),
         ):
             with self.subTest(tower=kind):
                 game = Game()
