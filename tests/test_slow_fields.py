@@ -1,7 +1,7 @@
 import unittest
 import math
 
-from config import SIMULATION_STEP
+from config import SIMULATION_STEP, WAVE_CLEAR_DELAY
 from game.actions import Action, ActionType
 from game.combat import Combat
 from game.enemy import Enemy, EnemyType
@@ -151,5 +151,6 @@ class TestSlowFields(unittest.TestCase):
                 for enemy in game.state.enemies:
                     enemy.take_damage(10000)
                 game.update(SIMULATION_STEP)
+                game.update(WAVE_CLEAR_DELAY + 2.0)  # 막타 연출과 빈 게임판 대기가 끝나야 정산된다
                 self.assertEqual(game.state.phase, GamePhase.SETTLEMENT)
                 self.assertFalse(any(effect["kind"] == "slow_field" for effect in game.state.effects))

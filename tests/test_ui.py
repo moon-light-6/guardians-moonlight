@@ -21,6 +21,7 @@ from config import (
     PANEL_X,
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
+    WAVE_CLEAR_DELAY,
 )
 from display.input_handler import InputHandler
 from display.renderer import Renderer
@@ -1131,6 +1132,7 @@ class TestPygameUI(unittest.TestCase):
         boss.take_damage(500)
         state.enemies = [normal, boss]
         self.game.update(1 / 60)
+        self.game.update(WAVE_CLEAR_DELAY + 2.0)  # 막타 연출과 빈 게임판 대기가 끝나야 정산된다
         with patch.object(self.renderer, "_text", wraps=self.renderer._text) as draw_text:
             self.render("settlement-rewards-integrated")
         values = [call.args[0] for call in draw_text.call_args_list]

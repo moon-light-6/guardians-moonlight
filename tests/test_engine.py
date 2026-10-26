@@ -1,13 +1,19 @@
 import unittest
 from unittest.mock import patch
 
-from config import BOSS_KILL_GOLD, CLEAR_GOLD_BASE, CLEAR_GOLD_BONUS, CLEAR_GOLD_PER_STAGE, KILL_GOLD
+from config import (
+    BOSS_KILL_GOLD, CLEAR_GOLD_BASE, CLEAR_GOLD_BONUS, CLEAR_GOLD_PER_STAGE, KILL_GOLD, SIMULATION_STEP,
+    WAVE_CLEAR_DELAY,
+)
 from game.actions import Action, ActionType
 from game.engine import Game
 from game.enemy import Enemy, EnemyType
 from game.state import GamePhase
 from game.tower import Tower
 from game.wave import WaveManager
+
+# 막타 공격 연출(청룡 연쇄 최대 약 1.5초)과 빈 게임판 대기가 모두 끝나 정산될 만큼의 시간
+WAVE_CLEAR_WAIT = WAVE_CLEAR_DELAY + 2.0
 
 
 class TestGameEngine(unittest.TestCase):
@@ -61,14 +67,51 @@ class TestGameEngine(unittest.TestCase):
 
                 self.game.update(1 / 120)
 
+                # 막타 직후에는 정산하지 않고 공격 연출을 남겨 둔다.
+                self.assertEqual(self.state.phase, GamePhase.WAVE_ACTIVE)
+                self.assertTrue(any(effect["kind"] != "slow_field" for effect in self.state.effects))
+                gold = self.state.gold
+                self.game.update(WAVE_CLEAR_WAIT)
+
                 self.assertEqual(self.state.phase, GamePhase.SETTLEMENT)
                 self.assertEqual(self.state.effects, [])
+                self.assertGreater(self.state.gold, gold)  # 정산 보상은 마무리 시간이 끝난 뒤 한 번만
                 cooldown = self.state.towers[0]["cooldown"]
                 self.game.step(Action(ActionType.CONTINUE))
                 self.assertEqual(self.state.effects, [])
                 self.game.step(Action(ActionType.START_WAVE))
                 self.assertEqual(self.state.effects, [])
                 self.assertEqual(self.state.towers[0]["cooldown"], cooldown)
+
+    def test_wave_clear_waits_for_attack_effects_then_empty_board_delay(self):
+        self.game.step(Action(ActionType.START_WAVE))
+        self.game.wave_manager.spawn_queue = []
+        self.state.enemies = []
+        self.state.effects = [
+            {"kind": "claw", "from": (0, 0), "to": (1, 0), "age": 0.0, "ttl": 0.4},
+            {"kind": "slow_field", "cell": (1, 0), "factor": 0.7, "age": 0.0, "ttl": 2.0, "slow_ttl": 2.0},
+        ]
+        life, gold = self.state.life, self.state.gold
+        self.game.update(SIMULATION_STEP)
+        self.assertEqual(self.state.phase, GamePhase.WAVE_ACTIVE)
+        self.assertEqual(self.state.wave_clear_elapsed, 0.0)
+
+        # 공격 연출이 남아 있는 동안에는 빈 판 대기 시간이 흐르지 않는다.
+        self.game.update(0.39)
+        self.assertEqual(self.state.wave_clear_elapsed, 0.0)
+        # 공격 연출이 끝나면 현무 장판이 남아 있어도 대기 시간이 흐른다.
+        self.game.update(0.02 + WAVE_CLEAR_DELAY - 0.05)
+        self.assertEqual(self.state.phase, GamePhase.WAVE_ACTIVE)
+        self.assertTrue(any(effect["kind"] == "slow_field" for effect in self.state.effects))
+        self.assertEqual((self.state.life, self.state.gold), (life, gold))
+
+        self.game.update(0.05)
+        self.assertEqual(self.state.phase, GamePhase.SETTLEMENT)
+        self.assertEqual(self.state.effects, [])
+        self.assertIsNone(self.state.wave_clear_elapsed)
+        self.game.step(Action(ActionType.CONTINUE))
+        self.game.step(Action(ActionType.START_WAVE))
+        self.assertIsNone(self.state.wave_clear_elapsed)
 
     def test_restart_from_title(self):
         state = self.game.reset(seed=1)
@@ -150,6 +193,7 @@ class TestGameEngine(unittest.TestCase):
                 game.state.enemies = [boss]
                 game.wave_manager.spawn_queue = []
                 game.update(0.1)
+                game.update(WAVE_CLEAR_WAIT)
                 self.assertEqual(game.state.life, 20 - boss_data["life_damage"])
                 self.assertEqual(game.state.wave_boss_gold, 0)
                 expected_phase = GamePhase.GAME_OVER if stage == 30 else GamePhase.SETTLEMENT
