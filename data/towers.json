@@ -10,7 +10,7 @@
     "name": "백호",
     "damage": 15,
     "attack_interval": 0.5,
-    "range": 3.5,
+    "range": 3.0,
     "special": "빠른 단일 공격"
   },
   "CANNON": {
@@ -22,11 +22,11 @@
   },
   "ICE": {
     "name": "현무",
-    "damage": 10,
-    "attack_interval": 4.0,
+    "damage": 30,
+    "attack_interval": 3.5,
     "range": 3.0,
-    "special": "대상 타일에 2초간 30% 둔화 장판",
-    "slow_factor": 0.7,
+    "special": "대상 타일에 2초간 45% 둔화 장판",
+    "slow_factor": 0.55,
     "slow_duration": 2.0
   }
 }
