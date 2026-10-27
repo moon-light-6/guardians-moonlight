@@ -38,12 +38,12 @@ class Tower:
         },
         TowerType.ICE: {
             "guardian": "현무",
-            "damage": 10,
-            "attack_interval": 4.0,
+            "damage": 30,
+            "attack_interval": 3.5,
             "range": 3.0,
-            "slow_factor": 0.7,
+            "slow_factor": 0.55,
             "slow_duration": 2.0,
-            "description": "장판형 · 2초간 30% 둔화",
+            "description": "장판형 · 2초간 45% 둔화",
         },
     }
 

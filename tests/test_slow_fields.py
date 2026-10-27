@@ -7,6 +7,10 @@ from game.combat import Combat
 from game.enemy import Enemy, EnemyType
 from game.engine import Game
 from game.state import GamePhase
+from game.tower import Tower, TowerType
+
+ICE = Tower.BASE_STATS[TowerType.ICE]
+SLOW = ICE["slow_factor"]
 
 
 class TestSlowFields(unittest.TestCase):
@@ -38,9 +42,9 @@ class TestSlowFields(unittest.TestCase):
         self.assertEqual(fields[0]["cell"], self.field_cell(game))
         self.assertEqual(fields[0]["slow_ttl"], 2)
         self.assertEqual(fields[0]["ttl"], 2)
-        self.assertEqual([enemy.health for enemy in game.state.enemies], [990, 1000])
+        self.assertEqual([enemy.health for enemy in game.state.enemies], [1000 - ICE["damage"], 1000])
         for enemy in game.state.enemies:
-            self.assertEqual(Combat.get_field_speed_modifier(enemy.get_current_position(), fields), 0.7)
+            self.assertEqual(Combat.get_field_speed_modifier(enemy.get_current_position(), fields), SLOW)
             self.assertNotIn("slow", enemy.status_effects)
 
     def test_actual_movement_is_slowed_for_all_enemies_in_tile(self):
@@ -50,7 +54,7 @@ class TestSlowFields(unittest.TestCase):
             enemy.speed = 1
         game.update(0.25)
         for enemy in game.state.enemies:
-            self.assertAlmostEqual(enemy.distance_travelled, 0.175)
+            self.assertAlmostEqual(enemy.distance_travelled, 0.25 * SLOW)
 
     def test_field_position_stays_fixed_when_target_moves(self):
         game = self.make_game()
@@ -93,7 +97,7 @@ class TestSlowFields(unittest.TestCase):
             enemy.speed = 0.1  # 검사 중 같은 타일 안에 머물게 합니다.
         game.update(2 - SIMULATION_STEP)
         for enemy in game.state.enemies:
-            self.assertAlmostEqual(enemy.distance_travelled, 0.1 * 0.7 * (2 - SIMULATION_STEP))
+            self.assertAlmostEqual(enemy.distance_travelled, 0.1 * SLOW * (2 - SIMULATION_STEP))
         before = [enemy.distance_travelled for enemy in game.state.enemies]
         game.update(SIMULATION_STEP)
         fields = [effect for effect in game.state.effects if effect["kind"] == "slow_field"]
@@ -114,8 +118,8 @@ class TestSlowFields(unittest.TestCase):
         fields = [effect for effect in game.state.effects if effect["kind"] == "slow_field"]
         self.assertEqual(fields, [])
         self.assertEqual(Combat.get_field_speed_modifier((10, 1), fields), 1)
-        self.assertEqual(game.state.enemies[0].health, 990)
-        game.update(1.9)
+        self.assertEqual(game.state.enemies[0].health, 1000 - ICE["damage"])
+        game.update(ICE["attack_interval"] - 2 - 0.1)
         fields = [effect for effect in game.state.effects if effect["kind"] == "slow_field"]
         self.assertEqual(fields, [])
         self.assertEqual(Combat.get_field_speed_modifier((10, 1), fields), 1)
@@ -123,8 +127,8 @@ class TestSlowFields(unittest.TestCase):
         fields = [effect for effect in game.state.effects if effect["kind"] == "slow_field"]
         self.assertEqual(len(fields), 1)
         self.assertEqual(fields[0]["age"], 0)
-        self.assertEqual(Combat.get_field_speed_modifier(self.field_cell(game), fields), 0.7)
-        self.assertEqual(game.state.enemies[0].health, 980)
+        self.assertEqual(Combat.get_field_speed_modifier(self.field_cell(game), fields), SLOW)
+        self.assertEqual(game.state.enemies[0].health, 1000 - 2 * ICE["damage"])
 
     def test_field_duration_uses_combat_speed(self):
         for speed in (1, 1.5, 2, 5):
