@@ -85,3 +85,6 @@ settings.local.json
 
 .DS_Store
 
+
+# PPO 학습 결과: 그래프·지표 CSV·신경망(scripts/ppo.py가 저장)
+results/ppo/
