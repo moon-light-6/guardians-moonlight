@@ -12,7 +12,7 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 
 import pygame
 
-from config import SCREEN_HEIGHT, SCREEN_WIDTH, SIMULATION_STEP
+from config import SCREEN_HEIGHT, SCREEN_WIDTH, SIMULATION_STEP, WAVE_CLEAR_DELAY
 from display.effect_animation import AttackEffectAnimator
 from display.renderer import Renderer
 from game.actions import Action, ActionType
@@ -67,6 +67,7 @@ class TestEffectTracking(unittest.TestCase):
             game.state.enemies = []
             game.wave_manager.spawn_queue = []
             game.update(SIMULATION_STEP)
+            game.update(WAVE_CLEAR_DELAY + 2.0)  # 막타 연출과 빈 게임판 대기가 끝나야 정산된다
             self.assertEqual(game.state.phase, GamePhase.SETTLEMENT)
             game.step(Action(ActionType.CONTINUE))
             game.step(Action(ActionType.START_WAVE))
