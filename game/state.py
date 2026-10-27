@@ -63,6 +63,8 @@ class GameState:
     wave_clear_gold: int = 0
     clear_rewarded_stages: set[int] = field(default_factory=set)
     wave_reached_base: int = 0
+    # 마지막 악귀 처치 후 정산까지 빈 게임판을 보여준 시간. 소동이 끝나기 전에는 None.
+    wave_clear_elapsed: Optional[float] = None
     combat_speed: float = 1.0
 
     def is_valid_slot(self, slot_id: int) -> bool:

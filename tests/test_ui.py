@@ -16,10 +16,14 @@ from config import (
     CLEAR_GOLD_BONUS,
     CLEAR_GOLD_PER_STAGE,
     COLOR_GOLD,
+    INITIAL_GOLD,
     KILL_GOLD,
+    MAX_ACTIONS_PER_WAVE,
     PANEL_X,
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
+    SUMMON_TOTAL_SECONDS,
+    WAVE_CLEAR_DELAY,
 )
 from display.input_handler import InputHandler
 from display.renderer import Renderer
@@ -58,6 +62,8 @@ class TestPygameUI(unittest.TestCase):
             boss_warning=self.input.boss_warning,
             board_view=self.input.board_view,
             give_up_confirm=self.input.give_up_confirm,
+            restart_confirm=self.input.restart_confirm,
+            drag=self.input.drag,
         )
         bounds = self.screen.get_rect()
         for button in self.renderer.buttons.buttons:
@@ -442,6 +448,170 @@ class TestPygameUI(unittest.TestCase):
         self.assertTrue(self.game.state.is_slot_empty(0))
         self.game.step(self.input.handle_event(event, self.game.state))
         self.click("BUY")
+        self.assertTrue(self.game.state.has_tower(0))
+
+    def sell_last_tower_with_last_action(self):
+        """20번째 행동으로 하나뿐인 사신을 팔아 소환도 시작도 못 하는 상태를 만든다."""
+        self.select_empty_slot()
+        self.click("BUY")
+        self.game.state.actions_taken_this_wave = 19
+        self.click("SELL")
+        self.click("CONFIRM_SELL")
+        self.select_empty_slot()
+        self.assertFalse(self.game.state.towers)
+        self.assertEqual(self.game.state.actions_taken_this_wave, 20)
+        self.render()
+        buy = next(b for b in self.renderer.buttons.buttons if b.action == "OPEN_BUY_CONFIRM")
+        self.assertFalse(buy.enabled)
+
+    def test_restart_button_recovers_from_selling_last_tower_on_last_action(self):
+        self.sell_last_tower_with_last_action()
+        self.render("softlock-restart-button")
+        restart = next(b for b in self.renderer.buttons.buttons if b.action == "OPEN_RESTART_CONFIRM")
+        self.assertTrue(restart.enabled)
+        self.assertIsNone(self.press("OPEN_RESTART_CONFIRM"))
+        self.assertTrue(self.input.restart_confirm)
+        self.assertTrue(self.input.paused)
+        self.render("restart-confirm")
+        self.assertEqual({b.action for b in self.renderer.buttons.buttons}, {"RESTART_YES", "RESTART_NO"})
+        self.click("RESTART_YES")
+        self.assertFalse(self.input.restart_confirm)
+        self.assertEqual(self.game.state.phase, GamePhase.PREPARATION)
+        self.assertEqual(self.game.state.current_stage, 1)
+        self.assertEqual(self.game.state.actions_taken_this_wave, 0)
+        self.assertEqual(self.game.state.gold, INITIAL_GOLD)
+        self.select_empty_slot()
+        self.click("BUY")
+        self.assertTrue(self.game.state.has_tower(0))
+
+    def test_restart_confirm_no_and_escape_keep_current_run(self):
+        self.select_empty_slot()
+        self.click("BUY")
+        before = copy.deepcopy(self.game.state)
+        self.press("OPEN_RESTART_CONFIRM")
+        self.assertIsNone(self.press("RESTART_NO"))
+        self.assertFalse(self.input.restart_confirm)
+        self.press("OPEN_RESTART_CONFIRM")
+        escape = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE)
+        self.assertIsNone(self.input.handle_event(escape, self.game.state))
+        self.assertFalse(self.input.restart_confirm)
+        self.assertFalse(self.input.give_up_confirm)
+        self.assertEqual(self.game.state, before)
+
+    def test_restart_button_is_only_shown_while_preparing(self):
+        self.render()
+        self.assertIn("OPEN_RESTART_CONFIRM", {b.action for b in self.renderer.buttons.buttons})
+        self.select_empty_slot()
+        self.click("BUY")
+        self.click("START_WAVE")
+        self.render()
+        self.assertNotIn("OPEN_RESTART_CONFIRM", {b.action for b in self.renderer.buttons.buttons})
+
+    def slot_pixel(self, slot_id):
+        return self.renderer.projection.game_to_pixel(self.game.map.get_slot_position(slot_id))
+
+    def summon_ready_tower(self, slot_id=0):
+        self.select_empty_slot(slot_id)
+        self.click("BUY")
+        self.game.update(SUMMON_TOTAL_SECONDS + 0.1)
+        self.assertNotIn("summoning", self.game.state.towers[slot_id])
+
+    def drag(self, from_slot, to_pos, steps=4):
+        """마우스를 누른 채 to_pos까지 끌어 놓고, 손을 뗄 때 나온 행동을 돌려준다."""
+        start = self.slot_pixel(from_slot)
+        events = [pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=start)]
+        for i in range(1, steps + 1):
+            pos = (start[0] + (to_pos[0] - start[0]) * i // steps, start[1] + (to_pos[1] - start[1]) * i // steps)
+            events.append(pygame.event.Event(pygame.MOUSEMOTION, pos=pos, rel=(0, 0), buttons=(1, 0, 0)))
+        down, *moves = events
+        action = self.input.handle_event(down, self.game.state)
+        if action:
+            _apply_action(self.game, self.renderer, action)
+        for move in moves:
+            self.assertIsNone(self.input.handle_event(move, self.game.state))
+        self.render()
+        up = pygame.event.Event(pygame.MOUSEBUTTONUP, button=1, pos=to_pos)
+        return self.input.handle_event(up, self.game.state)
+
+    def test_drag_moves_ready_guardian_to_empty_slot(self):
+        self.summon_ready_tower(0)
+        tower_type = self.game.state.towers[0]["type"]
+        actions = self.game.state.actions_taken_this_wave
+
+        start = self.slot_pixel(0)
+        target = self.slot_pixel(3)
+        self.input.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=start), self.game.state)
+        self.input.handle_event(pygame.event.Event(pygame.MOUSEMOTION, pos=target, rel=(0, 0), buttons=(1, 0, 0)),
+                                self.game.state)
+        self.assertEqual(self.input.drag, (0, target))
+        self.render("drag-guardian")
+        action = self.input.handle_event(pygame.event.Event(pygame.MOUSEBUTTONUP, button=1, pos=target),
+                                         self.game.state)
+        self.assertEqual((action.action_type, action.from_slot_id, action.to_slot_id), (ActionType.RELOCATE, 0, 3))
+        self.assertIsNone(self.input.drag)
+        _apply_action(self.game, self.renderer, action)
+
+        state = self.game.state
+        self.assertEqual(state.phase, GamePhase.PREPARATION)
+        self.assertTrue(state.is_slot_empty(0))
+        self.assertEqual(state.towers[3]["type"], tower_type)
+        self.assertEqual(state.selected_slot, 3)
+        self.assertEqual(state.actions_taken_this_wave, actions + 1)
+
+    def test_short_press_on_guardian_only_selects(self):
+        self.summon_ready_tower(0)
+        self.game.step(Action(ActionType.SELECT_SLOT, slot_id=None))
+        start = self.slot_pixel(0)
+        action = self.drag(0, (start[0] + 3, start[1] + 2))
+        self.assertIsNone(action)
+        self.assertEqual(self.game.state.selected_slot, 0)
+        self.assertTrue(self.game.state.has_tower(0))
+
+    def test_drop_outside_empty_slot_returns_guardian(self):
+        self.summon_ready_tower(0)
+        self.summon_ready_tower(3)
+        before = copy.deepcopy(self.game.state.towers)
+        for target in (self.slot_pixel(3), (500, 120)):
+            with self.subTest(target=target):
+                self.assertIsNone(self.drag(0, target))
+                self.assertEqual(self.game.state.towers, before)
+                self.assertIsNone(self.input.drag)
+        # Esc로도 드래그를 취소할 수 있고, 수호 포기 팝업은 뜨지 않는다.
+        start = self.slot_pixel(0)
+        self.input.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=start), self.game.state)
+        self.input.handle_event(pygame.event.Event(pygame.MOUSEMOTION, pos=self.slot_pixel(5), rel=(0, 0),
+                                                   buttons=(1, 0, 0)), self.game.state)
+        escape = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE)
+        self.assertIsNone(self.input.handle_event(escape, self.game.state))
+        self.assertIsNone(self.input.drag)
+        self.assertFalse(self.input.give_up_confirm)
+
+    def test_guardian_being_summoned_cannot_be_moved(self):
+        self.select_empty_slot(0)
+        self.click("BUY")
+        self.assertTrue(self.game.state.towers[0].get("summoning"))
+        self.assertIsNone(self.drag(0, self.slot_pixel(3)))
+        self.assertTrue(self.game.state.has_tower(0))
+        self.game.step(Action(ActionType.SELECT_SLOT, slot_id=0))
+        self.render()
+        move = next(b for b in self.renderer.buttons.buttons if b.action == "BEGIN_RELOCATE")
+        self.assertFalse(move.enabled)
+
+        self.game.update(SUMMON_TOTAL_SECONDS + 0.1)
+        self.render()
+        move = next(b for b in self.renderer.buttons.buttons if b.action == "BEGIN_RELOCATE")
+        self.assertTrue(move.enabled)
+        _apply_action(self.game, self.renderer, self.drag(0, self.slot_pixel(3)))
+        self.assertTrue(self.game.state.has_tower(3))
+
+    def test_no_drag_when_actions_are_used_up_or_during_wave(self):
+        self.summon_ready_tower(0)
+        self.game.state.actions_taken_this_wave = MAX_ACTIONS_PER_WAVE
+        self.assertIsNone(self.drag(0, self.slot_pixel(3)))
+        self.assertTrue(self.game.state.has_tower(0))
+        self.game.state.actions_taken_this_wave = 0
+        self.click("START_WAVE")
+        self.assertIsNone(self.drag(0, self.slot_pixel(3)))
         self.assertTrue(self.game.state.has_tower(0))
 
     def test_speed_button_cycle_and_back_to_title(self):
@@ -953,6 +1123,7 @@ class TestPygameUI(unittest.TestCase):
 
     def test_move_button_and_slot_click_preserve_level(self):
         self.game.step(Action(ActionType.BUY, slot_id=0))
+        self.game.update(SUMMON_TOTAL_SECONDS + 0.1)  # 소환이 끝난 사신만 옮길 수 있다
         self.game.state.towers[0]["level"] = 3
         self.click("BEGIN_RELOCATE")
         self.render("move-tower")
@@ -1072,6 +1243,7 @@ class TestPygameUI(unittest.TestCase):
         boss.take_damage(500)
         state.enemies = [normal, boss]
         self.game.update(1 / 60)
+        self.game.update(WAVE_CLEAR_DELAY + 2.0)  # 막타 연출과 빈 게임판 대기가 끝나야 정산된다
         with patch.object(self.renderer, "_text", wraps=self.renderer._text) as draw_text:
             self.render("settlement-rewards-integrated")
         values = [call.args[0] for call in draw_text.call_args_list]

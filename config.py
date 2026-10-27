@@ -10,6 +10,8 @@ SLOT_COUNT = 24
 MAX_STAGES = 30
 COMBAT_SPEEDS = (1.0, 1.5, 2.0, 5.0)
 SIMULATION_STEP = 1.0 / 120.0
+# 마지막 악귀 처치 후 공격 연출이 끝나고 빈 게임판을 보여주는 시간(초, 게임 시간 기준).
+WAVE_CLEAR_DELAY = 0.7
 
 INITIAL_LIFE = 20
 INITIAL_GOLD = 200

@@ -10,6 +10,7 @@ from config import (
     MAX_STAGES,
     SIMULATION_STEP,
     SUMMON_TOTAL_SECONDS,
+    WAVE_CLEAR_DELAY,
 )
 from game.actions import Action, ActionType
 from game.combat import Combat
@@ -76,6 +77,9 @@ class Game:
                 self._begin_sell(action.slot_id)
             elif kind == ActionType.BEGIN_RELOCATE:
                 self._begin_relocate(action.slot_id)
+            elif kind == ActionType.RELOCATE:
+                # 행동 목록(get_all_valid_actions)처럼 준비 단계에서 바로 옮기는 것도 허용한다(드래그 이동).
+                self._handle_relocate(action.from_slot_id, action.to_slot_id)
             elif kind == ActionType.START_WAVE:
                 self._start_wave()
         elif self.state.phase == GamePhase.SELL_CONFIRM and kind == ActionType.CONFIRM_SELL:
@@ -113,6 +117,10 @@ class Game:
             if effect["age"] + dt < effect["ttl"] - 1e-9
         ]
 
+        if self.state.wave_clear_elapsed is not None:
+            self._update_wave_clear(dt)
+            return
+
         self.state.enemies.extend(self.wave_manager.update(dt, self.map.get_path()))
         self._assign_enemy_ids()
         self._move_enemies(dt)
@@ -128,6 +136,19 @@ class Game:
 
         alive = [enemy for enemy in self.state.enemies if enemy.is_alive]
         if self.wave_manager.is_wave_complete(alive):
+            # 바로 정산하면 막타 연출이 한 프레임도 그려지지 않으므로 마무리 시간을 둔다.
+            self.state.wave_clear_elapsed = 0.0
+
+    def _update_wave_clear(self, dt: float) -> None:
+        """막타 공격 연출이 끝난 뒤 빈 게임판을 WAVE_CLEAR_DELAY만큼 보여주고 정산한다.
+
+        이 동안에는 악귀 생성·이동과 사신 공격이 없어 보상과 결계는 바뀌지 않는다.
+        """
+        # 현무 장판은 2초 동안 남아 있어 기다리지 않는다(정산 때 함께 지워진다).
+        attacking = any(effect["kind"] != "slow_field" for effect in self.state.effects)
+        if not attacking:
+            self.state.wave_clear_elapsed += dt
+        if self.state.wave_clear_elapsed + 1e-9 >= WAVE_CLEAR_DELAY:
             self._transition_to_settlement()
 
     def get_state(self) -> GameState:
@@ -270,6 +291,7 @@ class Game:
         self.state.wave_boss_gold = 0
         self.state.wave_clear_gold = 0
         self.state.wave_reached_base = 0
+        self.state.wave_clear_elapsed = None
         self._simulation_accumulator = 0.0
         self.state.enemies = []
         self.state.effects = []
@@ -349,6 +371,7 @@ class Game:
         ):
             return
         self.state.effects = []
+        self.state.wave_clear_elapsed = None
         stage = self.state.current_stage
         self.economy.on_stage_clear(self.state)
         clear_gold = self.state.wave_clear_gold

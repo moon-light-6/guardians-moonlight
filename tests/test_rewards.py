@@ -8,12 +8,16 @@ from config import (
     CLEAR_GOLD_BONUS_STAGES,
     CLEAR_GOLD_PER_STAGE,
     KILL_GOLD,
+    WAVE_CLEAR_DELAY,
 )
 from game.actions import Action, ActionType
 from game.economy import Economy
 from game.enemy import Enemy, EnemyType
 from game.engine import Game
 from game.state import GamePhase, GameState
+
+# 막타 공격 연출(청룡 연쇄 최대 약 1.5초)과 빈 게임판 대기가 모두 끝나 정산될 만큼의 시간
+WAVE_CLEAR_WAIT = WAVE_CLEAR_DELAY + 2.0
 
 
 def clear_reward(stage):
@@ -101,6 +105,7 @@ class TestRewards(unittest.TestCase):
         with patch.object(game.economy, "on_enemy_killed", wraps=game.economy.on_enemy_killed) as kill_callback:
             with patch.object(game.economy, "on_stage_clear", wraps=game.economy.on_stage_clear) as clear_callback:
                 game.update(1 / 60)
+                game.update(WAVE_CLEAR_WAIT)
                 self.assertEqual(kill_callback.call_count, 4)
                 clear_callback.assert_called_once_with(state)
         total = KILL_GOLD + BOSS_KILL_GOLD + clear_reward(5)
@@ -123,7 +128,7 @@ class TestRewards(unittest.TestCase):
         game.step(Action(ActionType.START_WAVE))
         self.assertEqual((state.wave_kill_gold, state.wave_boss_gold, state.wave_clear_gold), (0, 0, 0))
         game.wave_manager.spawn_queue = []
-        game.update(1 / 60)
+        game.update(WAVE_CLEAR_WAIT)
         self.assertEqual(state.phase, GamePhase.SETTLEMENT)
         self.assertEqual(state.gold, 200 + total + clear_reward(6))
         self.assertEqual(state.wave_result.clear_gold, clear_reward(6))
@@ -143,14 +148,14 @@ class TestRewards(unittest.TestCase):
         game.reset(start_at_title=False)
         game.step(Action(ActionType.START_WAVE))
         game.wave_manager.spawn_queue = []
-        game.update(1 / 60)
+        game.update(WAVE_CLEAR_WAIT)
         self.assertEqual(game.state.gold, 200 + clear_reward(1))
         self.assertEqual(game.state.clear_rewarded_stages, {1})
         game.step(Action(ActionType.RESTART))
         self.assertEqual(game.state.clear_rewarded_stages, set())
         game.step(Action(ActionType.START_WAVE))
         game.wave_manager.spawn_queue = []
-        game.update(1 / 60)
+        game.update(WAVE_CLEAR_WAIT)
         self.assertEqual(game.state.gold, 200 + clear_reward(1))
 
 
