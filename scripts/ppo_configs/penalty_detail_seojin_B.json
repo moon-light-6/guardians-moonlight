@@ -1,0 +1,63 @@
+{
+  "_설명": "지금 돌리는 실험(소환·강화·판매에 행동 패널티 0.5, 소동 시작은 제외)의 모든 항목을 빠짐없이 적은 파일. 새 실험은 이 파일을 복사해서 만든다. 보상·패널티 값은 scale(0.01)을 곱하기 전 값이다.",
+
+  "run": {
+    "_저장_위치": "output_dir: 실험마다 새로 정한다(null이면 results/ppo라서 결과가 섞인다). 명령줄에서 --set run.output_dir=\"경로\"로 줘도 된다",
+    "output_dir": "results/ppo/experiment_B_50k",
+    "total_timesteps": 50000,
+    "resume": false,
+    "seed": 2026,
+    "train_stages": 30
+  },
+
+  "ppo": {
+    "_할인율": "gamma: 미래 보상을 얼마나 반영할지. 0.99보다 올리면(0.995, 0.999) 클리어처럼 먼 보상이 앞쪽 결정에 더 잘 전달된다",
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "_학습률": "lr: 한 번에 신경망을 얼마나 수정할지. 너무 크면 clip 비율이 커지며 불안정해진다",
+    "lr": 0.0001,
+    "clip_eps": 0.2,
+    "epochs": 4,
+    "minibatch_size": 64,
+    "rollout_steps": 256,
+    "num_envs": null,
+    "value_coef": 0.5,
+    "entropy_coef": 0.01,
+    "max_grad_norm": 0.5,
+    "hidden": 128
+  },
+
+  "eval": {
+    "every_steps": 10240,
+    "games": 40,
+    "greedy": false,
+    "compare_random": true
+  },
+
+  "reward": {
+    "profile": "design_scaled",
+    "scale": 0.01,
+
+    "_보상": "양수로 적는다. clear: 소동을 버틸 때마다, goal: 30소동 클리어, boss: 소동 번호별 보스 처치",
+    "clear": 2.0,
+    "goal": 100.0,
+    "boss": {"5": 3.0, "10": 4.0, "15": 5.0, "20": 6.0, "25": 7.0, "30": 8.0},
+
+    "_결계_손실": "life: 결계 1 잃을 때마다(양수로 적음). boss_life: 보스 소동에서는 여기에 더해지는 추가분",
+    "life": 10.0,
+    "boss_life": 0.0,
+
+    "_게임_오버": "over: 보상 값 그대로 적으므로 음수",
+    "over": -50.0,
+
+    "_판매": "sell_loss: 판매로 잃는 골드 1당. cost_sell: 판매 1번마다 고정",
+    "sell_loss": 0.0,
+    "cost_sell": 0.1,
+
+    "_행동": "action_cost는 소동 시작·소환·강화·판매 모두에 붙고, cost_*는 그 종류에만 더해진다. 소동 시작은 피할 수 없어서 뺐다",
+    "action_cost": 0.0,
+    "cost_start": 0.0,
+    "cost_buy": 0.1,
+    "cost_upgrade": 0.1
+  }
+}
