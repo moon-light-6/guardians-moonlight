@@ -12,9 +12,14 @@ scripts/balance.py처럼 화면 없이 게임 엔진(game/engine.py)을 직접 �
 
 학습 중 지표와 그래프(7장)는 results/ppo/ 에 저장
 실행: python scripts/ppo.py   (torch, numpy, matplotlib 필요)
+수치(보상, 학습률, 평가 판 수 등)는 JSON 설정 파일로 바꾼다: python scripts/ppo.py --config scripts/ppo_configs/penalty_detail.json
+쓴 수치는 출력 폴더의 config.json에 저장
 """
 
+import argparse
+import copy
 import csv
+import json
 import multiprocessing as mp
 import os
 import random
@@ -48,53 +53,153 @@ from game.state import GamePhase  # noqa: E402
 from game.tower import Tower  # noqa: E402
 from game.wave import WaveManager  # noqa: E402
 
+# ----- 설정 파일 -----
+# 바꿀 수 있는 수치는 전부 JSON 설정 파일 하나로 정한다.
+#   python scripts/ppo.py --config scripts/ppo_configs/penalty_detail.json
+#   python scripts/ppo.py --config 파일.json --set reward.action_cost=0.3 --set run.seed=7
+# 파일에는 바꿀 값만 적으면 된다(나머지는 아래 기본값). "_"로 시작하는 키는 메모라서 무시한다.
+# 우선순위: 아래 기본값 < 설정 파일 < 환경 변수(PPO_SEED 등 예전 방식) < 명령줄 --set 구역.키=값
+# 보상 값(clear, life, over, goal, boss, scale)은 profile의 값을 바탕으로 하고, 파일에 적은 것만 덮어쓴다.
+DEFAULT_CONFIG = {
+    "run": {
+        "total_timesteps": 30_000,  # 목표 총 Step(환경에서 고르는 결정 수의 합). 이어서 할 때도 "누적 목표"
+        "resume": True,             # checkpoint.pt가 있으면 거기서 이어서, 없으면 처음부터. 처음부터 다시 하려면 false
+        "seed": 2026,               # 여러 시드 비교용
+        "output_dir": None,         # 저장 위치. 비우면 results/ppo (여러 번 돌릴 때 결과가 섞이지 않게 실험마다 따로 정한다)
+        "train_stages": MAX_STAGES,  # 학습할 때 한 판을 몇 소동까지 할지(30이면 끝까지)
+    },
+    "ppo": {
+        "rollout_steps": 256,    # 한 번 학습할 때 모으는 결정 수(환경들이 나눠서 모은다)
+        "num_envs": None,        # 동시에 돌릴 환경(프로세스) 수. 비우면 CPU 코어 수 - 1 (최대 16)
+        "epochs": 4,             # 같은 경험으로 몇 번 다시 학습할지
+        "minibatch_size": 64,
+        "gamma": 0.99,
+        "gae_lambda": 0.95,
+        "clip_eps": 0.2,
+        "lr": 1e-4,              # 1차(10,240 Step)는 3e-4. 길게 이어 가며 clip 비율이 커져서 낮춤
+        "value_coef": 0.5,
+        "entropy_coef": 0.01,
+        "max_grad_norm": 0.5,
+        "hidden": 128,
+    },
+    "eval": {
+        "every_steps": 2048,     # 학습 몇 Step마다 정기 평가할지(처음 0 Step에도 한 번)
+        "games": 20,             # 정기 평가 판 수. 클리어율 측정 단위는 100 / games %p
+        # 평가 때 행동 고르는 법. false(기본)면 확률대로 뽑고, true면 확률이 가장 큰 행동 하나만 고른다.
+        # 소환은 24칸에 확률이 나뉘어 있어서, 하나만 고르면 소환 쪽 확률이 더 커도 "소동 시작"이 1등이 되기 쉽다.
+        # 뽑는 난수는 판의 시드로 고정하므로, 같은 모델·같은 시드면 평가 결과가 매번 같다.
+        "greedy": False,
+        "compare_random": True,  # 최종 평가에서 무작위 정책도 같은 시드로 돌려 비교
+    },
+    "reward": {
+        "profile": "old",        # old / design / design_scaled (아래 REWARD_PROFILES)
+        "sell_loss": 0.0,        # 판매로 잃는 골드 1당 감점(scale 곱하기 전 값). 0이면 판매에 보상이 없다.
+        "action_cost": 0.0,      # 행동(소동 시작·소환·강화·판매) 1번마다 감점(scale 곱하기 전 값). 0이면 없다.
+        # 행동 종류별 감점. 위 action_cost에 더해서 적용한다(예: 소환 = action_cost + cost_buy). 0이면 없다.
+        "cost_start": 0.0,       # 소동 시작. 소동 버팀 보상(clear)보다 크면 일부러 지는 쪽으로 학습될 수 있으니 clear보다 작게 둔다.
+        "cost_buy": 0.0,         # 소환
+        "cost_upgrade": 0.0,     # 강화
+        "cost_sell": 0.0,        # 판매(잃는 골드에 비례하는 sell_loss와 별개로, 판매 1번마다 고정으로 붙는다)
+        "boss_life": 0.0,        # 보스 소동(5의 배수)에서 잃은 결계 1당 life에 더해지는 추가 감점(scale 곱하기 전 값)
+    },
+}
+REWARD_OVERRIDE_KEYS = ("clear", "life", "over", "goal", "boss", "scale")  # reward 구역에 더 적을 수 있는 키
+LEGACY_ENV = {  # 예전 방식의 환경 변수 -> (구역, 키, 변환)
+    "PPO_SEED": ("run", "seed", int),
+    "PPO_OUTPUT_DIR": ("run", "output_dir", str),
+    "PPO_REWARD": ("reward", "profile", str),
+    "PPO_SELL_LOSS": ("reward", "sell_loss", float),
+    "PPO_ACTION_COST": ("reward", "action_cost", float),
+}
+
+
+def _set_config(config, section, key, value):
+    allowed = key in config.get(section, {}) or (section == "reward" and key in REWARD_OVERRIDE_KEYS)
+    if not allowed:
+        raise SystemExit(f"설정에 없는 항목입니다: {section}.{key}")
+    config[section][key] = value
+
+
+def load_config():
+    # 환경 프로세스(spawn)는 부모가 정해 둔 설정을 그대로 물려받는다. 그래서 정한 설정을 환경 변수에 담아 둔다.
+    packed = os.environ.get("PPO_CONFIG_JSON")
+    if packed:
+        return json.loads(packed)
+    config = copy.deepcopy(DEFAULT_CONFIG)
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--config")
+    parser.add_argument("--set", action="append", default=[])
+    args, _ = parser.parse_known_args()
+    if args.config:
+        with open(args.config, encoding="utf-8") as file:
+            for section, values in json.load(file).items():
+                if section.startswith("_"):
+                    continue
+                if section not in config or not isinstance(values, dict):
+                    raise SystemExit(f"설정 파일의 구역이 올바르지 않습니다: {section}")
+                for key, value in values.items():
+                    if not key.startswith("_"):
+                        _set_config(config, section, key, value)
+    for name, (section, key, cast) in LEGACY_ENV.items():
+        if os.environ.get(name):
+            _set_config(config, section, key, cast(os.environ[name]))
+    for item in args.set:
+        path, _, raw = item.partition("=")
+        section, _, key = path.partition(".")
+        try:
+            value = json.loads(raw)
+        except ValueError:
+            value = raw
+        _set_config(config, section, key, value)
+    os.environ["PPO_CONFIG_JSON"] = json.dumps(config)
+    return config
+
+
+CONFIG = load_config()
+
 # ----- 학습 설정 -----
 # 시간은 거의 전부 전투 계산에 쓰인다(신경망·GPU와는 상관없음). 그래서 환경을 NUM_ENVS개 프로세스로 나눠 동시에 돌린다.
-TOTAL_TIMESTEPS = 30_000  # 목표 총 Step(환경에서 고르는 결정 수의 합). 이어서 할 때도 "누적 목표"
-RESUME = True             # checkpoint.pt가 있으면 거기서 이어서, 없으면 처음부터. 처음부터 다시 하려면 False
-ROLLOUT_STEPS = 256       # 한 번 학습할 때 모으는 결정 수(환경들이 나눠서 모은다)
-NUM_ENVS = max(1, min(16, (os.cpu_count() or 2) - 1))  # 동시에 돌릴 환경(프로세스) 수. 정기 평가도 이 프로세스들이 나눠서 한다.
+TOTAL_TIMESTEPS = CONFIG["run"]["total_timesteps"]
+RESUME = CONFIG["run"]["resume"]
+ROLLOUT_STEPS = CONFIG["ppo"]["rollout_steps"]
+NUM_ENVS = CONFIG["ppo"]["num_envs"] or max(1, min(16, (os.cpu_count() or 2) - 1))
 ENV_STEPS = -(-ROLLOUT_STEPS // NUM_ENVS)  # 환경 하나가 한 번에 모으는 결정 수(올림 나눗셈)
 BATCH_STEPS = ENV_STEPS * NUM_ENVS         # 실제로 한 번 학습할 때 쓰는 결정 수
-PPO_EPOCHS = 4           # 같은 경험으로 몇 번 다시 학습할지
-MINIBATCH_SIZE = 64
-GAMMA = 0.99
-GAE_LAMBDA = 0.95
-CLIP_EPS = 0.2
-LR = 1e-4  # 1차(10,240 Step)는 3e-4. 길게 이어 가며 clip 비율이 커져서 낮춤
-VALUE_COEF = 0.5
-ENTROPY_COEF = 0.01
-MAX_GRAD_NORM = 0.5
-HIDDEN = 128
+PPO_EPOCHS = CONFIG["ppo"]["epochs"]
+MINIBATCH_SIZE = CONFIG["ppo"]["minibatch_size"]
+GAMMA = CONFIG["ppo"]["gamma"]
+GAE_LAMBDA = CONFIG["ppo"]["gae_lambda"]
+CLIP_EPS = CONFIG["ppo"]["clip_eps"]
+LR = CONFIG["ppo"]["lr"]
+VALUE_COEF = CONFIG["ppo"]["value_coef"]
+ENTROPY_COEF = CONFIG["ppo"]["entropy_coef"]
+MAX_GRAD_NORM = CONFIG["ppo"]["max_grad_norm"]
+HIDDEN = CONFIG["ppo"]["hidden"]
 LOG_EVERY = 2             # 업데이트 몇 번마다 로그를 찍을지
 EXPLAIN_UPDATE = 1
-RANDOM_SEED = int(os.environ.get("PPO_SEED", 2026))  # 환경 변수 PPO_SEED로 바꿀 수 있다(여러 시드 비교용)
+RANDOM_SEED = CONFIG["run"]["seed"]
 
 # ----- 환경 설정 -----
-TRAIN_STAGES = MAX_STAGES  # 학습할 때 한 판을 몇 소동까지 할지(30이면 끝까지)
+TRAIN_STAGES = CONFIG["run"]["train_stages"]
 WAVE_TICK = 0.1            # 소동 중 엔진을 한 번에 진행시키는 시간(초). 엔진 안에서는 1/120초씩 계산
 MAX_WAVE_TICKS = 6000      # 600초 넘게 안 끝나면 오류
 
 # ----- 평가 설정 -----
-EVAL_EVERY_STEPS = 2048    # 학습 몇 Step마다 정기 평가할지(처음 0 Step에도 한 번)
-EVAL_GAMES = 20            # 정기 평가 판 수. 클리어율 측정 단위는 100 / EVAL_GAMES = 5%p
+EVAL_EVERY_STEPS = CONFIG["eval"]["every_steps"]
+EVAL_GAMES = CONFIG["eval"]["games"]  # 클리어율 측정 단위는 100 / EVAL_GAMES %p
 EVAL_SEED_BASE = RANDOM_SEED + 100_000  # 학습 판과 겹치지 않는 고정 시드
-# 평가 때 행동 고르는 법. False(기본)면 확률대로 뽑고, True면 확률이 가장 큰 행동 하나만 고른다.
-# 소환은 24칸에 확률이 나뉘어 있어서, 하나만 고르면 소환 쪽 확률이 더 커도 "소동 시작"이 1등이 되기 쉽다.
-# 뽑는 난수는 판의 시드로 고정하므로, 같은 모델·같은 시드면 평가 결과가 매번 같다.
-EVAL_GREEDY = False
-COMPARE_RANDOM = True      # 최종 평가에서 무작위 정책도 같은 시드로 돌려 비교
+EVAL_GREEDY = CONFIG["eval"]["greedy"]
+COMPARE_RANDOM = CONFIG["eval"]["compare_random"]
 MOVING_AVERAGE = 20        # 1~2번 그래프의 이동평균 판 수
 
-# 환경 변수 PPO_OUTPUT_DIR로 저장 위치를 바꿀 수 있다(보상 비교처럼 여러 번 돌릴 때 결과가 섞이지 않게)
-OUTPUT_DIR = Path(os.environ.get("PPO_OUTPUT_DIR") or Path(__file__).resolve().parents[1] / "results" / "ppo")
+OUTPUT_DIR = Path(CONFIG["run"]["output_dir"] or Path(__file__).resolve().parents[1] / "results" / "ppo")
 MODEL_PATH = OUTPUT_DIR / "ppo_policy.pt"
 BEST_MODEL_PATH = OUTPUT_DIR / "ppo_best.pt"  # 정기 평가에서 가장 좋았던 신경망
 # 이어서 학습하기용: 신경망 + 옵티마이저 + 지금까지의 기록 + 난수 상태. 업데이트마다 덮어쓴다.
 CHECKPOINT_PATH = OUTPUT_DIR / "checkpoint.pt"
 
 # ----- 보상 -----
-# 환경 변수 PPO_REWARD로 고른다. 기본은 "old".
+# 설정 파일의 reward.profile로 고른다(예전 방식 환경 변수 PPO_REWARD도 된다). 기본은 "old".
 #   old           : 처음 쓰던 보상
 #   design        : 「강화학습 보상·패널티 1차 설계안 v1.0」(2026.10.27)의 값 그대로
 #   design_scaled : design에 scale 0.01을 곱함. 값이 커서 Critic 손실이 정책 학습을 누르는 것을 막아 본 것
@@ -107,11 +212,19 @@ REWARD_PROFILES = {
     "design": {**DESIGN_REWARD, "scale": 1.0},
     "design_scaled": {**DESIGN_REWARD, "scale": 0.01},
 }
-REWARD_PROFILE = os.environ.get("PPO_REWARD", "old")
+REWARD_PROFILE = CONFIG["reward"]["profile"]
+if REWARD_PROFILE not in REWARD_PROFILES:
+    raise SystemExit(f"reward.profile은 {', '.join(REWARD_PROFILES)} 중 하나여야 합니다: {REWARD_PROFILE}")
 REWARD = dict(REWARD_PROFILES[REWARD_PROFILE])
-# 판매로 잃는 골드 1당 감점(scale 곱하기 전 값). 환경 변수 PPO_SELL_LOSS로 정한다. 0이면 판매에 보상이 없다.
+REWARD.update({key: CONFIG["reward"][key] for key in REWARD_OVERRIDE_KEYS if key in CONFIG["reward"]})
+REWARD["boss"] = {int(stage): value for stage, value in REWARD["boss"].items()}  # JSON의 키는 문자열이라 바꿔 준다
+# 판매로 잃는 골드 1당 감점(scale 곱하기 전 값). 0이면 판매에 보상이 없다.
 # 소환한 사신을 되팔면 투자의 40%를 잃는데, 그 손실이 보상에 드러나지 않으면 되팔기(리롤)를 줄이지 못한다.
-REWARD["sell_loss"] = float(os.environ.get("PPO_SELL_LOSS", 0.0))
+REWARD["sell_loss"] = float(CONFIG["reward"]["sell_loss"])
+# 행동(소동 시작·소환·강화·판매) 1번마다 거는 감점(scale 곱하기 전 값). 0이면 없다.
+REWARD["action_cost"] = float(CONFIG["reward"]["action_cost"])
+for _key in ("cost_start", "cost_buy", "cost_upgrade", "cost_sell", "boss_life"):
+    REWARD[_key] = float(CONFIG["reward"][_key])
 
 # ----- 행동 번호 -----
 # 0: 소동 시작, 1~24: 그 칸에 랜덤 사신 소환, 25~48: 그 칸의 사신 강화, 49~72: 그 칸의 사신 판매
@@ -223,8 +336,10 @@ class GuardianEnv:
             raise ValueError(f"지금 할 수 없는 행동입니다: {action_name(action)}")
 
         kind = action_kind(action)
+        action_cost = (REWARD["action_cost"] + REWARD[f"cost_{kind}"]) * REWARD["scale"]
         if kind == "start":
-            return self._play_wave()
+            observation, reward, done = self._play_wave()
+            return observation, reward - action_cost, done
         if kind == "buy":
             self.game.step(Action(ActionType.BUY, slot_id=action - BUY_OFFSET))
         elif kind == "upgrade":
@@ -239,9 +354,9 @@ class GuardianEnv:
             self.game.step(Action(ActionType.CONFIRM_SELL, slot_id=slot))
             if self.state.phase != GamePhase.PREPARATION or self.state.has_tower(slot):
                 raise RuntimeError(f"{slot}번 칸 판매가 끝나지 않았습니다.")
-            return self.observe(), -REWARD["sell_loss"] * lost_gold * REWARD["scale"], False
-        # 소환·강화 자체에는 보상이 없다. 그 결과로 소동을 버텼는지가 보상이 된다(판매는 잃는 골드만큼 감점).
-        return self.observe(), 0.0, False
+            return self.observe(), -REWARD["sell_loss"] * lost_gold * REWARD["scale"] - action_cost, False
+        # 소환·강화 자체에는 보상이 없다(행동 감점만 있음). 그 결과로 소동을 버텼는지가 보상이 된다(판매는 잃는 골드만큼 감점).
+        return self.observe(), -action_cost, False
 
     def _play_wave(self):
         state = self.state
@@ -258,6 +373,8 @@ class GuardianEnv:
 
         lost = life_before - max(state.life, 0)
         reward = -REWARD["life"] * lost
+        if stage in WaveManager.BOSSES:
+            reward -= REWARD["boss_life"] * lost
         if state.bosses_killed > bosses_before:
             reward += REWARD["boss"].get(stage, 0.0)
         scale = REWARD["scale"]
@@ -339,7 +456,9 @@ def print_intro():
         f"보상({REWARD_PROFILE}): 소동 버티면 +{REWARD['clear']}, 결계 1당 -{REWARD['life']}, "
         f"게임 오버 {REWARD['over']}, {TRAIN_STAGES}소동 도달 +{REWARD['goal']}, "
         f"보스 처치 {REWARD['boss'] or '없음'}, 판매로 잃는 골드 1당 -{REWARD['sell_loss']}, "
-        f"학습용 보상 배율 x{REWARD['scale']}"
+        f"행동 1번당 -{REWARD['action_cost']}"
+        f"(추가: 시작 {REWARD['cost_start']}, 소환 {REWARD['cost_buy']}, 강화 {REWARD['cost_upgrade']}, 판매 {REWARD['cost_sell']}), "
+        f"보스 소동 결계 1당 추가 -{REWARD['boss_life']}, 학습용 보상 배율 x{REWARD['scale']}"
     )
     how = "확률이 가장 큰 행동" if EVAL_GREEDY else "확률대로 뽑기(판마다 시드 고정)"
     print(f"정기 평가: {EVAL_EVERY_STEPS} Step마다 고정 시드 {EVAL_GAMES}판, {how} (프로세스 {NUM_ENVS}개로 동시에)")
@@ -1079,7 +1198,24 @@ def report(model, optimizer, run, pool):
     return final
 
 
+def save_config():
+    """이번 실행에 실제로 쓴 수치를 출력 폴더에 남긴다. 나중에 "무슨 파라미터로 돌렸는지"를 이 파일로 확인한다."""
+    used = {
+        "run": {"total_timesteps": TOTAL_TIMESTEPS, "resume": RESUME, "seed": RANDOM_SEED, "output_dir": str(OUTPUT_DIR),
+                "train_stages": TRAIN_STAGES},
+        "ppo": {"rollout_steps": ROLLOUT_STEPS, "num_envs": NUM_ENVS, "epochs": PPO_EPOCHS, "minibatch_size": MINIBATCH_SIZE,
+                "gamma": GAMMA, "gae_lambda": GAE_LAMBDA, "clip_eps": CLIP_EPS, "lr": LR, "value_coef": VALUE_COEF,
+                "entropy_coef": ENTROPY_COEF, "max_grad_norm": MAX_GRAD_NORM, "hidden": HIDDEN},
+        "eval": {"every_steps": EVAL_EVERY_STEPS, "games": EVAL_GAMES, "greedy": EVAL_GREEDY, "compare_random": COMPARE_RANDOM},
+        "reward": {"profile": REWARD_PROFILE, **REWARD},
+    }
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    with open(OUTPUT_DIR / "config.json", "w", encoding="utf-8") as file:
+        json.dump(used, file, ensure_ascii=False, indent=2)
+
+
 def main():
+    save_config()
     # 경험 모으기와 평가 판은 서로 독립이라 여러 프로세스로 동시에 돌린다. 신경망 업데이트만 이 프로세스.
     with WorkerPool(NUM_ENVS) as pool:
         model, optimizer, run = train(pool)
