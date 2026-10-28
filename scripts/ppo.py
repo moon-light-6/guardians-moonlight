@@ -12,7 +12,8 @@ scripts/balance.py처럼 화면 없이 게임 엔진(game/engine.py)을 직접 �
 
 학습 중 지표와 그래프(7장)는 results/ppo/ 에 저장
 실행: python scripts/ppo.py   (torch, numpy, matplotlib 필요)
-수치(보상, 학습률, 평가 판 수 등)는 JSON 설정 파일로 바꾼다: python scripts/ppo.py --config scripts/ppo_configs/penalty_detail.json
+수치(보상, 학습률, 평가 판 수 등)는 JSON 설정 파일로 바꾼다. --config가 없으면 scripts/ppo_configs/penalty_detail.json을 읽는다.
+다른 파일로: python scripts/ppo.py --config scripts/ppo_configs/내실험.json
 쓴 수치는 출력 폴더의 config.json에 저장
 """
 
@@ -113,6 +114,9 @@ LEGACY_ENV = {  # 예전 방식의 환경 변수 -> (구역, 키, 변환)
 }
 
 
+DEFAULT_CONFIG_FILE = Path(__file__).resolve().parent / "ppo_configs" / "penalty_detail.json"  # --config 없이 실행할 때 읽는 파일
+
+
 def _set_config(config, section, key, value):
     allowed = key in config.get(section, {}) or (section == "reward" and key in REWARD_OVERRIDE_KEYS)
     if not allowed:
@@ -130,8 +134,11 @@ def load_config():
     parser.add_argument("--config")
     parser.add_argument("--set", action="append", default=[])
     args, _ = parser.parse_known_args()
-    if args.config:
-        with open(args.config, encoding="utf-8") as file:
+    # 이 파일을 직접 실행했는데(실행 버튼 포함) --config가 없으면 기본 설정 파일을 읽는다. 다른 스크립트가 import할 때는 읽지 않는다.
+    config_file = args.config or (DEFAULT_CONFIG_FILE if __name__ == "__main__" else None)
+    os.environ["PPO_CONFIG_FILE"] = str(config_file or "")
+    if config_file:
+        with open(config_file, encoding="utf-8") as file:
             for section, values in json.load(file).items():
                 if section.startswith("_"):
                     continue
@@ -452,6 +459,7 @@ def print_intro():
         f"행동 {NUM_ACTIONS}개(소동 시작 1 + 소환 {SLOT_COUNT} + 강화 {SLOT_COUNT} + 판매 {SLOT_COUNT}), "
         f"상태 {OBS_DIM}차원"
     )
+    print(f"설정 파일: {os.environ.get('PPO_CONFIG_FILE') or '없음(코드 기본값)'}, 저장 위치: {OUTPUT_DIR}")
     print(
         f"보상({REWARD_PROFILE}): 소동 버티면 +{REWARD['clear']}, 결계 1당 -{REWARD['life']}, "
         f"게임 오버 {REWARD['over']}, {TRAIN_STAGES}소동 도달 +{REWARD['goal']}, "
