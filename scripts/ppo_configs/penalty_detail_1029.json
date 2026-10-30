@@ -4,8 +4,8 @@
   "run": {
     "_저장_위치": "output_dir: 실험마다 새로 정한다(null이면 results/ppo라서 결과가 섞인다). 명령줄에서 --set run.output_dir=\"경로\"로 줘도 된다",
     "output_dir": "results/ppo_seungyeon_sell_loss_01_upgrade_025",
-    "total_timesteps": 100000,
-    "resume": false,
+    "total_timesteps": 1000000,
+    "resume": true,
     "seed": 2026,
     "train_stages": 30
   },
