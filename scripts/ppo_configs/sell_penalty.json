@@ -1,0 +1,6 @@
+{
+  "_설명": "300,032 Step 장기 학습(판매 패널티 0.15)과 같은 설정. 보상은 설계안 v1.0 x0.01.",
+  "run": {"total_timesteps": 300000, "seed": 2026},
+  "eval": {"every_steps": 10240, "games": 40},
+  "reward": {"profile": "design_scaled", "sell_loss": 0.15}
+}

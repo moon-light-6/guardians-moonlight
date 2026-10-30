@@ -1,0 +1,6 @@
+{
+  "_설명": "300,032 Step 체크포인트에서 이어 학습하며 판매 패널티를 0.05로 낮춘 설정(이어 학습 쪽). 같은 출력 폴더를 써야 한다.",
+  "run": {"total_timesteps": 500000, "seed": 2026, "resume": true},
+  "eval": {"every_steps": 10240, "games": 40},
+  "reward": {"profile": "design_scaled", "sell_loss": 0.05}
+}
