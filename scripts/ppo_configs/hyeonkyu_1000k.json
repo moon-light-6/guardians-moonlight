@@ -1,0 +1,6 @@
+{
+  "_설명": "현규 기준선 100만 Step 학습 설정(판매 손실 0.15, 소환·강화·판매·시작 행동 패널티 없음, 이동 없음). 보상은 설계안 v1.0 x0.01. 결과는 results/hyeonkyu_1000k.",
+  "run": {"total_timesteps": 1000000, "seed": 2026, "output_dir": "results/hyeonkyu_1000k"},
+  "eval": {"every_steps": 10240, "games": 40},
+  "reward": {"profile": "design_scaled", "sell_loss": 0.15}
+}
