@@ -1,4 +1,4 @@
-# PPO 학습(scripts/ppo.py)용. 게임만 실행하려면 requirements.txt만 설치하면 된다.
+# Dependencies for PPO training (scripts/ppo.py), including the base game.
 -r requirements.txt
 torch>=2.0
 numpy>=1.24

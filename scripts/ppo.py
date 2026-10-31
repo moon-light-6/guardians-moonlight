@@ -102,6 +102,7 @@ DEFAULT_CONFIG = {
         "cost_upgrade": 0.0,     # 강화
         "cost_sell": 0.0,        # 판매(잃는 골드에 비례하는 sell_loss와 별개로, 판매 1번마다 고정으로 붙는다)
         "boss_life": 0.0,        # 보스 소동(5의 배수)에서 잃은 결계 1당 life에 더해지는 추가 감점(scale 곱하기 전 값)
+        "goal_gold": 0.0,        # 최종 스테이지 승리 시 남은 골드 1G당 보상(scale 곱하기 전 값)
     },
 }
 REWARD_OVERRIDE_KEYS = ("clear", "life", "over", "goal", "boss", "scale")  # reward 구역에 더 적을 수 있는 키
@@ -230,7 +231,7 @@ REWARD["boss"] = {int(stage): value for stage, value in REWARD["boss"].items()} 
 REWARD["sell_loss"] = float(CONFIG["reward"]["sell_loss"])
 # 행동(소동 시작·소환·강화·판매) 1번마다 거는 감점(scale 곱하기 전 값). 0이면 없다.
 REWARD["action_cost"] = float(CONFIG["reward"]["action_cost"])
-for _key in ("cost_start", "cost_buy", "cost_upgrade", "cost_sell", "boss_life"):
+for _key in ("cost_start", "cost_buy", "cost_upgrade", "cost_sell", "boss_life", "goal_gold"):
     REWARD[_key] = float(CONFIG["reward"][_key])
 
 # ----- 행동 번호 -----
@@ -391,6 +392,8 @@ class GuardianEnv:
         reward += REWARD["clear"]
         if stage >= self.stages:
             self.won = True
+            if state.phase == GamePhase.VICTORY and stage == MAX_STAGES:
+                reward += REWARD["goal_gold"] * max(state.gold, 0)
             return self.observe(), (reward + REWARD["goal"]) * scale, True
         self.game.step(Action(ActionType.CONTINUE))
         return self.observe(), reward * scale, False
@@ -466,7 +469,8 @@ def print_intro():
         f"보스 처치 {REWARD['boss'] or '없음'}, 판매로 잃는 골드 1당 -{REWARD['sell_loss']}, "
         f"행동 1번당 -{REWARD['action_cost']}"
         f"(추가: 시작 {REWARD['cost_start']}, 소환 {REWARD['cost_buy']}, 강화 {REWARD['cost_upgrade']}, 판매 {REWARD['cost_sell']}), "
-        f"보스 소동 결계 1당 추가 -{REWARD['boss_life']}, 학습용 보상 배율 x{REWARD['scale']}"
+        f"보스 소동 결계 1당 추가 -{REWARD['boss_life']}, "
+        f"최종 승리 시 잔여 골드 1G당 +{REWARD['goal_gold']}, 학습용 보상 배율 x{REWARD['scale']}"
     )
     how = "확률이 가장 큰 행동" if EVAL_GREEDY else "확률대로 뽑기(판마다 시드 고정)"
     print(f"정기 평가: {EVAL_EVERY_STEPS} Step마다 고정 시드 {EVAL_GAMES}판, {how} (프로세스 {NUM_ENVS}개로 동시에)")

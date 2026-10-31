@@ -4,7 +4,7 @@
   "run": {
     "_저장_위치": "output_dir: 실험마다 새로 정한다(null이면 results/ppo라서 결과가 섞인다). 명령줄에서 --set run.output_dir=\"경로\"로 줘도 된다",
     "output_dir": null,
-    "total_timesteps": 300000,
+    "total_timesteps": 100000,
     "resume": true,
     "seed": 2026,
     "train_stages": 30
@@ -52,12 +52,12 @@
 
     "_판매": "sell_loss: 판매로 잃는 골드 1당. cost_sell: 판매 1번마다 고정",
     "sell_loss": 0.15,
-    "cost_sell": 0.5,
+    "cost_sell": 0.0,
 
     "_행동": "action_cost는 소동 시작·소환·강화·판매 모두에 붙고, cost_*는 그 종류에만 더해진다. 소동 시작은 피할 수 없어서 뺐다",
     "action_cost": 0.0,
     "cost_start": 0.0,
-    "cost_buy": 0.5,
-    "cost_upgrade": 0.5
+    "cost_buy": 0.0,
+    "cost_upgrade": 0.0
   }
 }
