@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>A3C 학습 결과 요약</title>
+<style>
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; color: #1f2d3d; }
+.page { position: relative; width: 210mm; height: 297mm; padding: 22mm 15mm 20mm; page-break-after: always; overflow: hidden; }
+.bar { position: absolute; top: 0; left: 0; right: 0; height: 4.5mm; background: #17324d; }
+h1 { font-size: 23pt; color: #17324d; margin: 0 0 5mm; }
+h2 { font-size: 14pt; color: #17324d; margin: 5mm 0 2.5mm; }
+p { font-size: 10.5pt; line-height: 1.6; margin: 0 0 3mm; }
+.sub { font-size: 9pt; }
+.lead { font-size: 11.5pt; }
+.note { font-size: 9pt; }
+table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-bottom: 4mm; }
+th { background: #eef3f7; text-align: left; font-weight: normal; padding: 2.6mm 3mm; border-bottom: 1.5px solid #1e8a8a; }
+td { padding: 2.2mm 3mm; border-bottom: 1px solid #e3e8ee; }
+.fig { background: #fafaf8; padding: 2mm; }
+.fig img { width: 100%; display: block; }
+footer { position: absolute; left: 15mm; right: 15mm; bottom: 8mm; display: flex; justify-content: space-between;
+          font-size: 8.5pt; color: #5a6b7d; border-top: 1px solid #d5e0ea; padding-top: 2mm; }
+</style></head><body>
+<section class="page">
+  <div class="bar"></div>
+  <h1>A3C 학습 결과 요약</h1>
+  <p class="sub">월하사신 강화학습 실험 | 분석일 2026.11.01</p>
+<p class="lead">A2C v2와 같은 조건(워커 15개 × 18 Step, lr 0.0001)으로 약 100k Step을 학습했다. 평균 도달 소동이 8.90에서 21.43로 올랐고, 30소동 클리어는 2판(5%)이다. 조건에서 다른 점은 갱신 방식(동기 → 비동기) 하나다.</p>
+<h2>최종 평가: 각 정책 40판</h2>
+<table><thead><tr><th>지표</th><th>A2C v2</th><th>A3C</th></tr></thead><tbody><tr><td>누적 학습 Step</td><td>100,170</td><td>100,260</td></tr><tr><td>30소동 클리어</td><td>0 / 40판 (0%)</td><td>2 / 40판 (5%)</td></tr><tr><td>평균 도달 소동</td><td>8.90</td><td>21.43</td></tr><tr><td>평균 완료 소동</td><td>7.90</td><td>20.48</td></tr><tr><td>평균 소환 횟수</td><td>14.53</td><td>21.18</td></tr><tr><td>평균 강화 횟수</td><td>5.47</td><td>34.50</td></tr><tr><td>평균 판매 횟수</td><td>5.85</td><td>5.38</td></tr><tr><td>평균 잔여 골드 (G)</td><td>205.90</td><td>491.73</td></tr><tr><td>최고 도달 소동</td><td>14</td><td>30</td></tr></tbody></table>
+<h2>결과 해석</h2>
+<p>평균 도달 소동은 8.90에서 21.43로 약 12.53소동 상승했다.
+강화는 평균 5.47회에서 34.50회로 크게 늘었고, 판매는 5.85회에서 5.38회로
+줄었다. 소환한 수호자를 팔기보다 강화하는 쪽으로 전략이 바뀌었다.</p>
+<p>A3C의 최종 평가 도달 범위는 6~30소동이다. 무작위 정책의 평균 5.40소동보다
+크게 높다. 진입한 판이 5판 이상인 소동 가운데 클리어율이 가장 낮은 곳은 26소동 60%, 27소동 67%로, 후반 구간에서 막힌다.</p>
+<p class="note">도달 소동은 마지막으로 진입한 소동이다. 30소동 도달은 30소동 클리어를 뜻하지 않는다.
+학습 시드 1개의 결과이므로 동기/비동기 차이로 단정하려면 시드를 바꿔 다시 확인해야 한다.</p>
+
+  <footer><span>월하사신 | A3C 실험 결과 | 2026.11.01</span><span>01</span></footer>
+</section>
+<section class="page">
+  <div class="bar"></div>
+  <h1>설정·학습 추이와 다음 실험</h1>
+  
+<h2>실제 실행 설정</h2>
+<table><thead><tr><th>항목</th><th>A3C 실행값</th></tr></thead><tbody><tr><td>학습</td><td>A3C / 공유 Adam / GAE / 워커별 비동기 갱신</td></tr><tr><td>병렬 워커 및 갱신 단위</td><td>워커 15개 × 워커당 18 Step마다 갱신 (한 바퀴 270 Step)</td></tr><tr><td>학습률 / 할인율 / GAE lambda</td><td>0.0001 / 0.99 / 0.95</td></tr><tr><td>보상 배율</td><td>scale = 0.01</td></tr><tr><td>판매 손실 감점</td><td>손실 골드 1G당 0.15 × scale = 0.0015점 차감</td></tr><tr><td>행동 고정 감점</td><td>소환·강화·판매·웨이브 시작 모두 0</td></tr><tr><td>최종 잔여 골드 보상</td><td>없음 (A2C v2의 goal_gold = 0과 같음)</td></tr></tbody></table>
+<p>보상·학습률·할인율·GAE·배치 크기는 A2C v2와 같다. A2C는 환경 15개가 모은 270 Step으로 한 번에 갱신하고,
+A3C는 워커마다 18 Step을 모으면 공유 모델을 바로 갱신한다. 둘 다 resume=false로 새로 시작했다.
+value_coef 0.5, entropy_coef 0.01, max_grad_norm 0.5, hidden 128은
+A2C v2 문서에 없어 PPO 기본값을 썼다.</p>
+<h2>평가 추이</h2>
+<table><thead><tr><th>Step</th><th>평균 도달 소동</th><th>평균 판매 횟수</th><th>클리어율</th></tr></thead><tbody><tr><td>0</td><td>5.12</td><td>9.55</td><td>0%</td></tr><tr><td>20,484</td><td>10.65</td><td>8.00</td><td>0%</td></tr><tr><td>51,210</td><td>14.35</td><td>8.60</td><td>0%</td></tr><tr><td>81,936</td><td>18.85</td><td>7.28</td><td>2.5%</td></tr><tr><td>100,260</td><td>21.43</td><td>5.38</td><td>5%</td></tr></tbody></table>
+<p>학습 중 종료된 게임은 1,894판, 워커 갱신은 5,570회이며 승리는 15판이다.
+학습 중 최고 도달은 30소동이다. 정기 평가에서 처음 클리어가 나온 것은 81,936 Step이다. </p>
+<p>마지막 기록 10구간의 평균 EV는 0.39로, A2C v2의 마지막 30회 평균 0.23보다 높다.
+기록 단위(A3C는 2,048 Step마다 묶은 평균)가 달라 직접 비교에는 한계가 있다.</p>
+<h2>다음 실험 제안</h2>
+<p>같은 설정으로 학습 시드를 2~3개 더 돌려 A3C의 향상이 재현되는지 확인한다. 재현되면 A2C와 A3C를 같은 컴퓨터에서
+돌려 시간당 학습량도 비교한다. 후반(26소동 60%, 27소동 67%) 실패 원인을 보려면 해당 소동의 보스 처치 여부와 배치 기록을 추가한다.
+Step을 늘릴 때는 다른 수치를 고정하고 total_timesteps만 바꾼다.</p>
+<p class="note">자료: results/a3c/a2c_v2_conditions의 config.json, evaluations.csv, final_eval.csv, episodes.csv, updates.csv.
+부록은 같은 폴더의 원본 PNG 7장이다.</p>
+
+  <footer><span>월하사신 | A3C 실험 결과 | 2026.11.01</span><span>02</span></footer>
+</section>
+<section class="page">
+  <div class="bar"></div>
+  <h1>그래프 1. 판별 누적 보상</h1>
+  <p>판별 원본 값과 이동평균이다. 전체 보상은 개선 추세지만 이것만으로 최종 승리 전략을 확보했다고 판단할 수 없다.</p><div class="fig"><img src="1_episode_reward.png"></div>
+  <footer><span>월하사신 | A3C 실험 결과 | 2026.11.01</span><span>03</span></footer>
+</section>
+<section class="page">
+  <div class="bar"></div>
+  <h1>그래프 2. 판별 도달 소동</h1>
+  <p>학습 중 최고 30소동까지 진입했고 15판을 클리어했다. 판별 편차가 크다.</p><div class="fig"><img src="2_episode_stage.png"></div>
+  <footer><span>월하사신 | A3C 실험 결과 | 2026.11.01</span><span>04</span></footer>
+</section>
+<section class="page">
+  <div class="bar"></div>
+  <h1>그래프 3. 정기 평가 클리어율</h1>
+  <p>최종 평가의 30소동 클리어율은 5%다. 정기 평가에서 처음 클리어가 나온 것은 81,936 Step이다. </p><div class="fig"><img src="3_clear_rate.png"></div>
+  <footer><span>월하사신 | A3C 실험 결과 | 2026.11.01</span><span>05</span></footer>
+</section>
+<section class="page">
+  <div class="bar"></div>
+  <h1>그래프 4. 평균 잔여 라이프</h1>
+  <p>클리어한 판만 결계가 남는다. 최종 평가 평균 잔여 결계는 0.57이다.</p><div class="fig"><img src="4_remaining_life.png"></div>
+  <footer><span>월하사신 | A3C 실험 결과 | 2026.11.01</span><span>06</span></footer>
+</section>
+<section class="page">
+  <div class="bar"></div>
+  <h1>그래프 5. 평균 잔여 골드</h1>
+  <p>최종 평가 평균 잔액은 약 492G다. 오래 버틸수록 처치 골드가 쌓이므로 의도적 저축으로 단정하지 않는다.</p><div class="fig"><img src="5_remaining_gold.png"></div>
+  <footer><span>월하사신 | A3C 실험 결과 | 2026.11.01</span><span>07</span></footer>
+</section>
+<section class="page">
+  <div class="bar"></div>
+  <h1>그래프 6. A3C 학습 지표</h1>
+  <p>엔트로피·가치 손실·EV를 기록한다. A3C는 PPO의 확률 비율 clipping을 사용하지 않는다.</p><div class="fig"><img src="6_a3c_stability.png"></div>
+  <footer><span>월하사신 | A3C 실험 결과 | 2026.11.01</span><span>08</span></footer>
+</section>
+<section class="page">
+  <div class="bar"></div>
+  <h1>그래프 7. 최종 평가 요약</h1>
+  <p>고정 시드 40판에서 무작위 정책과 A3C 정책을 비교한 원본 요약이다. 소동별 클리어율은 해당 소동에 진입한 판을 분모로 한다.</p><div class="fig"><img src="7_final_summary.png"></div>
+  <footer><span>월하사신 | A3C 실험 결과 | 2026.11.01</span><span>09</span></footer>
+</section></body></html>
