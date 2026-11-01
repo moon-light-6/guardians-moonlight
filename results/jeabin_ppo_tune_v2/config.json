@@ -1,22 +1,24 @@
 {
   "run": {
-    "total_timesteps": 100000,
+    "total_timesteps": 1000000,
     "resume": false,
     "seed": 2026,
-    "output_dir": "results/a3c/a2c_v2_conditions",
+    "output_dir": "results/jeabin_ppo_tune_v2",
     "train_stages": 30
   },
-  "a3c": {
-    "num_workers": 15,
-    "n_steps": 18,
-    "gamma": 0.99,
+  "ppo": {
+    "rollout_steps": 1024,
+    "num_envs": 7,
+    "epochs": 8,
+    "minibatch_size": 128,
+    "gamma": 0.995,
     "gae_lambda": 0.95,
-    "lr": 0.0001,
+    "clip_eps": 0.2,
+    "lr": 0.0003,
     "value_coef": 0.5,
     "entropy_coef": 0.01,
     "max_grad_norm": 0.5,
-    "hidden": 128,
-    "log_every_steps": 2048
+    "hidden": 128
   },
   "eval": {
     "every_steps": 10240,
@@ -39,12 +41,12 @@
       "30": 8.0
     },
     "scale": 0.01,
-    "sell_loss": 0.15,
+    "sell_loss": 0.05,
     "action_cost": 0.0,
     "cost_start": 0.0,
-    "cost_buy": 0.0,
-    "cost_upgrade": 0.0,
-    "cost_sell": 0.0,
+    "cost_buy": 0.1,
+    "cost_upgrade": 0.1,
+    "cost_sell": 0.3,
     "boss_life": 0.0
   }
 }

@@ -3,7 +3,7 @@
     "total_timesteps": 50000,
     "resume": true,
     "seed": 2026,
-    "output_dir": "/Users/user/Desktop/타워 디펜스/guardians-moonlight/results/ppo",
+    "output_dir": "results/jeabin_ppo_50k",
     "train_stages": 30
   },
   "ppo": {

@@ -3,7 +3,7 @@
 
   "run": {
     "_저장_위치": "PPO·A2C 결과 폴더와 다른 곳에 둔다(체크포인트 형식이 다르다). 저장소 최상위 폴더에서 실행한다",
-    "output_dir": "results/a3c/a2c_v2_conditions",
+    "output_dir": "results/jeabin_a3c_a2c_v2",
     "_목표": "A2C v2는 100,170 Step까지 학습했다",
     "total_timesteps": 100000,
     "_이어_학습": "A2C v2처럼 처음부터 새로 시작",

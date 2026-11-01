@@ -11,8 +11,8 @@ PPO와 다른 점
 3. 공용 신경망과 공용 Adam: 신경망 가중치와 Adam의 상태(평균, 분산)를 공유 메모리에 두고 모든 워커가 같이 고친다.
 
 실행: python scripts/a3c.py   (--config가 없으면 scripts/a3c_configs/a3c.json을 읽는다)
-다른 파일로: python scripts/a3c.py --config 파일.json --set a3c.lr=3e-4 --set run.output_dir=\"results/a3c/실험1\"
-학습 중 지표와 그래프(7장)는 results/a3c/ 에 저장. 쓴 수치는 출력 폴더의 config.json에 저장
+다른 파일로: python scripts/a3c.py --config 파일.json --set a3c.lr=3e-4 --set run.output_dir=\"results/jeabin_a3c_실험1\"
+학습 중 지표와 그래프(7장)는 results/jeabin_a3c/ 에 저장. 쓴 수치는 출력 폴더의 config.json에 저장
 """
 
 import argparse
@@ -35,7 +35,7 @@ DEFAULT_CONFIG = {
         "total_timesteps": 300_000,  # 목표 총 Step(모든 워커가 고른 결정 수의 합). 이어서 할 때도 "누적 목표"
         "resume": True,              # checkpoint.pt가 있으면 거기서 이어서. 처음부터 다시 하려면 false
         "seed": 2026,
-        "output_dir": None,          # 비우면 results/a3c
+        "output_dir": None,          # 비우면 results/jeabin_a3c
         "train_stages": 30,
     },
     "a3c": {
@@ -111,7 +111,7 @@ def load_config():
     # 비워 둔 값은 여기서 정해 둔다(워커와 부모가 같은 값을 쓰도록).
     config["a3c"]["num_workers"] = config["a3c"]["num_workers"] or max(1, min(16, (os.cpu_count() or 2) - 1))
     config["run"]["output_dir"] = str(config["run"]["output_dir"]
-                                      or Path(__file__).resolve().parents[1] / "results" / "a3c")
+                                      or Path(__file__).resolve().parents[1] / "results" / "jeabin_a3c")
     config["_config_file"] = str(config_file or "")
     os.environ["A3C_CONFIG_JSON"] = json.dumps(config)
     return config

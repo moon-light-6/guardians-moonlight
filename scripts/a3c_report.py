@@ -1,6 +1,6 @@
 """A3C 결과 폴더를 「A2C v2 학습 결과 요약」 PDF와 같은 양식으로 정리한다.
 
-    python scripts/a3c_report.py [결과 폴더]   (기본: results/a3c/a2c_v2_conditions)
+    python scripts/a3c_report.py [결과 폴더]   (기본: results/jeabin_a3c_a2c_v2)
 
 결과 폴더에 A3C_학습결과_요약.html과 .pdf를 만든다. PDF 변환에 Google Chrome을 쓴다.
 비교 대상인 A2C v2 수치는 「A2C v2 학습 결과 요약」(2026.10.31)에서 옮겨 적었다.
@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_DIR = ROOT / "results" / "a3c" / "a2c_v2_conditions"
+DEFAULT_DIR = ROOT / "results" / "jeabin_a3c_a2c_v2"
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 POLICY = "A3C 정책"
 RANDOM = "무작위 정책"

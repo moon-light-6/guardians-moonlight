@@ -3,7 +3,7 @@
     "total_timesteps": 1000000,
     "resume": false,
     "seed": 2026,
-    "output_dir": "results/ppo/tune_v2",
+    "output_dir": "results/jeabin_ppo_tune_v1",
     "train_stages": 30
   },
   "ppo": {
