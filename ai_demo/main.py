@@ -35,7 +35,7 @@ def parse_args(argv=None):
     parser.add_argument("--seed", type=int, default=None,
                         help="첫 판 시드. 기본은 그 실험의 첫 평가 시드(run.seed + 100000)")
     parser.add_argument("--greedy", action="store_true", help="샘플링 대신 확률이 가장 큰 행동만 고르기")
-    parser.add_argument("--speed", type=float, default=1.0, choices=(1.0, 1.5, 2.0, 5.0), help="시작 배속")
+    parser.add_argument("--speed", type=float, default=2.0, choices=(1.0, 1.5, 2.0, 5.0), help="시작 배속")
     parser.add_argument("--think", type=float, default=0.6,
                         help="준비 단계에서 고른 행동을 보여 주는 시간(초, 1배속 기준). 결과에는 영향 없음")
     parser.add_argument("--auto-next", type=float, default=0.0,
@@ -292,6 +292,8 @@ class DemoApp:
             for name, rect in self.tabs.items():
                 if rect.collidepoint(pos):
                     self.screen_name = name
+        if event.type == pygame.MOUSEWHEEL and self.screen_name == "play":
+            self.play_view.scroll_log(self._to_canvas(pygame.mouse.get_pos()), event.y)
         if event.type != pygame.KEYDOWN:
             return True
         key = event.key

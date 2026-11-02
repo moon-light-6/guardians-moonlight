@@ -25,6 +25,7 @@ from ai_demo.theme import (
 )
 
 FLOATER_SECONDS = 1.6
+LOG_ROW = 25  # 최근 행동 기록 한 줄 높이
 GUARDIAN_ORDER = ("LIGHTNING", "ARCHER", "CANNON", "ICE")  # 청룡 · 백호 · 주작 · 현무
 
 
@@ -86,6 +87,9 @@ class PlayView:
         self.scope = "episode"     # 전략 분석 범위: episode(이번 판) / session(시연 누적)
         self.heat_overlay = False  # H: 게임판 위에 슬롯별 소환 횟수 표시
         self.floaters: List[dict] = []
+        self.log_rect: Optional[pygame.Rect] = None  # 최근 행동 기록 영역(그려졌을 때만)
+        self.log_scroll = 0  # 위에서부터 가린 픽셀. 0이면 최신 기록이 맨 위
+        self._log_count = 0
         self.thumb = self._load_thumbnail((320, 210))
 
     # ----- 준비 -----
@@ -108,6 +112,11 @@ class PlayView:
 
     def slot_pixel(self, slot: int):
         return self.renderer.projection.game_to_pixel(self.map.get_slot_position(slot))
+
+    def scroll_log(self, pos, wheel: int) -> None:
+        """마우스가 최근 행동 기록 위에 있을 때만 스크롤한다. 휠 위로 = 최신 쪽."""
+        if self.log_rect is not None and self.log_rect.collidepoint(pos):
+            self.log_scroll -= wheel * LOG_ROW
 
     def on_event(self, name: str, payload, now: float) -> None:
         if name == "new_game":
@@ -187,6 +196,7 @@ class PlayView:
     def draw_bottom(self, canvas, controller, stats, info, now: float) -> None:
         rect = BOTTOM_RECT
         draw_panel(canvas, rect)
+        self.log_rect = None
         if controller.result is not None:
             self._draw_result(canvas, rect, controller, stats, info)
             return
@@ -231,11 +241,7 @@ class PlayView:
         lx = rect.x + 580
         pygame.draw.line(canvas, (92, 78, 52), (lx - 18, rect.y + 20), (lx - 18, rect.bottom - 20), 1)
         text(canvas, f(20), "최근 행동 기록", (lx, y + 2), TEXT)
-        for i, record in enumerate(list(stats.recent)[:6]):
-            ry = y + 36 + i * 25
-            kind_swatch(canvas, record.kind, pygame.Rect(lx, ry + 5, 10, 10))
-            text(canvas, f(15), f"{record.step:>3}", (lx + 18, ry), MUTED)
-            text(canvas, f(16), fit_text(f(16), f"{record.stage}소동 · {record.detail}", 250), (lx + 52, ry), TEXT_2)
+        self._draw_log(canvas, stats.recent, pygame.Rect(lx, y + 36, 312, rect.bottom - 12 - (y + 36)))
 
         # 이번 판 누적
         cx = rect.x + 912
@@ -249,6 +255,38 @@ class PlayView:
         state = controller.state
         text(canvas, f(15), f"결정 {controller.counter['length']}회 · 이번 준비 {state.actions_taken_this_wave}/{MAX_ACTIONS_PER_WAVE}",
              (cx, y + 160), MUTED)
+
+    def _draw_log(self, canvas, records, area: pygame.Rect) -> None:
+        """이번 판 전체 행동 기록(최신이 위). 과거를 보는 중에는 새 기록이 와도 보던 위치를 유지한다."""
+        f = self.fonts
+        count = len(records)
+        if count < self._log_count:
+            self.log_scroll = 0  # 새 게임
+        elif self.log_scroll > 0:
+            self.log_scroll += (count - self._log_count) * LOG_ROW  # 위에 끼어든 만큼 내려 보던 줄 고정
+        self._log_count = count
+        content = count * LOG_ROW
+        self.log_scroll = max(0, min(self.log_scroll, content - area.height))
+        self.log_rect = area
+
+        previous = canvas.get_clip()
+        canvas.set_clip(area)
+        first = self.log_scroll // LOG_ROW
+        last = min(count, (self.log_scroll + area.height) // LOG_ROW + 1)
+        for i in range(first, last):
+            record = records[i]
+            ry = area.y + i * LOG_ROW - self.log_scroll
+            kind_swatch(canvas, record.kind, pygame.Rect(area.x, ry + 5, 10, 10))
+            text(canvas, f(15), f"{record.step:>3}", (area.x + 18, ry), MUTED)
+            text(canvas, f(16), fit_text(f(16), f"{record.stage}소동 · {record.detail}", 240), (area.x + 52, ry), TEXT_2)
+        canvas.set_clip(previous)
+
+        if content > area.height:
+            track = pygame.Rect(area.right - 4, area.y + 2, 4, area.height - 4)
+            pygame.draw.rect(canvas, (36, 42, 66), track, border_radius=2)
+            height = max(18, round(track.height * area.height / content))
+            top = track.y + round((track.height - height) * self.log_scroll / (content - area.height))
+            pygame.draw.rect(canvas, (128, 116, 86), (track.x, top, track.width, height), border_radius=2)
 
     def _status_text(self, controller, info):
         speed = f" · 배속 ×{controller.combat_speed:g}"

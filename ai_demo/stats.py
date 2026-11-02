@@ -64,10 +64,10 @@ class ActionStats:
 
 
 class DemoStats:
-    def __init__(self, recent: int = 6):
+    def __init__(self):
         self.episode = ActionStats()
         self.session = ActionStats()
-        self.recent = deque(maxlen=recent)
+        self.recent = deque()  # 이번 판의 모든 행동, 최신이 앞
         self.results: List[dict] = []
 
     def new_game(self) -> None:
