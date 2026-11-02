@@ -3,7 +3,7 @@
     "total_timesteps": 1000000,
     "resume": true,
     "seed": 2027,
-    "output_dir": "results/seungyeon_1000k_2027",
+    "output_dir": "results\\seungyeon_1000k_2027",
     "train_stages": 30
   },
   "ppo": {
