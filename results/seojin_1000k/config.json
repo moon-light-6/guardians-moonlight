@@ -1,0 +1,52 @@
+{
+  "run": {
+    "total_timesteps": 1000000,
+    "resume": true,
+    "seed": 2026,
+    "output_dir": "results\\ppo\\experiment_H_from_jaebin_1000k",
+    "train_stages": 30
+  },
+  "ppo": {
+    "rollout_steps": 1024,
+    "num_envs": 7,
+    "epochs": 8,
+    "minibatch_size": 128,
+    "gamma": 0.995,
+    "gae_lambda": 0.95,
+    "clip_eps": 0.2,
+    "lr": 0.0003,
+    "value_coef": 0.5,
+    "entropy_coef": 0.01,
+    "max_grad_norm": 0.5,
+    "hidden": 128
+  },
+  "eval": {
+    "every_steps": 10240,
+    "games": 40,
+    "greedy": false,
+    "compare_random": true
+  },
+  "reward": {
+    "profile": "design_scaled",
+    "clear": 2.0,
+    "life": 10.0,
+    "over": -50.0,
+    "goal": 100.0,
+    "boss": {
+      "5": 3.0,
+      "10": 4.0,
+      "15": 5.0,
+      "20": 6.0,
+      "25": 7.0,
+      "30": 8.0
+    },
+    "scale": 0.01,
+    "sell_loss": 0.05,
+    "action_cost": 0.0,
+    "cost_start": 0.0,
+    "cost_buy": 0.05,
+    "cost_upgrade": 0.1,
+    "cost_sell": 0.1,
+    "boss_life": 0.0
+  }
+}
