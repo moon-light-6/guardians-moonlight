@@ -1,0 +1,52 @@
+{
+  "run": {
+    "total_timesteps": 1000000,
+    "resume": true,
+    "seed": 2026,
+    "output_dir": "results/hyeonkyu_1000k",
+    "train_stages": 30
+  },
+  "ppo": {
+    "rollout_steps": 256,
+    "num_envs": 16,
+    "epochs": 4,
+    "minibatch_size": 64,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_eps": 0.2,
+    "lr": 0.0001,
+    "value_coef": 0.5,
+    "entropy_coef": 0.01,
+    "max_grad_norm": 0.5,
+    "hidden": 128
+  },
+  "eval": {
+    "every_steps": 10240,
+    "games": 40,
+    "greedy": false,
+    "compare_random": true
+  },
+  "reward": {
+    "profile": "design_scaled",
+    "clear": 2.0,
+    "life": 10.0,
+    "over": -50.0,
+    "goal": 100.0,
+    "boss": {
+      "5": 3.0,
+      "10": 4.0,
+      "15": 5.0,
+      "20": 6.0,
+      "25": 7.0,
+      "30": 8.0
+    },
+    "scale": 0.01,
+    "sell_loss": 0.15,
+    "action_cost": 0.0,
+    "cost_start": 0.0,
+    "cost_buy": 0.0,
+    "cost_upgrade": 0.0,
+    "cost_sell": 0.0,
+    "boss_life": 0.0
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "_설명": "A2C v2(「A2C v2 학습 결과 요약」 2026.10.31)와 같은 조건. A2C는 환경 15개가 18 Step씩 모은 270개로 한 번에 갱신하고, A3C는 워커 15개가 18 Step마다 각자 바로 갱신한다. 다른 수치는 같게 두어 동기/비동기 차이만 비교한다. 보상·패널티 값은 scale(0.01)을 곱하기 전 값이다.",
+
+  "run": {
+    "_저장_위치": "PPO·A2C 결과 폴더와 다른 곳에 둔다(체크포인트 형식이 다르다). 저장소 최상위 폴더에서 실행한다",
+    "output_dir": "results/jeabin_a3c_a2c_v2",
+    "_목표": "A2C v2는 100,170 Step까지 학습했다",
+    "total_timesteps": 100000,
+    "_이어_학습": "A2C v2처럼 처음부터 새로 시작",
+    "resume": false,
+    "seed": 2026,
+    "train_stages": 30
+  },
+
+  "a3c": {
+    "_워커": "A2C v2의 환경 15개 x 환경당 18 Step과 맞춘다. 코어가 15개보다 적으면 워커들이 코어를 나눠 써서 느려지지만 학습 조건은 같다",
+    "num_workers": 15,
+    "n_steps": 18,
+    "gamma": 0.99,
+    "_gae_lambda": "A2C v2와 같이 GAE 0.95",
+    "gae_lambda": 0.95,
+    "lr": 0.0001,
+    "value_coef": 0.5,
+    "entropy_coef": 0.01,
+    "max_grad_norm": 0.5,
+    "hidden": 128,
+    "log_every_steps": 2048
+  },
+
+  "eval": {
+    "_평가": "A2C v2와 같이 약 10,000 Step마다 고정 시드 40판",
+    "every_steps": 10240,
+    "games": 40,
+    "greedy": false,
+    "compare_random": true
+  },
+
+  "reward": {
+    "profile": "design_scaled",
+    "scale": 0.01,
+    "clear": 2.0,
+    "goal": 100.0,
+    "boss": {"5": 3.0, "10": 4.0, "15": 5.0, "20": 6.0, "25": 7.0, "30": 8.0},
+    "life": 10.0,
+    "boss_life": 0.0,
+    "over": -50.0,
+
+    "_판매": "A2C v2: 판매로 잃는 골드 1G당 0.15 (x scale = 0.0015점)",
+    "sell_loss": 0.15,
+
+    "_행동": "A2C v2: 소환·강화·판매·소동 시작 고정 감점 모두 0. (A2C의 goal_gold(잔여 골드 보상)도 0으로 꺼져 있었으므로 따로 두지 않는다)",
+    "action_cost": 0.0,
+    "cost_start": 0.0,
+    "cost_buy": 0.0,
+    "cost_upgrade": 0.0,
+    "cost_sell": 0.0
+  }
+}
